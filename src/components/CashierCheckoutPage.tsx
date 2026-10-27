@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { SegmentGroup, Dialog, Portal } from '@ark-ui/react';
 import { OfflineSyncQueue } from './offline-sync-queue';
 import { OrderDomainService, toToman, OrderAggregate } from './order-domain';
 import {
@@ -13,6 +14,8 @@ import {
   Banknote,
   Clock,
   Sparkles,
+  X,
+  Eye,
 } from 'lucide-react';
 import { formatToman } from '../services/financialMath';
 import { baristaDispatcher } from '../services/baristaDispatcher';
@@ -43,6 +46,8 @@ export function CashierCheckoutPage({
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastProcessedOrder, setLastProcessedOrder] = useState<OrderAggregate | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<'POS_TERMINAL' | 'CASH' | 'CARD_MANUAL'>('POS_TERMINAL');
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
 
   useEffect(() => {
     syncQueue.init().then(updateCount);
@@ -133,12 +138,19 @@ export function CashierCheckoutPage({
     order = OrderDomainService.placeOrder(order);
 
     // تسویه حساب کامل (PLACED -> PAID)
+    const refCode =
+      paymentMethod === 'CASH'
+        ? 'CASH-DRAWER'
+        : paymentMethod === 'CARD_MANUAL'
+        ? `CARD-P2P-${Math.floor(1000 + Math.random() * 9000)}`
+        : `TRACE-${Math.floor(100000 + Math.random() * 900000)}`;
+
     order = OrderDomainService.applyPayment(order, {
       id: crypto.randomUUID(),
-      method: 'POS_TERMINAL',
+      method: paymentMethod,
       amount: order.totalNet,
-      referenceNumber: `TRACE-${Math.floor(100000 + Math.random() * 900000)}`,
-      terminalName: 'کارت‌خوان پوز ۱',
+      referenceNumber: refCode,
+      terminalName: paymentMethod === 'POS_TERMINAL' ? 'کارت‌خوان پوز ۱' : undefined,
     });
 
     // ۳. ثبت فوری در صف آفلاین محلی (صندوقدار فوراً فاکتور بعدی را باز میکند)
@@ -242,6 +254,62 @@ export function CashierCheckoutPage({
                 {formatToman(265000)} تومان
               </span>
             </div>
+
+            {/* Ark UI SegmentGroup for Payment Method */}
+            <div className="mt-4 space-y-1.5">
+              <label className="text-[11px] font-semibold text-stone-400 block">
+                روش تسویه سریع (Ark UI SegmentGroup):
+              </label>
+              <SegmentGroup.Root
+                value={paymentMethod}
+                onValueChange={(details) => {
+                  if (details.value) setPaymentMethod(details.value as any);
+                }}
+                className="flex items-center gap-1.5 bg-stone-900 p-1 rounded-xl border border-stone-800"
+              >
+                <SegmentGroup.Item
+                  value="POS_TERMINAL"
+                  className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition select-none ${
+                    paymentMethod === 'POS_TERMINAL'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-stone-400 hover:text-stone-200 hover:bg-stone-850'
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5 shrink-0" />
+                  <SegmentGroup.ItemText>پوز بانکی</SegmentGroup.ItemText>
+                  <SegmentGroup.ItemControl />
+                  <SegmentGroup.ItemHiddenInput />
+                </SegmentGroup.Item>
+
+                <SegmentGroup.Item
+                  value="CASH"
+                  className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition select-none ${
+                    paymentMethod === 'CASH'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-stone-400 hover:text-stone-200 hover:bg-stone-850'
+                  }`}
+                >
+                  <Banknote className="w-3.5 h-3.5 shrink-0" />
+                  <SegmentGroup.ItemText>نقد صندوق</SegmentGroup.ItemText>
+                  <SegmentGroup.ItemControl />
+                  <SegmentGroup.ItemHiddenInput />
+                </SegmentGroup.Item>
+
+                <SegmentGroup.Item
+                  value="CARD_MANUAL"
+                  className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition select-none ${
+                    paymentMethod === 'CARD_MANUAL'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-stone-400 hover:text-stone-200 hover:bg-stone-850'
+                  }`}
+                >
+                  <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                  <SegmentGroup.ItemText>کارت/سایر</SegmentGroup.ItemText>
+                  <SegmentGroup.ItemControl />
+                  <SegmentGroup.ItemHiddenInput />
+                </SegmentGroup.Item>
+              </SegmentGroup.Root>
+            </div>
           </div>
 
           <div className="pt-4">
@@ -250,7 +318,9 @@ export function CashierCheckoutPage({
               className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white py-3 rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Zap className="w-4 h-4" />
-              <span>اجرای تسویه سریع کارتخوان پوز ({formatToman(265000)} ت)</span>
+              <span>
+                تسویه حساب با {paymentMethod === 'POS_TERMINAL' ? 'کارتخوان پوز' : paymentMethod === 'CASH' ? 'وجه نقد' : 'کارت به کارت'} ({formatToman(265000)} ت)
+              </span>
             </button>
           </div>
         </div>
@@ -286,8 +356,17 @@ export function CashierCheckoutPage({
             </div>
 
             {lastProcessedOrder ? (
-              <div className="bg-stone-900 p-3 rounded-xl border border-stone-800 text-xs space-y-1">
-                <div className="text-stone-400 text-[11px]">آخرین سفارش پردازش‌شده:</div>
+              <div className="bg-stone-900 p-3 rounded-xl border border-stone-800 text-xs space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-stone-400 text-[11px]">آخرین سفارش پردازش‌شده:</span>
+                  <button
+                    onClick={() => setIsReceiptOpen(true)}
+                    className="text-amber-400 hover:text-amber-300 text-[11px] flex items-center gap-1 cursor-pointer font-medium"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>مشاهده فیش (Ark UI Dialog)</span>
+                  </button>
+                </div>
                 <div className="font-bold text-emerald-400 flex items-center gap-1.5">
                   <CheckCircle className="w-3.5 h-3.5" />
                   <span>وضعیت: {lastProcessedOrder.state} (تسویه کامل)</span>
@@ -295,13 +374,16 @@ export function CashierCheckoutPage({
                 <div className="font-mono text-[11px] text-stone-300 truncate" dir="ltr">
                   UUID: {lastProcessedOrder.clientGeneratedId}
                 </div>
-                <div className="text-stone-300">
-                  مبلغ خالص: {formatToman(lastProcessedOrder.netTotalToman)} تومان
+                <div className="text-stone-300 flex justify-between">
+                  <span>مبلغ خالص:</span>
+                  <span className="font-mono font-bold text-amber-400">
+                    {formatToman(lastProcessedOrder.netTotalToman)} تومان
+                  </span>
                 </div>
               </div>
             ) : (
               <div className="p-4 rounded-xl bg-stone-900/50 border border-stone-800/60 text-center text-xs text-stone-500">
-                هنوز سفارشی در این شیفت سریع ثبت نشده است. با کلیک روی دکمه بالا تسویه آزمایشی را اجرا کنید.
+                هنوز سفارشی در این شیفت سریع ثبت نشده است. با انتخاب روش و کلیک روی دکمه بالا تسویه را اجرا کنید.
               </div>
             )}
           </div>
@@ -312,6 +394,89 @@ export function CashierCheckoutPage({
           </div>
         </div>
       </div>
+
+      {/* Ark UI Modal for Receipt Preview */}
+      {lastProcessedOrder && (
+        <Dialog.Root
+          open={isReceiptOpen}
+          onOpenChange={(details) => {
+            if (!details.open) setIsReceiptOpen(false);
+          }}
+        >
+          <Portal>
+            <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs" />
+            <Dialog.Positioner className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <Dialog.Content className="bg-stone-900 border border-stone-800 rounded-2xl w-full max-w-sm shadow-2xl p-5 text-stone-100 flex flex-col gap-3 focus:outline-none">
+                <div className="flex items-center justify-between pb-2 border-b border-stone-800">
+                  <div className="flex items-center gap-2">
+                    <Coffee className="w-5 h-5 text-amber-500" />
+                    <Dialog.Title className="font-bold text-sm">
+                      رسید رسمی {tenantName}
+                    </Dialog.Title>
+                  </div>
+                  <Dialog.CloseTrigger asChild>
+                    <button
+                      onClick={() => setIsReceiptOpen(false)}
+                      className="text-stone-400 hover:text-stone-200 p-1 rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </Dialog.CloseTrigger>
+                </div>
+
+                <Dialog.Description className="text-xs text-stone-400">
+                  فیش صادرشده برای مشتری با شناسه یکتا و اقلام سفارش:
+                </Dialog.Description>
+
+                <div className="bg-stone-950 p-3 rounded-xl border border-stone-800 text-xs space-y-2">
+                  <div className="flex justify-between text-stone-400 text-[11px]">
+                    <span>شماره سفارش: #{lastProcessedOrder.orderNumber}</span>
+                    <span>{new Date(lastProcessedOrder.createdAt).toLocaleTimeString('fa-IR')}</span>
+                  </div>
+
+                  <div className="border-t border-dashed border-stone-800 pt-2 space-y-1">
+                    {lastProcessedOrder.items.map((item, idx) => (
+                      <div key={idx} className="flex justify-between text-stone-200">
+                        <span>
+                          {item.quantity} × {item.itemNameSnapshot}
+                        </span>
+                        <span className="font-mono text-amber-400">
+                          {formatToman(item.subtotalToman)} ت
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="border-t border-stone-800 pt-2 flex justify-between font-bold text-amber-400">
+                    <span>مبلغ کل خالص:</span>
+                    <span className="font-mono text-sm">
+                      {formatToman(lastProcessedOrder.netTotalToman)} تومان
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={() => {
+                      window.print();
+                    }}
+                    className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>چاپ فیش حرارتی ۸۰mm</span>
+                  </button>
+                  <button
+                    onClick={() => setIsReceiptOpen(false)}
+                    className="bg-stone-800 hover:bg-stone-700 text-stone-300 py-2 px-3 rounded-xl text-xs font-semibold cursor-pointer"
+                  >
+                    بستن
+                  </button>
+                </div>
+              </Dialog.Content>
+            </Dialog.Positioner>
+          </Portal>
+        </Dialog.Root>
+      )}
     </div>
   );
 }

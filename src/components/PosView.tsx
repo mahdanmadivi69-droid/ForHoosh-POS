@@ -12,17 +12,17 @@ import {
   X,
   AlertCircle,
   AlertTriangle,
-  AlertOctagon,
-  Sliders,
-  Filter,
   Coffee,
   Search,
-  Sparkles,
   RefreshCw,
   Wifi,
   WifiOff,
   Bluetooth,
   Usb,
+  Sliders,
+  Store,
+  Layers,
+  ArrowRight,
 } from 'lucide-react';
 import {
   Category,
@@ -42,7 +42,6 @@ import {
   safeInt,
   evaluateStockStatus,
   countStockAlerts,
-  getEffectiveThreshold,
 } from '../services/financialMath';
 import { ReceiptPreview } from './ReceiptPreview';
 import { ModifierModal } from './ModifierModal';
@@ -55,6 +54,7 @@ import {
   printDirectWebUSB,
   printDirectWebBluetooth,
 } from '../services/escposThermalPrinter';
+import { playPosBeep } from '../services/soundEffects';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -91,11 +91,12 @@ export const PosView: React.FC<PosViewProps> = ({
   onOpenShiftRequired,
 }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
+  const [roastFilter, setRoastFilter] = useState<'all' | 'medium' | 'dark' | 'light'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [stockFilter, setStockFilter] = useState<'ALL' | 'ALERTS_ONLY'>('ALL');
 
   // Configurable default threshold for low stock alert
-  const [globalThreshold, setGlobalThreshold] = useState<number>(() => {
+  const [globalThreshold] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('smartorders_stock_threshold');
       return saved ? Math.max(1, parseInt(saved, 10)) : 5;
@@ -106,11 +107,12 @@ export const PosView: React.FC<PosViewProps> = ({
 
   // Current Order / Cart State
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
-  const [orderType, setOrderType] = useState<OrderType>('DINE_IN');
+  const [orderType, setOrderType] = useState<OrderType>('TAKEAWAY');
   const [tableLabel, setTableLabel] = useState<string>('میز ۱');
   const [customerName, setCustomerName] = useState<string>('');
   const [discountToman, setDiscountToman] = useState<number>(0);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
 
   // Modifier sheet modal state
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
@@ -123,8 +125,8 @@ export const PosView: React.FC<PosViewProps> = ({
   // Checkout Modal State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD_MANUAL');
+  const [terminalName, setTerminalName] = useState<string>('پوز ۱ (بانک سامان)');
   const [referenceCode, setReferenceCode] = useState<string>('');
-  const [terminalName, setTerminalName] = useState<string>('دستگاه پوز ۱');
   const [cashTendered, setCashTendered] = useState<number>(0);
   const [completedReceiptOrder, setCompletedReceiptOrder] = useState<Order | null>(null);
   const [completedReceiptPayment, setCompletedReceiptPayment] = useState<Payment | null>(null);
@@ -146,27 +148,21 @@ export const PosView: React.FC<PosViewProps> = ({
     return () => unsubscribe();
   }, []);
 
-  const handleUpdateGlobalThreshold = (delta: number) => {
-    const newVal = Math.max(1, Math.min(100, globalThreshold + delta));
-    setGlobalThreshold(newVal);
-    try {
-      localStorage.setItem('smartorders_stock_threshold', String(newVal));
-    } catch (e) {
-      console.error('Failed to save threshold to storage:', e);
-    }
-  };
-
   const stockAlertStats = countStockAlerts(menuItems, globalThreshold);
 
   // Filter menu items
   const filteredItems = menuItems.filter((item) => {
     if (!item.isAvailable) return false;
     const matchesCat = selectedCategoryId === 'all' || item.categoryId === selectedCategoryId;
+    const matchesRoast = roastFilter === 'all' || item.roast === roastFilter;
     const matchesSearch =
       !searchQuery.trim() ||
       item.nameFa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.nameEn && item.nameEn.toLowerCase().includes(searchQuery.toLowerCase()));
-    if (!matchesCat || !matchesSearch) return false;
+      (item.nameEn && item.nameEn.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.origin && item.origin.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.notes && item.notes.some((n) => n.toLowerCase().includes(searchQuery.toLowerCase())));
+
+    if (!matchesCat || !matchesRoast || !matchesSearch) return false;
 
     if (stockFilter === 'ALERTS_ONLY') {
       const status = evaluateStockStatus(item.currentStock, item.lowStockThreshold, globalThreshold).status;
@@ -178,9 +174,11 @@ export const PosView: React.FC<PosViewProps> = ({
   // Hotkeys: 1-9 to add items, P for POS card, C for cash
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger hotkeys if user is currently typing in an input or textarea
       const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+      if (
+        target &&
+        (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')
+      ) {
         return;
       }
 
@@ -224,10 +222,16 @@ export const PosView: React.FC<PosViewProps> = ({
   // Cart operations
   const handleAddItem = (item: MenuItem) => {
     if (item.currentStock !== undefined && item.currentStock <= 0) {
+      playPosBeep('delete');
       return;
     }
+
+    playPosBeep('click');
+
     setCartItems((prev) => {
-      const existing = prev.find((i) => i.menuItemId === item.id && (!i.modifiers || i.modifiers.length === 0));
+      const existing = prev.find(
+        (i) => i.menuItemId === item.id && (!i.modifiers || i.modifiers.length === 0)
+      );
       if (existing) {
         if (item.currentStock !== undefined && existing.quantity >= item.currentStock) {
           return prev;
@@ -257,12 +261,12 @@ export const PosView: React.FC<PosViewProps> = ({
     });
   };
 
-  // Add Item with Modifiers (3-Tap Fast Flow)
   const handleAddWithModifiers = (
     item: MenuItem,
     selectedModifiers: ModifierOption[],
     notes: string
   ) => {
+    playPosBeep('click');
     const modifiersDelta = selectedModifiers.reduce((sum, m) => sum + m.priceDeltaToman, 0);
     const unitPrice = item.priceToman + modifiersDelta;
 
@@ -283,11 +287,18 @@ export const PosView: React.FC<PosViewProps> = ({
 
   const handleOpenModifierModal = (e: React.MouseEvent, item: MenuItem) => {
     e.stopPropagation();
+    playPosBeep('click');
     setModifierItem(item);
     setIsModifierOpen(true);
   };
 
   const handleUpdateQuantity = (itemId: string, delta: number) => {
+    if (delta < 0) {
+      playPosBeep('delete');
+    } else {
+      playPosBeep('click');
+    }
+
     setCartItems((prev) => {
       return prev
         .map((i) => {
@@ -296,7 +307,11 @@ export const PosView: React.FC<PosViewProps> = ({
             if (newQty <= 0) return null;
             if (delta > 0) {
               const matchedItem = menuItems.find((m) => m.id === i.menuItemId);
-              if (matchedItem && matchedItem.currentStock !== undefined && newQty > matchedItem.currentStock) {
+              if (
+                matchedItem &&
+                matchedItem.currentStock !== undefined &&
+                newQty > matchedItem.currentStock
+              ) {
                 return i;
               }
             }
@@ -313,10 +328,14 @@ export const PosView: React.FC<PosViewProps> = ({
   };
 
   const handleRemoveItem = (itemId: string) => {
+    playPosBeep('delete');
     setCartItems((prev) => prev.filter((i) => i.id !== itemId));
   };
 
   const handleClearCart = () => {
+    if (cartItems.length > 0) {
+      playPosBeep('delete');
+    }
     setCartItems([]);
     setDiscountToman(0);
     setDiscountPercent(0);
@@ -324,6 +343,7 @@ export const PosView: React.FC<PosViewProps> = ({
   };
 
   const handleApplyDiscountPercent = (percent: number) => {
+    playPosBeep('click');
     setDiscountPercent(percent);
     const calculatedDiscount = Math.round((grossAmountToman * percent) / 100);
     setDiscountToman(calculatedDiscount);
@@ -331,6 +351,7 @@ export const PosView: React.FC<PosViewProps> = ({
 
   // Trigger manual sync
   const handleTriggerManualSync = async () => {
+    playPosBeep('click');
     setIsManualSyncing(true);
     try {
       await globalOfflineSyncQueue.triggerSync();
@@ -341,6 +362,7 @@ export const PosView: React.FC<PosViewProps> = ({
 
   // Checkout submission
   const handleStartCheckout = () => {
+    playPosBeep('click');
     if (!activeShift) {
       onOpenShiftRequired();
       return;
@@ -353,9 +375,12 @@ export const PosView: React.FC<PosViewProps> = ({
   const handleConfirmPayment = (autoPrint = false) => {
     if (!activeShift) return;
 
-    const clientGeneratedId = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `cid-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    playPosBeep('success');
+
+    const clientGeneratedId =
+      typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `cid-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
     const newOrder: Order = {
       id: `order-${Date.now()}`,
@@ -384,7 +409,6 @@ export const PosView: React.FC<PosViewProps> = ({
     );
 
     if (result) {
-      // Build Phase 4 OrderAggregate for OfflineSyncQueue and Barista Bar
       const orderAggregateItems: OrderItemAggregate[] = cartItems.map((item) => {
         const mods = item.modifiers ? item.modifiers.map((m) => ({ ...m })) : [];
         const modsDelta = mods.reduce((sum, m) => sum + m.priceDeltaToman, 0);
@@ -465,6 +489,7 @@ export const PosView: React.FC<PosViewProps> = ({
       setIsCheckoutOpen(false);
       handleClearCart();
       setReferenceCode('');
+      setIsMobileCartOpen(false);
 
       if (autoPrint) {
         setTimeout(() => {
@@ -507,20 +532,24 @@ export const PosView: React.FC<PosViewProps> = ({
         discountAmount: completedReceiptOrder.discountAmountToman,
         netTotalToman: completedReceiptOrder.netTotalToman,
         totalNet: completedReceiptOrder.netTotalToman,
-        payments: completedReceiptPayment ? [{
-          id: completedReceiptPayment.id,
-          tenantId: completedReceiptPayment.tenantId,
-          orderId: completedReceiptPayment.orderId,
-          clientGeneratedId: completedReceiptOrder.id,
-          shiftId: completedReceiptPayment.shiftId,
-          receivedByUserId: completedReceiptPayment.receivedByUserId,
-          amountToman: completedReceiptPayment.amountToman,
-          paymentMethod: completedReceiptPayment.paymentMethod,
-          referenceCode: completedReceiptPayment.referenceCode,
-          terminalName: completedReceiptPayment.terminalName,
-          status: 'SUCCESSFUL',
-          createdAt: completedReceiptPayment.createdAt,
-        }] : [],
+        payments: completedReceiptPayment
+          ? [
+              {
+                id: completedReceiptPayment.id,
+                tenantId: completedReceiptPayment.tenantId,
+                orderId: completedReceiptPayment.orderId,
+                clientGeneratedId: completedReceiptOrder.id,
+                shiftId: completedReceiptPayment.shiftId,
+                receivedByUserId: completedReceiptPayment.receivedByUserId,
+                amountToman: completedReceiptPayment.amountToman,
+                paymentMethod: completedReceiptPayment.paymentMethod,
+                referenceCode: completedReceiptPayment.referenceCode,
+                terminalName: completedReceiptPayment.terminalName,
+                status: 'SUCCESSFUL',
+                createdAt: completedReceiptPayment.createdAt,
+              },
+            ]
+          : [],
         paidAmountToman: completedReceiptOrder.netTotalToman,
         paidAmount: completedReceiptOrder.netTotalToman,
         createdAt: completedReceiptOrder.createdAt,
@@ -529,739 +558,988 @@ export const PosView: React.FC<PosViewProps> = ({
         createdByUserName: completedReceiptOrder.createdByUserName,
       };
 
-      const canvas = renderReceiptToCanvas(
-        orderAggregate,
-        tenant,
-        completedCashTendered,
-        completedChange
-      );
+      const canvas = renderReceiptToCanvas(orderAggregate, {
+        shopName: tenant.name || 'قهوه‌فروشی صَد هیچ (100 HICH)',
+        shopPhone: tenant.phone || '021-44668090',
+        shopAddress: tenant.address || 'اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس',
+      });
 
       const rasterBytes = convertCanvasToEscPosRaster(canvas);
 
       if (type === 'USB') {
-        const res = await printDirectWebUSB(rasterBytes);
-        setHardwarePrintStatus(res.message);
+        const ok = await printDirectWebUSB(rasterBytes);
+        setHardwarePrintStatus(ok ? 'فیش با موفقیت چاپ شد' : 'اتصال WebUSB لغو شد');
       } else {
-        const res = await printDirectWebBluetooth(rasterBytes);
-        setHardwarePrintStatus(res.message);
+        const ok = await printDirectWebBluetooth(rasterBytes);
+        setHardwarePrintStatus(ok ? 'فیش از طریق بلوتوث چاپ شد' : 'اتصال بلوتوث لغو شد');
       }
-
-      setTimeout(() => setHardwarePrintStatus(null), 4000);
-    } catch (err: any) {
-      setHardwarePrintStatus(`خطا در چاپ سخت‌افزاری: ${err?.message || 'اتصال برقرار نشد'}`);
-      setTimeout(() => setHardwarePrintStatus(null), 5000);
+    } catch (e) {
+      console.error(e);
+      setHardwarePrintStatus('خطا در ارتباط با پرینتر حرارتی');
     }
   };
 
+  const totalCartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-      {/* Shift Warning Banner if Closed */}
-      {!activeShift && (
-        <div className="mb-4 bg-amber-950/40 border border-amber-800/80 rounded-lg p-3 text-amber-200 flex items-center justify-between gap-3 text-sm">
-          <div className="flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
-            <span>
-              <strong>توجه:</strong> در حال حاضر هیچ شیفت کاری فعالی ثبت نشده است. برای ثبت و تسویه سفارشات، ابتدا یک شیفت جدید باز کنید.
+    <div className="flex-1 flex flex-col xl:flex-row gap-4 p-3 md:p-5 max-w-[1720px] mx-auto w-full relative select-none">
+      {/* ================= LEFT / MAIN: Catalog & Products Section ================= */}
+      <section className="flex-1 flex flex-col min-w-0">
+        {/* Top Announcement & Roast Specs Bar */}
+        <div className="bg-gradient-to-r from-[#0F223D] via-[#1B222C] to-[#0F223D] p-3 rounded-xl border border-[#293444] mb-3 flex flex-wrap items-center justify-between gap-2 shadow-inner">
+          <div className="flex items-center gap-3">
+            <span className="bg-[#D71921] text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider uppercase">
+              NEW ROAST
             </span>
-          </div>
-          <button
-            onClick={onOpenShiftRequired}
-            className="bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded-md text-xs font-semibold whitespace-nowrap shadow"
-          >
-            بازگشایی فوری شیفت
-          </button>
-        </div>
-      )}
-
-      {/* Offline Sync Queue Banner (Shows pending orders in IndexedDB) */}
-      {queueStats.pending > 0 && (
-        <div className="mb-4 bg-stone-900 border border-amber-600/60 rounded-xl p-3 flex items-center justify-between gap-3 text-xs shadow-md">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
-              <WifiOff className="w-4 h-4 animate-pulse" />
-            </div>
-            <div>
-              <div className="font-bold text-stone-200 flex items-center gap-2">
-                <span>صف پایگاه داده آفلاین (IndexedDB):</span>
-                <span className="bg-amber-500 text-stone-950 font-black px-2 py-0.5 rounded-full text-[11px]">
-                  {queueStats.pending} سفارش در انتظار همگام‌سازی
-                </span>
-              </div>
-              <p className="text-[11px] text-stone-400 mt-0.5">
-                فیش‌ها به صورت محلی ذخیره شده‌اند و به محض دسترسی به اینترنت یا کلیک روی همگام‌سازی با لاجیک Idempotent ارسال می‌شوند.
-              </p>
-            </div>
+            <p className="text-xs md:text-sm font-semibold text-white">
+              روست هفتگی بلند اختصاصی{' '}
+              <span className="text-[#F3E9DD] font-bold">50/50 Brazil & Indonesia</span> آماده ارسال
+              و آسیاب تازه در بار
+            </p>
           </div>
 
-          <button
-            onClick={handleTriggerManualSync}
-            disabled={isManualSyncing}
-            className="bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow transition cursor-pointer"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isManualSyncing ? 'animate-spin' : ''}`} />
-            <span>{isManualSyncing ? 'در حال سینک...' : 'همگام‌سازی فوری'}</span>
-          </button>
+          <div className="flex items-center gap-3 text-[11px] text-[#9EACB8]">
+            <div className="hidden sm:flex items-center gap-1.5">
+              <span>دما و فشار بویلر:</span>
+              <strong className="text-white font-mono num-heavy">93.5°C | 9.1 Bar</strong>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            </div>
+
+            {/* Offline Sync Status Chip */}
+            <div className="flex items-center gap-1.5 bg-[#121417]/80 px-2 py-0.5 rounded border border-[#293444]">
+              {queueStats.pending > 0 ? (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                  <span className="text-amber-300 font-bold font-mono num-heavy">
+                    {queueStats.pending} صف آفلاین
+                  </span>
+                  <button
+                    onClick={handleTriggerManualSync}
+                    disabled={isManualSyncing}
+                    className="p-1 hover:text-white"
+                    title="سینک فوری با سرور"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isManualSyncing ? 'animate-spin' : ''}`} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-400 font-medium">سینک برخط</span>
+                </>
+              )}
+            </div>
+          </div>
         </div>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Side (Menu & Categories) - 7 cols */}
-        <div className="lg:col-span-7 flex flex-col gap-3">
-          {/* Inventory Alert Banner (Configurable Threshold Warning) */}
-          {(stockAlertStats.totalLowStock > 0 || stockFilter === 'ALERTS_ONLY') && (
-            <div className="bg-gradient-to-r from-amber-950/40 via-stone-900 to-amber-950/30 border border-amber-600/50 rounded-xl p-3 shadow-md flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
-                  <AlertTriangle className="w-4 h-4 animate-pulse" />
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-bold text-xs text-amber-200">
-                      هشدار موجودی انبار ({stockAlertStats.totalLowStock} قلم کالا)
-                    </span>
-                    {stockAlertStats.outOfStockCount > 0 && (
-                      <span className="bg-rose-950/90 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded border border-rose-800">
-                        {stockAlertStats.outOfStockCount} ناموجود
-                      </span>
-                    )}
-                    {stockAlertStats.warningCount > 0 && (
-                      <span className="bg-amber-950/90 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded border border-amber-600/60">
-                        {stockAlertStats.warningCount} زیر آستانه
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[11px] text-stone-400 mt-0.5">
-                    اقلام با موجودی ≤ حد آستانه ({globalThreshold} عدد) دارای هشدار بصری زرد و ناموجودها غیرفعال هستند.
-                  </span>
-                </div>
-              </div>
+        {/* Categories Navigation Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-3 select-none">
+          <button
+            onClick={() => {
+              playPosBeep('click');
+              setSelectedCategoryId('all');
+            }}
+            className={`px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-2 border cursor-pointer ${
+              selectedCategoryId === 'all'
+                ? 'bg-[#D71921] border-[#D71921] text-white shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
+                : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white hover:border-[#9EACB8]'
+            }`}
+          >
+            <span>⚡</span>
+            <span>کل محصولات بار</span>
+          </button>
 
-              <div className="flex items-center gap-2 text-xs">
-                {/* Configurable Threshold Stepper in POS */}
-                <div className="flex items-center gap-1 bg-stone-950 border border-stone-800 rounded-lg px-2 py-1">
-                  <span className="text-[10px] text-stone-400">آستانه:</span>
-                  <button
-                    onClick={() => handleUpdateGlobalThreshold(-1)}
-                    className="w-5 h-5 flex items-center justify-center rounded bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold transition"
-                    title="کاهش آستانه هشدار"
-                  >
-                    -
-                  </button>
-                  <span className="font-mono font-bold text-amber-400 text-xs w-5 text-center">
-                    {globalThreshold}
-                  </span>
-                  <button
-                    onClick={() => handleUpdateGlobalThreshold(1)}
-                    className="w-5 h-5 flex items-center justify-center rounded bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-bold transition"
-                    title="افزایش آستانه هشدار"
-                  >
-                    +
-                  </button>
-                </div>
+          {categories.map((cat) => {
+            const isActive = selectedCategoryId === cat.id;
+            let icon = '☕';
+            if (cat.id.includes('blend')) icon = '🔥';
+            else if (cat.id.includes('single')) icon = '🌍';
+            else if (cat.id.includes('karak')) icon = '🫖';
+            else if (cat.id.includes('cold')) icon = '🧊';
+            else if (cat.id.includes('gear')) icon = '⚙️';
+            else if (cat.id.includes('pastry')) icon = '🍰';
 
-                {/* Filter Toggle */}
-                <button
-                  onClick={() => setStockFilter(stockFilter === 'ALL' ? 'ALERTS_ONLY' : 'ALL')}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition ${
-                    stockFilter === 'ALERTS_ONLY'
-                      ? 'bg-amber-500 text-stone-950 shadow-sm'
-                      : 'bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700'
-                  }`}
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  <span>{stockFilter === 'ALERTS_ONLY' ? 'نمایش همه' : 'فقط هشدارها'}</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Search, Categories Bar & Hotkey Hint */}
-          <div className="bg-stone-900 border border-stone-800 rounded-xl p-3 shadow-sm flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 text-stone-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  placeholder="جستجوی سریع آیتم (مثلاً اسپرسو، لاته، چیزکیک...)"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-stone-950 border border-stone-800 rounded-lg pr-9 pl-3 py-2 text-xs text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-600"
-                />
-              </div>
-
-              {/* Hotkey Helper Tag */}
-              <div className="hidden sm:flex items-center gap-1.5 text-[11px] text-stone-400 bg-stone-950 border border-stone-800/80 px-2.5 py-1.5 rounded-lg">
-                <span className="text-amber-400 font-mono">1-9</span>
-                <span>ثبت سریع اقلام</span>
-                <span className="text-stone-600">|</span>
-                <span className="text-amber-400 font-mono">P</span>
-                <span>پوز</span>
-                <span className="text-stone-600">|</span>
-                <span className="text-amber-400 font-mono">C</span>
-                <span>نقد</span>
-              </div>
-            </div>
-
-            {/* Category Filter Pills */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+            return (
               <button
-                onClick={() => setSelectedCategoryId('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-                  selectedCategoryId === 'all'
-                    ? 'bg-amber-600 text-white'
-                    : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
+                key={cat.id}
+                onClick={() => {
+                  playPosBeep('click');
+                  setSelectedCategoryId(cat.id);
+                }}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-2 border cursor-pointer ${
+                  isActive
+                    ? 'bg-[#D71921] border-[#D71921] text-white shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
+                    : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white hover:border-[#9EACB8]'
                 }`}
               >
-                همه اقلام منو ({menuItems.length})
+                <span>{icon}</span>
+                <span>{cat.nameFa}</span>
               </button>
-              {categories.map((cat) => {
-                const count = menuItems.filter((i) => i.categoryId === cat.id && i.isAvailable).length;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategoryId(cat.id)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition ${
-                      selectedCategoryId === cat.id
-                        ? 'bg-amber-600 text-white'
-                        : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
-                    }`}
-                  >
-                    {cat.nameFa} ({count})
-                  </button>
-                );
-              })}
-            </div>
+            );
+          })}
+        </div>
+
+        {/* Quick Filter Sub-tags & Live Search */}
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#9EACB8] pb-3 mb-2 border-b border-[#293444]/70">
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <span className="text-[11px] font-bold text-white shrink-0">فیلتر رست:</span>
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                setRoastFilter('all');
+              }}
+              className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
+                roastFilter === 'all'
+                  ? 'bg-[#0F223D] border-[#D71921] text-white'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              همه
+            </button>
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                setRoastFilter('medium');
+              }}
+              className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
+                roastFilter === 'medium'
+                  ? 'bg-[#0F223D] border-[#D71921] text-white'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              مدیوم رست (متعادل)
+            </button>
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                setRoastFilter('dark');
+              }}
+              className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
+                roastFilter === 'dark'
+                  ? 'bg-[#0F223D] border-[#D71921] text-white'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              مدیوم دارک / اسپرسو
+            </button>
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                setRoastFilter('light');
+              }}
+              className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
+                roastFilter === 'light'
+                  ? 'bg-[#0F223D] border-[#D71921] text-white'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              لایت / دمی تخصصی
+            </button>
+
+            {/* Stock alert toggle */}
+            {stockAlertStats.totalLowStock > 0 && (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  setStockFilter(stockFilter === 'ALL' ? 'ALERTS_ONLY' : 'ALL');
+                }}
+                className={`px-2.5 py-1 rounded-lg border text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                  stockFilter === 'ALERTS_ONLY'
+                    ? 'bg-rose-950/60 border-rose-500 text-rose-300'
+                    : 'bg-[#1B222C] border-[#293444] text-rose-400 hover:border-rose-500'
+                }`}
+              >
+                <AlertTriangle className="w-3 h-3" />
+                <span>{stockAlertStats.totalLowStock} کسری موجودی</span>
+              </button>
+            )}
           </div>
 
-          {/* Menu Items Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[calc(100vh-250px)] overflow-y-auto pr-1">
-            {filteredItems.map((item, idx) => {
-              const inCart = cartItems.find((ci) => ci.menuItemId === item.id);
-              const cartQty = inCart ? inCart.quantity : 0;
-              const stockEval = evaluateStockStatus(
+          {/* Search Box */}
+          <div className="relative flex-1 max-w-xs">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="جستجوی دان، ۵۰/۵۰، کرک تی، نوشیدنی..."
+              className="w-full bg-[#121417] border border-[#293444] text-white text-xs rounded-lg pr-8 pl-3 py-1.5 focus:outline-none focus:border-[#D71921] transition-colors placeholder:text-[#9EACB8]/60"
+            />
+            <Search className="w-3.5 h-3.5 text-[#9EACB8] absolute right-2.5 top-2" />
+          </div>
+
+          <div className="hidden sm:block text-[11px] shrink-0">
+            تعداد آیتم‌ها: <span className="font-bold text-white num-heavy">{filteredItems.length}</span> محصول
+          </div>
+        </div>
+
+        {/* Product Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-3 md:gap-4 flex-1 items-start">
+          {filteredItems.length === 0 ? (
+            <div className="col-span-full py-16 text-center text-[#9EACB8] bg-[#1B222C]/40 border border-[#293444] rounded-2xl">
+              <Coffee className="w-10 h-10 mx-auto text-[#9EACB8] mb-2 opacity-50" />
+              <p className="font-bold text-white text-sm">هیچ محصولی با این فیلتر یافت نشد</p>
+              <p className="text-xs mt-1">
+                نام دیگری مانند «۵۰/۵۰»، «کرک»، «اتیوپی» یا کاتگوری دیگری را انتخاب نمایید.
+              </p>
+            </div>
+          ) : (
+            filteredItems.map((item, idx) => {
+              const stockStatus = evaluateStockStatus(
                 item.currentStock,
                 item.lowStockThreshold,
                 globalThreshold
               );
-              const isOutOfStock = stockEval.status === 'OUT_OF_STOCK';
-              const isLowStock = stockEval.status === 'LOW';
-              const currentStock = item.currentStock ?? 0;
-              const isCartMaxed = item.currentStock !== undefined && cartQty >= currentStock;
+              const isOutOfStock = stockStatus.isOutOfStock;
+              const isLow = stockStatus.isLowStock && !isOutOfStock;
 
               return (
-                <div
+                <article
                   key={item.id}
-                  className={`flex flex-col justify-between text-right p-3 rounded-xl border transition-all text-sm group relative ${
-                    isOutOfStock
-                      ? 'bg-stone-900/40 border-rose-900/40 opacity-60'
-                      : isCartMaxed
-                      ? 'bg-stone-900/60 border-amber-600/40 opacity-75'
-                      : inCart
-                      ? 'bg-amber-950/20 border-amber-600/70 shadow-sm'
-                      : isLowStock
-                      ? 'bg-amber-950/15 border-amber-500/70 shadow-sm ring-1 ring-amber-500/30 hover:border-amber-400 hover:bg-amber-950/25'
-                      : 'bg-stone-900 border-stone-800 hover:border-stone-700 hover:bg-stone-800/60'
+                  onClick={() => !isOutOfStock && handleAddItem(item)}
+                  className={`bg-[#1B222C] border border-[#293444] rounded-xl overflow-hidden hover:border-[#9EACB8]/60 transition-all duration-200 flex flex-col justify-between group shadow-lg relative ${
+                    isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                   }`}
                 >
-                  {/* Top Badges */}
-                  <div className="flex items-center justify-between w-full mb-1">
-                    {/* Hotkey Number Tag (1-9) */}
-                    {idx < 9 ? (
-                      <span className="w-5 h-5 rounded-full bg-stone-800 border border-stone-700 text-amber-400 text-[10px] font-mono font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                    ) : (
-                      <span />
-                    )}
+                  {/* Card Header & Badges */}
+                  <div className="p-3.5 pb-2.5">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {item.roastLevelText ? (
+                          <span className="text-[10px] font-mono tracking-wider font-bold bg-[#0F223D] border border-[#293444] text-[#F3E9DD] px-2 py-0.5 rounded">
+                            {item.roastLevelText}
+                          </span>
+                        ) : null}
 
-                    {/* Stock Warning Badge */}
+                        {item.badge ? (
+                          <span className="text-[10px] font-black bg-[#D71921] text-white px-2 py-0.5 rounded uppercase tracking-wider">
+                            {item.badge}
+                          </span>
+                        ) : item.weight ? (
+                          <span className="text-[10px] text-[#9EACB8] font-bold">
+                            {item.weight}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {/* Hotkey hint (1-9) */}
+                      {idx < 9 && (
+                        <span className="text-[10px] font-mono bg-[#121417] text-[#9EACB8] px-1.5 py-0.5 rounded border border-[#293444]">
+                          کلید {idx + 1}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Stock Alert Badge if low */}
                     {isOutOfStock ? (
-                      <span className="inline-flex items-center gap-1 bg-rose-950 text-rose-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-rose-800">
-                        <AlertOctagon className="w-3 h-3 text-rose-400 shrink-0" />
-                        <span>اتمام موجودی</span>
-                      </span>
-                    ) : isLowStock ? (
-                      <span className="inline-flex items-center gap-1 bg-amber-950/90 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded border border-amber-500/60 animate-pulse">
-                        <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
-                        <span>هشدار ({item.currentStock})</span>
-                      </span>
+                      <div className="mb-2 bg-rose-950/60 border border-rose-800 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3 text-rose-400" />
+                        <span>ناموجود (اتمام سهمیه بار)</span>
+                      </div>
+                    ) : isLow ? (
+                      <div className="mb-2 bg-amber-950/60 border border-amber-800 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3 text-amber-400" />
+                        <span>فقط {item.currentStock} عدد باقیمانده</span>
+                      </div>
                     ) : null}
 
-                    {inCart && (
-                      <span className="bg-amber-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full font-mono">
-                        {inCart.quantity}×
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-1 w-full my-1">
-                    <span className="font-semibold text-stone-100 group-hover:text-amber-400 transition leading-snug">
+                    {/* Product Titles */}
+                    <h3 className="font-extrabold text-sm md:text-base text-white group-hover:text-[#F3E9DD] transition-colors leading-snug">
                       {item.nameFa}
-                    </span>
+                    </h3>
                     {item.nameEn && (
-                      <span className="text-[11px] text-stone-400 font-mono" dir="ltr">
+                      <p className="text-[11px] font-mono text-[#9EACB8] mt-0.5 truncate tracking-tight">
                         {item.nameEn}
-                      </span>
+                      </p>
                     )}
-                  </div>
 
-                  {/* Price & Action Buttons */}
-                  <div className="flex flex-col gap-2 w-full pt-2 border-t border-stone-800/80">
-                    <div className="flex items-center justify-between">
-                      <span className="text-stone-400 text-xs">قیمت پایه:</span>
-                      <span className="font-bold text-amber-400 font-mono text-xs">
-                        {formatToman(item.priceToman)} ت
-                      </span>
-                    </div>
+                    {/* Technical Roast Specs Grid */}
+                    {(item.origin || item.process) && (
+                      <div className="mt-2.5 pt-2 border-t border-[#293444]/60 text-[11px] space-y-1">
+                        {item.origin && (
+                          <div className="flex items-center justify-between text-[#9EACB8]">
+                            <span>خاستگاه:</span>
+                            <span className="text-white font-medium text-right max-w-[170px] truncate">
+                              {item.origin}
+                            </span>
+                          </div>
+                        )}
+                        {item.process && item.process !== '-' && (
+                          <div className="flex items-center justify-between text-[#9EACB8]">
+                            <span>فرآوری:</span>
+                            <span className="text-[#F3E9DD] font-mono text-[10px]">
+                              {item.process}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
 
-                    <div className="grid grid-cols-2 gap-1.5">
-                      {/* Fast Add Button */}
-                      <button
-                        onClick={() => handleAddItem(item)}
-                        disabled={isOutOfStock || isCartMaxed}
-                        className="bg-stone-800 hover:bg-stone-700 disabled:opacity-50 text-stone-200 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-amber-400" />
-                        <span>سریع</span>
-                      </button>
-
-                      {/* 3-Tap Modifier Sheet Button */}
-                      <button
-                        onClick={(e) => handleOpenModifierModal(e, item)}
-                        disabled={isOutOfStock || isCartMaxed}
-                        className="bg-amber-950/40 hover:bg-amber-900/40 border border-amber-600/40 disabled:opacity-50 text-amber-300 py-1.5 rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition"
-                        title="سفارشی‌سازی مودیفایر (شیر جو دوسر، دبل‌شات، سیروپ)"
-                      >
-                        <Sparkles className="w-3 h-3 text-amber-400" />
-                        <span>مودیفایر</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right Side (Cart & Order Registration) - 5 cols */}
-        <div className="lg:col-span-5 bg-stone-900 border border-stone-800 rounded-xl shadow-md flex flex-col justify-between overflow-hidden">
-          {/* Cart Header */}
-          <div className="p-3 border-b border-stone-800 bg-stone-950/60 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShoppingBag className="w-4 h-4 text-amber-500" />
-              <span className="font-bold text-sm text-stone-100">فاکتور جاری صندوق</span>
-              <span className="text-xs bg-stone-800 text-stone-300 px-2 py-0.5 rounded-full">
-                {cartItems.reduce((acc, i) => acc + i.quantity, 0)} آیتم
-              </span>
-            </div>
-
-            {cartItems.length > 0 && (
-              <button
-                onClick={handleClearCart}
-                className="text-stone-400 hover:text-rose-400 p-1 text-xs flex items-center gap-1 transition"
-                title="خالی کردن کل سبد"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>حذف همه</span>
-              </button>
-            )}
-          </div>
-
-          {/* Order Meta / Settings */}
-          <div className="p-3 border-b border-stone-800 bg-stone-950/30 flex flex-col gap-2.5 text-xs">
-            {/* Dine-In vs Takeaway */}
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-stone-400">نوع سفارش:</span>
-              <div className="flex items-center gap-1 bg-stone-800 p-0.5 rounded-lg">
-                <button
-                  onClick={() => setOrderType('DINE_IN')}
-                  className={`px-2.5 py-1 rounded-md transition ${
-                    orderType === 'DINE_IN'
-                      ? 'bg-amber-600 text-white font-bold'
-                      : 'text-stone-400 hover:text-stone-200'
-                  }`}
-                >
-                  سالن (میز)
-                </button>
-                <button
-                  onClick={() => setOrderType('TAKEAWAY')}
-                  className={`px-2.5 py-1 rounded-md transition ${
-                    orderType === 'TAKEAWAY'
-                      ? 'bg-amber-600 text-white font-bold'
-                      : 'text-stone-400 hover:text-stone-200'
-                  }`}
-                >
-                  بیرون‌بر
-                </button>
-              </div>
-            </div>
-
-            {/* Table or Customer input */}
-            <div className="grid grid-cols-2 gap-2">
-              {orderType === 'DINE_IN' ? (
-                <div>
-                  <label className="text-stone-400 block mb-1">شماره یا نام میز:</label>
-                  <select
-                    value={tableLabel}
-                    onChange={(e) => setTableLabel(e.target.value)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-lg p-1.5 text-stone-200 text-xs"
-                  >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 'بار تخصصی', 'فضای باز'].map((t) => (
-                      <option key={t} value={`میز ${t}`}>
-                        {typeof t === 'number' ? `میز ${t}` : t}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div>
-                  <label className="text-stone-400 block mb-1">نام مشتری:</label>
-                  <input
-                    type="text"
-                    placeholder="نام تحویل‌گیرنده..."
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full bg-stone-800 border border-stone-700 rounded-lg p-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-600"
-                  />
-                </div>
-              )}
-
-              <div>
-                <label className="text-stone-400 block mb-1">توضیحات فاکتور:</label>
-                <input
-                  type="text"
-                  placeholder="اختیاری..."
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full bg-stone-800 border border-stone-700 rounded-lg p-1.5 text-stone-200 text-xs focus:outline-none focus:border-amber-600"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Cart Item List */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[300px]">
-            {cartItems.length === 0 ? (
-              <div className="h-44 flex flex-col items-center justify-center text-stone-500 text-xs gap-2">
-                <Coffee className="w-8 h-8 text-stone-600" />
-                <span>سبد سفارش خالی است</span>
-                <span className="text-[11px] text-stone-600">
-                  برای افزودن روی اقلام منو کلیک کنید یا کلیدهای 1 تا 9 را بفشارید
-                </span>
-              </div>
-            ) : (
-              cartItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-stone-950/70 border border-stone-800/80 rounded-xl p-2.5 flex items-center justify-between text-xs gap-2"
-                >
-                  <div className="flex flex-col flex-1">
-                    <span className="font-semibold text-stone-200">{item.itemNameSnapshot}</span>
-                    <span className="text-[11px] text-stone-400 font-mono">
-                      {formatToman(item.unitPriceSnapshotToman)} تومان
-                    </span>
-
-                    {/* Modifiers List in Cart */}
-                    {item.modifiers && item.modifiers.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {item.modifiers.map((m, mIdx) => (
+                    {/* Taste Notes Tags */}
+                    {item.notes && item.notes.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2.5">
+                        {item.notes.map((note, nIdx) => (
                           <span
-                            key={mIdx}
-                            className="text-[9px] bg-stone-900 text-amber-400 border border-amber-500/20 px-1 py-0.5 rounded"
+                            key={nIdx}
+                            className="text-[10px] bg-[#121417] text-[#9EACB8] px-2 py-0.5 rounded border border-[#293444]"
                           >
-                            + {m.nameFa}
+                            {note}
                           </span>
                         ))}
                       </div>
                     )}
+                  </div>
 
-                    {item.notes && (
-                      <span className="text-[10px] text-stone-400 italic mt-0.5">
-                        یادداشت: {item.notes}
+                  {/* Card Bottom Bar: Price & Action CTA */}
+                  <div className="p-3.5 pt-2.5 bg-[#121417]/60 border-t border-[#293444] flex items-center justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] text-[#9EACB8] block leading-none mb-1">
+                        قیمت پایه:
                       </span>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-base md:text-lg font-black text-white num-heavy">
+                          {formatToman(item.priceToman)}
+                        </span>
+                        <span className="text-[10px] text-[#9EACB8]">تومان</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {/* Customize / Modifiers button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleOpenModifierModal(e, item)}
+                        title="تنظیم درجه آسیاب یا مودیفایرهای نوشیدنی"
+                        className="bg-[#0F223D] hover:bg-[#293444] border border-[#293444] text-white text-xs px-2.5 py-2 rounded-lg font-bold flex items-center gap-1 transition cursor-pointer"
+                      >
+                        <Sliders className="w-3.5 h-3.5 text-[#F3E9DD]" />
+                        <span className="hidden sm:inline">
+                          {item.isBean ? 'آسیاب' : 'مودیفایر'}
+                        </span>
+                      </button>
+
+                      {/* Quick Add Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddItem(item);
+                        }}
+                        disabled={isOutOfStock}
+                        className="bg-[#D71921] hover:bg-[#B8141B] active:scale-95 disabled:bg-stone-700 text-white p-2 md:px-3 md:py-2 rounded-lg font-black flex items-center gap-1 shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)] transition cursor-pointer"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden md:inline text-xs">افزودن</span>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </section>
+
+      {/* ================= RIGHT / SIDEBAR: ORDER & POS CART ================= */}
+      <aside
+        id="pos-cart-panel"
+        className="hidden xl:flex flex-col w-[420px] bg-[#1B222C] border border-[#293444] rounded-xl sticky top-[72px] h-[calc(100vh-90px)] shadow-2xl transition-all"
+      >
+        {/* Cart Header & Order Type Toggle */}
+        <div className="p-3.5 border-b border-[#293444] bg-[#0F223D] rounded-t-xl flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#D71921] animate-ping"></span>
+              <h2 className="text-sm font-extrabold text-white tracking-wide">
+                سفارش جاری بار (فاکتور)
+              </h2>
+            </div>
+            <span className="font-mono text-xs bg-[#081425] px-2 py-0.5 rounded text-[#F3E9DD] border border-[#293444] font-bold">
+              #100H-{activeShift ? activeShift.id.slice(-4) : 'POS'}
+            </span>
+          </div>
+
+          {/* Dine-in vs Takeaway Toggle */}
+          <div className="grid grid-cols-2 gap-1.5 bg-[#121417]/80 p-1 rounded-lg border border-[#293444] text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setOrderType('TAKEAWAY');
+              }}
+              className={`py-1.5 rounded flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                orderType === 'TAKEAWAY'
+                  ? 'bg-[#D71921] text-white shadow-sm'
+                  : 'text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>بیرون‌بر (Takeaway)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setOrderType('DINE_IN');
+              }}
+              className={`py-1.5 rounded flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                orderType === 'DINE_IN'
+                  ? 'bg-[#D71921] text-white shadow-sm'
+                  : 'text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>سرو در سالن (Dine-in)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Customer Detail / Table Note */}
+        <div className="px-3 py-2 bg-[#121417]/50 border-b border-[#293444] flex items-center justify-between text-xs gap-2">
+          <input
+            type="text"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            placeholder={
+              orderType === 'DINE_IN'
+                ? 'شماره میز یا نام مهمان سالن...'
+                : 'نام مشتری یا شماره سفارش بیرون‌بر...'
+            }
+            className="bg-transparent text-white placeholder:text-[#9EACB8]/70 text-xs w-full focus:outline-none"
+          />
+          {orderType === 'DINE_IN' ? (
+            <select
+              value={tableLabel}
+              onChange={(e) => setTableLabel(e.target.value)}
+              className="text-[10px] text-white bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] cursor-pointer focus:outline-none"
+            >
+              {['میز ۱', 'میز ۲', 'میز ۳', 'میز ۴', 'میز ۵', 'میز ۶', 'میز ۷', 'کانتر بار'].map(
+                (tbl) => (
+                  <option key={tbl} value={tbl} className="bg-[#1B222C] text-white">
+                    {tbl}
+                  </option>
+                )
+              )}
+            </select>
+          ) : (
+            <span className="text-[10px] text-[#9EACB8] bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] whitespace-nowrap">
+              بیرون‌بر
+            </span>
+          )}
+        </div>
+
+        {/* Cart Items List (Scrollable Area) */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
+          {cartItems.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#9EACB8]">
+              <div className="w-14 h-14 rounded-full bg-[#121417] flex items-center justify-center border border-[#293444] mb-3">
+                <Coffee className="w-7 h-7 text-[#D71921] opacity-80" />
+              </div>
+              <p className="text-sm font-bold text-white mb-1">فاکتور هنوز خالی است</p>
+              <p className="text-xs text-[#9EACB8] max-w-xs">
+                آیتمی از منوی بلندها، بار گرم یا دانه‌های تخصصی صد هیچ را لمس کنید تا به سبد اضافه شود.
+              </p>
+            </div>
+          ) : (
+            cartItems.map((item) => (
+              <div
+                key={item.id}
+                className="bg-[#121417] border border-[#293444] rounded-lg p-2.5 flex flex-col gap-2 transition hover:border-[#293444]/90"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-white truncate">
+                      {item.itemNameSnapshot}
+                    </h4>
+                    {item.modifiers && item.modifiers.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-[#9EACB8]">
+                        {item.modifiers.map((m, mIdx) => (
+                          <span key={mIdx} className="text-[#F3E9DD] font-medium">
+                            {m.nameFa}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {item.notes && (
+                      <div className="text-[10px] text-amber-400 italic">*{item.notes}</div>
                     )}
                   </div>
 
-                  {/* Quantity Stepper */}
-                  <div className="flex items-center gap-1 bg-stone-900 border border-stone-800 rounded-lg p-0.5">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(item.id)}
+                    className="text-[#9EACB8] hover:text-red-400 p-1 cursor-pointer"
+                    title="حذف آیتم"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-[#293444]/50">
+                  <div className="flex items-center bg-[#1B222C] border border-[#293444] rounded-md">
                     <button
+                      type="button"
                       onClick={() => handleUpdateQuantity(item.id, -1)}
-                      className="w-6 h-6 flex items-center justify-center text-stone-400 hover:text-stone-100 rounded hover:bg-stone-800"
+                      className="w-6 h-6 flex items-center justify-center text-[#9EACB8] hover:text-white font-black text-sm active:bg-[#D71921] cursor-pointer"
                     >
-                      <Minus className="w-3 h-3" />
+                      -
                     </button>
-                    <span className="w-6 text-center font-bold text-stone-100 font-mono">
+                    <span className="w-7 text-center font-bold text-xs text-white num-heavy">
                       {item.quantity}
                     </span>
                     <button
+                      type="button"
                       onClick={() => handleUpdateQuantity(item.id, 1)}
-                      className="w-6 h-6 flex items-center justify-center text-stone-400 hover:text-stone-100 rounded hover:bg-stone-800"
+                      className="w-6 h-6 flex items-center justify-center text-[#9EACB8] hover:text-white font-black text-sm active:bg-[#D71921] cursor-pointer"
                     >
-                      <Plus className="w-3 h-3" />
+                      +
                     </button>
                   </div>
 
-                  {/* Subtotal */}
-                  <div className="text-left font-bold text-amber-400 font-mono w-20">
-                    {formatToman(item.subtotalToman)} ت
+                  <div className="text-left">
+                    <span className="text-xs font-black text-white num-heavy">
+                      {formatToman(item.subtotalToman)}
+                    </span>
+                    <span className="text-[9px] text-[#9EACB8] mr-0.5">تومان</span>
                   </div>
-
-                  {/* Delete button */}
-                  <button
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="text-stone-500 hover:text-rose-400 p-1"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Quick Discount Buttons & Totals */}
-          {cartItems.length > 0 && (
-            <div className="p-3 border-t border-stone-800 bg-stone-950/40 flex flex-col gap-2.5">
-              {/* Discount pills */}
-              <div className="flex items-center justify-between gap-1 text-[11px]">
-                <span className="text-stone-400 flex items-center gap-1">
-                  <Percent className="w-3 h-3" /> تخفیف:
-                </span>
-                <div className="flex items-center gap-1">
-                  {[0, 5, 10, 15, 20].map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => handleApplyDiscountPercent(p)}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition ${
-                        discountPercent === p && discountToman > 0
-                          ? 'bg-amber-600 text-white'
-                          : 'bg-stone-800 text-stone-300 hover:bg-stone-700'
-                      }`}
-                    >
-                      {p === 0 ? 'بدون تخفیف' : `${p}٪`}
-                    </button>
-                  ))}
                 </div>
               </div>
-
-              {/* Price Breakdown */}
-              <div className="flex flex-col gap-1 text-xs">
-                <div className="flex justify-between text-stone-400">
-                  <span>جمع اقلام (ناخالص):</span>
-                  <span>{formatToman(grossAmountToman)} تومان</span>
-                </div>
-                {discountAmountToman > 0 && (
-                  <div className="flex justify-between text-rose-400">
-                    <span>مبلغ تخفیف:</span>
-                    <span>- {formatToman(discountAmountToman)} تومان</span>
-                  </div>
-                )}
-                <div className="flex justify-between text-base font-bold text-stone-100 pt-1 border-t border-stone-800">
-                  <span>مبلغ قابل پرداخت (خالص):</span>
-                  <span className="text-amber-400">{formatToman(netTotalToman)} تومان</span>
-                </div>
-              </div>
-
-              {/* Checkout Action Button */}
-              <button
-                onClick={handleStartCheckout}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white py-2.5 rounded-xl font-bold text-sm shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>تسویه و ثبت پرداخت ({formatToman(netTotalToman)} تومان)</span>
-              </button>
-            </div>
+            ))
           )}
         </div>
+
+        {/* Discount & POS Keypad Accelerators */}
+        <div className="px-3 pt-2 pb-1 border-t border-[#293444] bg-[#121417]/40">
+          <div className="flex items-center justify-between text-[11px] text-[#9EACB8] mb-1.5">
+            <span>اعمال تخفیف سریع:</span>
+            <span className="text-[#F3E9DD] font-bold">
+              {discountPercent > 0 ? `${discountPercent}٪ تخفیف فعال` : 'بدون تخفیف'}
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => handleApplyDiscountPercent(0)}
+              className={`py-1 rounded border text-[11px] cursor-pointer ${
+                discountPercent === 0
+                  ? 'bg-[#0F223D] border-[#D71921] text-white'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              ۰٪
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyDiscountPercent(5)}
+              className={`py-1 rounded border text-[11px] cursor-pointer ${
+                discountPercent === 5
+                  ? 'bg-[#0F223D] border-[#D71921] text-white'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              ۵٪ ویژه
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyDiscountPercent(10)}
+              className={`py-1 rounded border text-[11px] cursor-pointer ${
+                discountPercent === 10
+                  ? 'bg-[#0F223D] border-[#D71921] text-white'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              ۱۰٪ باریستا
+            </button>
+            <button
+              type="button"
+              onClick={() => handleApplyDiscountPercent(15)}
+              className={`py-1 rounded border text-[11px] cursor-pointer ${
+                discountPercent === 15
+                  ? 'bg-[#0F223D] border-[#D71921] text-white'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              }`}
+            >
+              ۱۵٪ همکار
+            </button>
+          </div>
+        </div>
+
+        {/* Calculations & Total Summary */}
+        <div className="p-3.5 bg-[#121417] border-t border-[#293444] space-y-2 rounded-b-xl">
+          <div className="flex justify-between items-center text-xs text-[#9EACB8]">
+            <span>جمع اقلام:</span>
+            <span className="font-bold text-white num-heavy">
+              {formatToman(grossAmountToman)} تومان
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center text-xs text-[#9EACB8]">
+            <span>کسر تخفیف:</span>
+            <span className="text-[#F3E9DD] num-heavy">
+              {discountAmountToman > 0
+                ? `-${formatToman(discountAmountToman)} تومان`
+                : '۰ تومان'}
+            </span>
+          </div>
+
+          <div className="h-[1px] bg-[#293444]/80 my-1"></div>
+
+          <div className="flex justify-between items-baseline">
+            <span className="text-sm font-extrabold text-white">مبلغ نهایی فاکتور:</span>
+            <div className="text-right">
+              <span className="text-xl font-black text-[#D71921] num-heavy tracking-tight">
+                {formatToman(netTotalToman)}
+              </span>
+              <span className="text-xs text-[#9EACB8] mr-1">تومان</span>
+            </div>
+          </div>
+
+          {/* Action Controls */}
+          <div className="grid grid-cols-5 gap-2 pt-1.5">
+            <button
+              type="button"
+              onClick={handleClearCart}
+              title="پاک کردن سبد"
+              className="col-span-1 bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-[#9EACB8] hover:text-red-400 rounded-lg flex items-center justify-center transition cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleStartCheckout}
+              disabled={cartItems.length === 0}
+              className="col-span-4 bg-[#D71921] hover:bg-[#B8141B] disabled:bg-stone-700 disabled:opacity-50 text-white font-black py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)] transition transform active:scale-[0.98] cursor-pointer"
+            >
+              <CreditCard className="w-5 h-5" />
+              <span>ثبت نهایی و تسویه فاکتور</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* ================= MOBILE FLOATING CART BAR ================= */}
+      <div className="xl:hidden fixed bottom-4 left-4 right-4 z-40">
+        <button
+          onClick={() => setIsMobileCartOpen(true)}
+          className="w-full bg-[#D71921] hover:bg-[#B8141B] text-white p-3 rounded-xl flex items-center justify-between font-black shadow-[0_0_25px_rgba(215,25,33,0.6)] cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <ShoppingBag className="w-5 h-5" />
+            <span>مشاهده سبد فاکتور ({totalCartCount} آیتم)</span>
+          </div>
+          <div className="font-mono num-heavy text-base">
+            {formatToman(netTotalToman)} تومان
+          </div>
+        </button>
       </div>
 
-      {/* Modifier Sheet Modal */}
+      {/* ================= MOBILE CART DRAWER ================= */}
+      {isMobileCartOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end xl:hidden">
+          <div className="bg-[#1B222C] border-t border-[#293444] rounded-t-2xl max-h-[85vh] flex flex-col p-4">
+            <div className="flex items-center justify-between pb-3 border-b border-[#293444]">
+              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#D71921]"></span>
+                سبد سفارش صد هیچ
+              </h3>
+              <button
+                onClick={() => setIsMobileCartOpen(false)}
+                className="text-[#9EACB8] hover:text-white p-1"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto py-3 space-y-2">
+              {cartItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-[#121417] p-2.5 rounded-lg border border-[#293444] flex items-center justify-between"
+                >
+                  <div>
+                    <h5 className="font-bold text-xs text-white">{item.itemNameSnapshot}</h5>
+                    <span className="text-[10px] text-[#F3E9DD]">
+                      {item.quantity} × {formatToman(item.unitPriceSnapshotToman)} ت
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleUpdateQuantity(item.id, -1)}
+                      className="w-6 h-6 bg-[#1B222C] text-white rounded flex items-center justify-center font-bold text-xs"
+                    >
+                      -
+                    </button>
+                    <span className="font-bold text-xs font-mono">{item.quantity}</span>
+                    <button
+                      onClick={() => handleUpdateQuantity(item.id, 1)}
+                      className="w-6 h-6 bg-[#1B222C] text-white rounded flex items-center justify-center font-bold text-xs"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-3 border-t border-[#293444] space-y-2">
+              <div className="flex justify-between items-baseline">
+                <span className="text-xs text-[#9EACB8]">مبلغ کل قابل پرداخت:</span>
+                <div>
+                  <span className="text-lg font-black text-[#D71921] num-heavy">
+                    {formatToman(netTotalToman)}
+                  </span>
+                  <span className="text-xs text-[#9EACB8] mr-1">تومان</span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsMobileCartOpen(false);
+                  handleStartCheckout();
+                }}
+                className="w-full bg-[#D71921] text-white py-3 rounded-lg font-bold shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)] cursor-pointer"
+              >
+                ثبت فاکتور و پرداخت
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODIFIER MODAL ================= */}
       <ModifierModal
         item={modifierItem}
         isOpen={isModifierOpen}
-        onClose={() => {
-          setIsModifierOpen(false);
-          setModifierItem(null);
-        }}
+        onClose={() => setIsModifierOpen(false)}
         onConfirm={handleAddWithModifiers}
       />
 
-      {/* Checkout Modal */}
+      {/* ================= PAYMENT & CHECKOUT MODAL ================= */}
       {isCheckoutOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-stone-900 border border-stone-800 rounded-2xl max-w-md w-full p-5 shadow-2xl flex flex-col gap-4">
-            <div className="flex items-center justify-between pb-3 border-b border-stone-800">
-              <h3 className="font-bold text-stone-100 text-base">تسویه و ثبت پرداخت سفارش</h3>
-              <button
-                onClick={() => setIsCheckoutOpen(false)}
-                className="text-stone-400 hover:text-stone-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Total due banner */}
-            <div className="bg-amber-950/40 border border-amber-800/80 rounded-xl p-3 text-center">
-              <span className="text-xs text-amber-300">مبلغ قابل تسویه:</span>
-              <div className="text-2xl font-black text-amber-400 mt-0.5">
-                {formatToman(netTotalToman)} <span className="text-xs font-normal text-amber-200">تومان</span>
-              </div>
-            </div>
-
-            {/* Payment Method Selector */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-stone-300">روش پرداخت:</label>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('CARD_MANUAL')}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border font-semibold transition cursor-pointer ${
-                    paymentMethod === 'CARD_MANUAL'
-                      ? 'bg-amber-600 border-amber-500 text-white shadow'
-                      : 'bg-stone-800 border-stone-700 text-stone-300 hover:bg-stone-750'
-                  }`}
-                >
-                  <CreditCard className="w-4 h-4" />
-                  <span>کارتخوان بانکی (P)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPaymentMethod('CASH');
-                    setCashTendered(netTotalToman);
-                  }}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border font-semibold transition cursor-pointer ${
-                    paymentMethod === 'CASH'
-                      ? 'bg-amber-600 border-amber-500 text-white shadow'
-                      : 'bg-stone-800 border-stone-700 text-stone-300 hover:bg-stone-750'
-                  }`}
-                >
-                  <Banknote className="w-4 h-4" />
-                  <span>وجه نقد (C)</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Method-specific fields */}
-            {paymentMethod === 'CARD_MANUAL' ? (
-              <div className="flex flex-col gap-2.5 bg-stone-950 p-3 rounded-xl border border-stone-800 text-xs">
-                <div>
-                  <label className="text-stone-400 block mb-1">دستگاه کارتخوان:</label>
-                  <select
-                    value={terminalName}
-                    onChange={(e) => setTerminalName(e.target.value)}
-                    className="w-full bg-stone-850 border border-stone-700 rounded-lg p-2 text-stone-200"
-                  >
-                    <option value="کارتخوان به‌پرداخت ملت ۱">کارتخوان ۱ (به‌پرداخت ملت)</option>
-                    <option value="کارتخوان سامان کیش ۲">کارتخوان ۲ (سپ - سامان کیش)</option>
-                    <option value="کارتخوان پاسارگاد">کارتخوان ۳ (فناپ پاسارگاد)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-stone-400 block mb-1">شماره پیگیری فیش کارتخوان (اختیاری):</label>
-                  <input
-                    type="text"
-                    placeholder="مثلاً: ۷۴۸۲۹۱"
-                    value={referenceCode}
-                    onChange={(e) => setReferenceCode(e.target.value)}
-                    className="w-full bg-stone-850 border border-stone-700 rounded-lg p-2 text-stone-100 font-mono text-center tracking-wider focus:outline-none focus:border-amber-500"
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2 bg-stone-950 p-3 rounded-xl border border-stone-800 text-xs">
-                <label className="text-stone-400">وجه نقد دریافتی از مشتری (تومان):</label>
-                <input
-                  type="number"
-                  value={cashTendered || ''}
-                  onChange={(e) => setCashTendered(safeInt(e.target.value))}
-                  className="w-full bg-stone-850 border border-stone-700 rounded-lg p-2 text-stone-100 font-bold text-center text-sm focus:outline-none focus:border-amber-500"
-                />
-
-                {/* Iranian Banknotes Quick Suggestion Chips */}
-                <div className="pt-1">
-                  <span className="text-[11px] text-stone-400 block mb-1.5">
-                    پیشنهاد اسکناس‌های رایج تومانی:
-                  </span>
-                  <div className="flex flex-wrap gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCashTendered(netTotalToman)}
-                      className="px-2 py-1 rounded bg-stone-800 hover:bg-stone-700 text-amber-400 text-[10px] font-semibold border border-stone-700"
-                    >
-                      دقیقاً همین مبلغ
-                    </button>
-                    {IRANIAN_BANKNOTES_TOMAN.map((note) => (
-                      <button
-                        key={note}
-                        type="button"
-                        onClick={() => setCashTendered(note)}
-                        className="px-2 py-1 rounded bg-stone-800 hover:bg-stone-700 text-stone-200 text-[10px] font-mono border border-stone-700"
-                      >
-                        {formatToman(note)} ت
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-2 border-t border-stone-800 text-xs">
-                  <span className="text-stone-400">باقیمانده پرداختی به مشتری (Change):</span>
-                  <span className={`font-bold ${cashTendered >= netTotalToman ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {cashTendered >= netTotalToman
-                      ? `${formatToman(cashTendered - netTotalToman)} تومان`
-                      : 'مبلغ کمتر از فاکتور است'}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Confirm & Print Receipt buttons */}
-            <div className="flex flex-col gap-2 pt-2">
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 overflow-y-auto">
+          <div className="max-w-xl w-full my-auto bg-[#1B222C] border border-[#293444] rounded-2xl p-5 flex flex-col justify-between shadow-2xl text-right">
+            <div>
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#293444]">
+                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <span className="w-3 h-3 rounded bg-[#D71921]"></span>
+                  روش تسویه حساب بار
+                </h3>
                 <button
                   type="button"
                   onClick={() => setIsCheckoutOpen(false)}
-                  className="w-1/3 bg-stone-800 hover:bg-stone-700 text-stone-300 py-2.5 rounded-xl text-xs font-semibold"
+                  className="text-[#9EACB8] hover:text-white p-1"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Payment Methods */}
+              <div className="py-4 space-y-3">
+                <label className="text-xs text-[#9EACB8] block">
+                  دستگاه پوز یا روش پرداخت را انتخاب کنید:
+                </label>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setPaymentMethod('CARD_MANUAL');
+                      setTerminalName('پوز ۱ (بانک سامان)');
+                    }}
+                    className={`p-3 rounded-xl border text-right text-xs transition cursor-pointer ${
+                      paymentMethod === 'CARD_MANUAL' && terminalName === 'پوز ۱ (بانک سامان)'
+                        ? 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
+                        : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white'
+                    }`}
+                  >
+                    <span className="text-white block mb-0.5">پوز ۱ (بانک سامان)</span>
+                    <span className="text-[10px] text-emerald-400 font-mono">متصل به بار اصلی</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setPaymentMethod('CARD_MANUAL');
+                      setTerminalName('پوز ۲ (بانک ملت)');
+                    }}
+                    className={`p-3 rounded-xl border text-right text-xs transition cursor-pointer ${
+                      paymentMethod === 'CARD_MANUAL' && terminalName === 'پوز ۲ (بانک ملت)'
+                        ? 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
+                        : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white'
+                    }`}
+                  >
+                    <span className="text-white block mb-0.5">پوز ۲ (بانک ملت)</span>
+                    <span className="text-[10px] text-[#9EACB8] font-mono">پوز سیار سالن</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setPaymentMethod('CASH');
+                      setTerminalName('کش دراور نقدی');
+                    }}
+                    className={`p-3 rounded-xl border text-right text-xs transition cursor-pointer ${
+                      paymentMethod === 'CASH'
+                        ? 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
+                        : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white'
+                    }`}
+                  >
+                    <span className="text-white block mb-0.5">نقدی / کش دراور</span>
+                    <span className="text-[10px] text-[#9EACB8]">دریافت وجه نقد اسکناس</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setPaymentMethod('CARD_MANUAL');
+                      setTerminalName('کارت به کارت');
+                    }}
+                    className={`p-3 rounded-xl border text-right text-xs transition cursor-pointer ${
+                      paymentMethod === 'CARD_MANUAL' && terminalName === 'کارت به کارت'
+                        ? 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
+                        : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white'
+                    }`}
+                  >
+                    <span className="text-white block mb-0.5">کارت به کارت</span>
+                    <span className="text-[10px] text-[#9EACB8]">تایید فیش همراه مشتری</span>
+                  </button>
+                </div>
+
+                {/* Cash Tendered & Iranian Banknote Chips (If Cash) */}
+                {paymentMethod === 'CASH' && (
+                  <div className="bg-[#121417] p-3 rounded-xl border border-[#293444] space-y-2 mt-2">
+                    <label className="text-xs text-[#9EACB8] block">
+                      مبلغ وجه نقد دریافتی از مشتری (تومان):
+                    </label>
+                    <input
+                      type="number"
+                      value={cashTendered || ''}
+                      onChange={(e) => setCashTendered(safeInt(e.target.value))}
+                      className="w-full bg-[#1B222C] border border-[#293444] rounded-lg p-2 text-white font-bold text-center text-sm focus:outline-none focus:border-[#D71921]"
+                    />
+
+                    {/* Iranian Banknotes Suggestion Chips */}
+                    <div>
+                      <span className="text-[11px] text-[#9EACB8] block mb-1">
+                        پیشنهاد اسکناس‌های رایج تومانی:
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            playPosBeep('click');
+                            setCashTendered(netTotalToman);
+                          }}
+                          className="px-2 py-1 rounded bg-[#1B222C] hover:bg-[#222B38] text-[#F3E9DD] text-[10px] font-semibold border border-[#293444] cursor-pointer"
+                        >
+                          دقیقاً {formatToman(netTotalToman)}
+                        </button>
+                        {IRANIAN_BANKNOTES_TOMAN.map((note) => (
+                          <button
+                            key={note}
+                            type="button"
+                            onClick={() => {
+                              playPosBeep('click');
+                              setCashTendered(note);
+                            }}
+                            className="px-2 py-1 rounded bg-[#1B222C] hover:bg-[#222B38] text-white text-[10px] font-mono border border-[#293444] cursor-pointer"
+                          >
+                            {formatToman(note)} ت
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center pt-2 border-t border-[#293444] text-xs">
+                      <span className="text-[#9EACB8]">باقیمانده پرداختی به مشتری (Change):</span>
+                      <span
+                        className={`font-bold num-heavy ${
+                          cashTendered >= netTotalToman ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {cashTendered >= netTotalToman
+                          ? `${formatToman(cashTendered - netTotalToman)} تومان`
+                          : 'مبلغ کمتر از فاکتور است'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Card Terminal Reference / Trace ID */}
+                {paymentMethod !== 'CASH' && (
+                  <div className="bg-[#121417] p-2.5 rounded-lg border border-[#293444] text-xs flex justify-between items-center">
+                    <span className="text-[#9EACB8]">شناسه پیگیری فیش کارتخوان (اختیاری):</span>
+                    <input
+                      type="text"
+                      placeholder="مثلاً: ۷۴۸۲۹۱"
+                      value={referenceCode}
+                      onChange={(e) => setReferenceCode(e.target.value)}
+                      className="bg-transparent text-white font-mono font-bold text-left focus:outline-none placeholder:text-[#9EACB8]/40"
+                    />
+                  </div>
+                )}
+
+                {/* Total Summary */}
+                <div className="pt-2 flex justify-between items-center text-xs">
+                  <span className="text-[#9EACB8]">مبلغ کل قابل تسویه:</span>
+                  <span className="font-black text-[#D71921] text-base num-heavy">
+                    {formatToman(netTotalToman)} تومان
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-3 border-t border-[#293444] flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCheckoutOpen(false)}
+                  className="w-1/3 bg-[#121417] hover:bg-[#222B38] border border-[#293444] text-[#9EACB8] hover:text-white py-3 rounded-lg font-bold text-xs cursor-pointer"
                 >
                   انصراف
                 </button>
                 <button
                   type="button"
                   onClick={() => handleConfirmPayment(false)}
-                  className="w-2/3 bg-stone-700 hover:bg-stone-650 text-stone-100 py-2.5 rounded-xl text-xs font-bold shadow transition cursor-pointer"
+                  className="w-2/3 bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-white py-3 rounded-lg font-bold text-xs cursor-pointer"
                 >
-                  ثبت پرداخت و مشاهده رسید
+                  ثبت پرداخت و مشاهده فیش
                 </button>
               </div>
 
-              {/* Dedicated Print Receipt Button */}
               <button
                 type="button"
                 onClick={() => handleConfirmPayment(true)}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white py-2.5 rounded-xl text-xs font-black shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full bg-[#D71921] hover:bg-[#B8141B] text-white py-3 rounded-lg font-extrabold flex items-center justify-center gap-2 shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)] cursor-pointer active:scale-95 transition"
               >
                 <Printer className="w-4 h-4" />
-                <span>ثبت نهایی و چاپ فیش (Print Receipt)</span>
+                <span>تایید تراکنش و چاپ فیش حرارتی (۸۰ میلی‌متری)</span>
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Dedicated Printer-Friendly Receipt Preview Component */}
+      {/* ================= COMPLETED RECEIPT PREVIEW MODAL ================= */}
       {completedReceiptOrder && (
         <div className="relative">
-          {/* Hardware Direct Thermal Print Bar */}
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-stone-900 border border-amber-600/60 rounded-2xl p-3 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-xs w-full max-w-xl animate-fadeIn">
-            <div className="flex items-center gap-2 text-stone-200">
-              <Printer className="w-4 h-4 text-amber-400" />
+          {/* Hardware Direct Thermal Print Bar (WebUSB & Bluetooth) */}
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#0F223D] border border-[#D71921]/60 rounded-2xl p-3 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-xs w-full max-w-xl animate-fadeIn">
+            <div className="flex items-center gap-2 text-white">
+              <Printer className="w-4 h-4 text-[#F3E9DD]" />
               <span className="font-bold">چاپ مستقیم حرارتی ۸۰ میلی‌متری (ESC/POS Raster):</span>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleHardwarePrint('USB')}
-                className="px-2.5 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 font-medium flex items-center gap-1.5 transition"
-                title="اتصال بدون درایور از طریق WebUSB"
+                className="px-2.5 py-1.5 rounded-lg bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-white font-medium flex items-center gap-1.5 transition cursor-pointer"
+                title="اتصال مستقیم بدون درایور از طریق WebUSB"
               >
                 <Usb className="w-3.5 h-3.5 text-blue-400" />
                 <span>WebUSB</span>
@@ -1269,8 +1547,8 @@ export const PosView: React.FC<PosViewProps> = ({
 
               <button
                 onClick={() => handleHardwarePrint('BLUETOOTH')}
-                className="px-2.5 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 border border-stone-700 text-stone-200 font-medium flex items-center gap-1.5 transition"
-                title="اتصال بدون درایور از طریق بلوتوث"
+                className="px-2.5 py-1.5 rounded-lg bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-white font-medium flex items-center gap-1.5 transition cursor-pointer"
+                title="اتصال مستقیم بدون درایور از طریق بلوتوث"
               >
                 <Bluetooth className="w-3.5 h-3.5 text-cyan-400" />
                 <span>بلوتوث</span>
@@ -1278,7 +1556,7 @@ export const PosView: React.FC<PosViewProps> = ({
             </div>
 
             {hardwarePrintStatus && (
-              <div className="w-full text-center text-[11px] text-amber-300 bg-amber-950/40 border border-amber-800/40 rounded p-1">
+              <div className="w-full text-center text-[11px] text-[#F3E9DD] bg-[#121417] border border-[#293444] rounded p-1">
                 {hardwarePrintStatus}
               </div>
             )}

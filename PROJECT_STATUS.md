@@ -35,11 +35,22 @@
   - پیاده‌سازی `src/services/sync-order-handler.ts` جهت پردازش تراکنشی `processOfflineOrderSync`.
   - عدم توقف ثبت مالی فیش‌های آفلاین، اجازه منفی شدن موجودی (`allowNegative: true`) جهت تطابق با واقعیت فیزیکی بار، و ثبت رخداد `STOCKOUT_OVERDRAFT` در لاگ حسابرسی انباردار همراه با میزان کسری (`deficit`).
 
+- **خروجی استاندارد فایل اکسل و CSV برای حسابداری و امور مالی (Orders & Expenses CSV Export):** [VERIFIED]
+  - پیاده‌سازی متدهای `generateOrdersCSV` ،`downloadOrdersCSV` ،`generateExpensesCSV` و `downloadExpensesCSV` با رعایت استاندارد RFC 4180.
+  - کدگذاری UTF-8 BOM (`\uFEFF`) جهت تضمین خوانایی و نمایش صحیح بدون به‌هم‌ریختگی حروف فارسی در Microsoft Excel.
+  - قالب‌بندی بدون کوتیشن اعداد جهت پشتیبانی از محاسبات فرمولی اکسل (`=SUM(...)`)، سطرهای خلاصه تفکیک‌شده (تفکیک کسر از نقد و غیرنقدی) و نام‌گذاری استاندارد فایل‌ها.
+  - دکمه‌های مستقیم استخراج در نوار ابزار بالای گزارشات، جدول سوابق فاکتورها، و پنل هزینه‌های ثبت‌شده شیفت.
+
+- **کارت محاسباتی خلاصه سود عملیاتی شیفت (Shift Profit Summary Card):** [VERIFIED]
+  - پیاده‌سازی متد `calculateShiftProfit` با رعایت اصل محاسبات بدون اعشار تومانی (`Number.isInteger() === true`).
+  - کسر دقیق هزینه‌های ثبت‌شده شیفت از درآمد خالص سفارشات تسویه‌شده (`Net Order Revenue - Total Recorded Expenses`).
+  - نمایش کارت اختصاصی شاخص‌های مالی ۵گانه در پنل `ReportsView` با رنگ‌بندی متناسب با سودآوری (زمردی برای سود، یاقوتی برای زیان) و درصد حاشیه سود خالص شیفت.
+
 ---
 
 ## ۲. گزارش اجرای دستورات و نتایج اعتبارسنجی (Tests & Build Output)
 - **دستور تست خودکار (`npm test` -> `tsx tests/financialMath.test.ts`):**  
-  `134 Passed, 0 Failed` (۱۳ مجموعه آزمون کامل، خروجی کد 0)
+  `161 Passed, 0 Failed` (۱۴ مجموعه آزمون جامع، خروجی کد 0)
 - **بررسی صحت تایپ و نحو (`npm run lint` -> `tsc --noEmit`):**  
   `Zero TypeScript Errors` (خروجی کد 0)
 - **کامپایل نهایی بیلد (`compile_applet`):**  

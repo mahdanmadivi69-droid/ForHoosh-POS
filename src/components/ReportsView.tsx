@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   BarChart3,
   Download,
+  Coins,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -35,6 +36,8 @@ import {
   computeDailyRevenueTrends,
   DailyRevenueDataPoint,
   downloadOrdersCSV,
+  downloadExpensesCSV,
+  calculateShiftProfit,
 } from '../services/financialMath';
 import { ReceiptPreview } from './ReceiptPreview';
 import { ShiftSummaryReceipt } from './ShiftSummaryReceipt';
@@ -253,9 +256,34 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     }
   };
 
+  const [isExpenseCsvExporting, setIsExpenseCsvExporting] = useState(false);
+  const [expenseCsvExportSuccess, setExpenseCsvExportSuccess] = useState(false);
+
   const filteredExpenses = currentShift
     ? expenses.filter((e) => e.shiftId === currentShift.id)
     : expenses;
+
+  const handleDownloadExpensesCSV = () => {
+    if (filteredExpenses.length === 0 || isExpenseCsvExporting) return;
+    setIsExpenseCsvExporting(true);
+    try {
+      const now = new Date();
+      const datePart = now.toISOString().split('T')[0];
+      const shiftPart = currentShift ? `shift-${currentShift.id.slice(0, 8)}` : 'all-shifts';
+      const filename = `cafe-expenses-${shiftPart}-${datePart}.csv`;
+      const success = downloadExpensesCSV(filteredExpenses, filename);
+      if (success) {
+        setExpenseCsvExportSuccess(true);
+        setTimeout(() => {
+          setExpenseCsvExportSuccess(false);
+        }, 3000);
+      }
+    } catch (err) {
+      console.error('Failed to export expenses CSV:', err);
+    } finally {
+      setIsExpenseCsvExporting(false);
+    }
+  };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col gap-5">
@@ -298,6 +326,56 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </button>
 
           <button
+            onClick={handleDownloadCSV}
+            disabled={filteredOrders.length === 0 || isCsvExporting}
+            className={`border px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+              filteredOrders.length === 0
+                ? 'bg-stone-950 text-stone-600 border-stone-800 cursor-not-allowed opacity-50'
+                : csvExportSuccess
+                ? 'bg-emerald-950 text-emerald-300 border-emerald-500'
+                : 'bg-stone-800 hover:bg-stone-750 text-emerald-400 border-stone-700 hover:border-emerald-500/50'
+            }`}
+            title="دانلود خروجی فاکتورهای فروش (CSV)"
+          >
+            {csvExportSuccess ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <span>فاکتورها ذخیره شد</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 text-emerald-400" />
+                <span>CSV فاکتورها ({filteredOrders.length})</span>
+              </>
+            )}
+          </button>
+
+          <button
+            onClick={handleDownloadExpensesCSV}
+            disabled={filteredExpenses.length === 0 || isExpenseCsvExporting}
+            className={`border px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition ${
+              filteredExpenses.length === 0
+                ? 'bg-stone-950 text-stone-600 border-stone-800 cursor-not-allowed opacity-50'
+                : expenseCsvExportSuccess
+                ? 'bg-rose-950 text-rose-300 border-rose-500'
+                : 'bg-stone-800 hover:bg-stone-750 text-rose-400 border-stone-700 hover:border-rose-500/50'
+            }`}
+            title="دانلود خروجی هزینه‌های تنخواه (CSV)"
+          >
+            {expenseCsvExportSuccess ? (
+              <>
+                <CheckCircle2 className="w-4 h-4 text-rose-400 animate-pulse" />
+                <span>هزینه‌ها ذخیره شد</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 text-rose-400" />
+                <span>CSV هزینه‌ها ({filteredExpenses.length})</span>
+              </>
+            )}
+          </button>
+
+          <button
             onClick={() => window.print()}
             className="bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
           >
@@ -309,8 +387,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
       {report ? (
         <>
-          {/* Main 4 Accounting Metrics (Strictly separated per Section 3 & Section 7) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Main 5 Accounting Metrics (Revenue, Inflows, Expenses, Cash Drawer, Profit Summary) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Metric 1: Revenue (Accrual Sales) */}
             <div className="bg-stone-900 border border-stone-800 rounded-2xl p-4 flex flex-col justify-between shadow-sm">
               <div className="flex items-center justify-between text-stone-400 mb-2">
@@ -413,6 +491,66 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 )}
               </div>
             </div>
+
+            {/* Metric 5: Shift Profit Summary (Net Order Revenue - Total Recorded Expenses) */}
+            {(() => {
+              const profitData = calculateShiftProfit(report.netRevenueToman, report.totalExpensesToman);
+              const { profitToman, isProfitable, profitMarginPercent } = profitData;
+
+              return (
+                <div
+                  className={`border rounded-2xl p-4 flex flex-col justify-between shadow-sm transition ${
+                    isProfitable
+                      ? 'bg-gradient-to-b from-stone-900 via-stone-900 to-emerald-950/30 border-emerald-600/70 shadow-emerald-950/20 ring-1 ring-emerald-500/20'
+                      : 'bg-gradient-to-b from-stone-900 via-stone-900 to-rose-950/30 border-rose-600/70 shadow-rose-950/20 ring-1 ring-rose-500/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-stone-400 mb-2">
+                    <span className="text-xs font-semibold">۵. سود خالص شیفت (Profit)</span>
+                    <Coins className={`w-4 h-4 ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}`} />
+                  </div>
+
+                  <div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span
+                        className={`text-2xl font-black font-mono ${
+                          isProfitable ? 'text-emerald-400' : 'text-rose-400'
+                        }`}
+                      >
+                        {isProfitable
+                          ? `+ ${formatToman(profitToman)}`
+                          : `- ${formatToman(Math.abs(profitToman))}`}
+                      </span>
+                      <span className="text-xs font-normal text-stone-400">تومان</span>
+                    </div>
+
+                    <div className="text-[11px] text-stone-400 mt-1 flex flex-col gap-0.5">
+                      <div className="flex justify-between items-center">
+                        <span>درآمد خالص سفارشات:</span>
+                        <strong className="text-stone-200 font-mono">{formatToman(report.netRevenueToman)} تومان</strong>
+                      </div>
+                      <div className="flex justify-between items-center text-rose-400/90">
+                        <span>کسر کل هزینه‌ها:</span>
+                        <strong className="font-mono">- {formatToman(report.totalExpensesToman)} تومان</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-2 border-t border-stone-800/80 flex items-center justify-between text-[11px]">
+                    <span className="text-stone-400">حاشیه سود خالص:</span>
+                    <span
+                      className={`px-2 py-0.5 rounded font-mono font-bold text-xs ${
+                        isProfitable
+                          ? 'bg-emerald-950 text-emerald-300 border border-emerald-700/60'
+                          : 'bg-rose-950 text-rose-300 border border-rose-700/60'
+                      }`}
+                    >
+                      {profitMarginPercent}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* 30-Day Daily Revenue Trend Line Chart */}
@@ -830,14 +968,46 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
             {/* Expenses in this shift (4 cols) */}
             <div className="lg:col-span-4 bg-stone-900 border border-stone-800 rounded-2xl p-4 shadow-sm flex flex-col gap-3">
-              <div className="flex items-center justify-between pb-2 border-b border-stone-800">
+              <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-stone-800">
                 <div className="flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-rose-500" />
                   <h3 className="font-bold text-sm text-stone-100">هزینه‌های ثبت‌شده</h3>
                 </div>
-                <span className="text-xs text-rose-400 font-bold">
-                  {formatToman(report.totalExpensesToman)} تومان
-                </span>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-rose-400 font-bold font-mono">
+                    {formatToman(report.totalExpensesToman)} تومان
+                  </span>
+
+                  <button
+                    onClick={handleDownloadExpensesCSV}
+                    disabled={filteredExpenses.length === 0 || isExpenseCsvExporting}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition shadow-sm ${
+                      filteredExpenses.length === 0
+                        ? 'bg-stone-950 text-stone-600 border border-stone-800 cursor-not-allowed opacity-50'
+                        : expenseCsvExportSuccess
+                        ? 'bg-rose-950/90 text-rose-300 border border-rose-500 shadow-rose-950/60'
+                        : 'bg-rose-700 hover:bg-rose-600 active:scale-95 text-white border border-rose-500/40 shadow-rose-950/40'
+                    }`}
+                    title={
+                      filteredExpenses.length === 0
+                        ? 'هیچ هزینه‌ای برای خروجی اکسل یافت نشد'
+                        : `دانلود خروجی اکسل و CSV از ${filteredExpenses.length} قلم هزینه`
+                    }
+                  >
+                    {expenseCsvExportSuccess ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-rose-300 animate-pulse" />
+                        <span>ذخیره شد</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>CSV ({filteredExpenses.length})</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-col gap-2.5 max-h-[350px] overflow-y-auto">
@@ -861,6 +1031,21 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   ))
                 )}
               </div>
+
+              {filteredExpenses.length > 0 && (
+                <div className="pt-2 border-t border-stone-800 flex items-center justify-between text-[11px] text-stone-400">
+                  <span>کدگذاری استاندارد UTF-8 BOM</span>
+                  <button
+                    onClick={handleDownloadExpensesCSV}
+                    disabled={isExpenseCsvExporting}
+                    className="text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1 hover:underline"
+                    title="دانلود فایل اکسل هزینه‌های این شیفت"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>دریافت فایل هزینه‌ها (CSV)</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </>

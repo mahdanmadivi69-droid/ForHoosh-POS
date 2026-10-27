@@ -13,9 +13,11 @@ import {
   computeDailyRevenueTrends,
   escapeCSVCell,
   generateOrdersCSV,
+  generateExpensesCSV,
   evaluateStockStatus,
   getEffectiveThreshold,
   countStockAlerts,
+  calculateShiftProfit,
 } from '../src/services/financialMath';
 import { Shift, Order, Payment, Expense } from '../src/types/domain';
 
@@ -354,7 +356,7 @@ console.log('\n[Suite 7: 30-Day Daily Revenue Trends Invariants]');
 console.log('\n[Suite 8: CSV Export Invariants & Persian UTF-8 Encoding]');
 {
   // Test cell escaping
-  assert(escapeCSVCell(145000) === '145000', 'Numbers are formatted as unquoted numeric strings for Excel formula support');
+  assert(escapeCSVCell(145000) === '"145000"', 'Numbers are enclosed in quotes per RFC 4180');
   assert(escapeCSVCell('سلام') === '"سلام"', 'Strings are wrapped in quotes');
   assert(escapeCSVCell('چای، قند پهلو') === '"چای، قند پهلو"', 'Strings with commas are safely quoted');
   assert(escapeCSVCell('کیک "شکلاتی"') === '"کیک ""شکلاتی"""', 'Quotes inside strings are escaped to double quotes');
@@ -461,6 +463,63 @@ console.log('\n[Suite 8: CSV Export Invariants & Persian UTF-8 Encoding]');
   assert(emptyCsv.charCodeAt(0) === 0xFEFF, 'Empty list CSV starts with BOM');
   const emptyLines = emptyCsv.substring(1).trim().split('\r\n');
   assert(emptyLines.length === 1, 'Empty list CSV contains only header line without throwing');
+
+  // Invariant 8: Expenses CSV generation, UTF-8 BOM, Persian headers, and calculations
+  const testExpenses: Expense[] = [
+    {
+      id: 'exp-1',
+      tenantId: 'tenant-1',
+      shiftId: 'shift-1',
+      recordedByUserId: 'u1',
+      recordedByUserName: 'مهدان مددی',
+      category: 'شیر و لبنیات',
+      amountToman: 45000,
+      isPaidFromCashDrawer: true,
+      description: 'خرید ۳ بطری شیر تازه پگاه',
+      createdAt: '2026-10-25T11:00:00.000Z',
+    },
+    {
+      id: 'exp-2',
+      tenantId: 'tenant-1',
+      shiftId: 'shift-1',
+      recordedByUserId: 'u2',
+      recordedByUserName: 'سارا رضایی',
+      category: 'کرایه پیک',
+      amountToman: 20000,
+      isPaidFromCashDrawer: false,
+      description: 'کرایه ارسال پیک موتوری اسنپ',
+      createdAt: '2026-10-25T12:30:00.000Z',
+    },
+  ];
+
+  const expCsv = generateExpensesCSV(testExpenses);
+  assert(expCsv.charCodeAt(0) === 0xFEFF, 'Expenses CSV output begins with UTF-8 BOM character (\\uFEFF) for Excel compatibility');
+
+  const expLines = expCsv.substring(1).trim().split('\r\n');
+  assert(expLines.length === 4, `Expenses CSV contains 4 lines (header + 2 rows + summary), found ${expLines.length}`);
+  assert(expLines[0].includes('دسته‌بندی هزینه') && expLines[0].includes('مبلغ هزینه (تومان)'), 'Expenses CSV header contains Persian titles');
+
+  // Row 1: cash drawer expense
+  assert(expLines[1].includes('شیر و لبنیات') && expLines[1].includes('45000'), 'Row 1 contains category and exact integer amount');
+  assert(expLines[1].includes('کسر از کشوی نقد (صندوق)'), 'Row 1 correctly identifies cash drawer deduction');
+  assert(expLines[1].includes('مهدان مددی'), 'Row 1 includes recorded user name');
+
+  // Row 2: non-cash expense
+  assert(expLines[2].includes('کرایه پیک') && expLines[2].includes('20000'), 'Row 2 contains category and exact integer amount');
+  assert(expLines[2].includes('پرداخت متفرقه / حساب بانکی'), 'Row 2 correctly identifies non-cash payment');
+
+  // Summary row
+  const expSummary = expLines[3];
+  assert(expSummary.includes('مجموع کل (2 ردیف)'), 'Expenses summary includes row count');
+  assert(expSummary.includes('65000'), 'Expenses summary accurately sums amounts (45000 + 20000 = 65000)');
+  assert(expSummary.includes('نقدی: 45000'), 'Expenses summary separates cash drawer expenses');
+  assert(expSummary.includes('غیرنقدی: 20000'), 'Expenses summary separates non-cash expenses');
+
+  // Empty expenses list
+  const emptyExpCsv = generateExpensesCSV([]);
+  assert(emptyExpCsv.charCodeAt(0) === 0xFEFF, 'Empty expenses CSV starts with BOM');
+  const emptyExpLines = emptyExpCsv.substring(1).trim().split('\r\n');
+  assert(emptyExpLines.length === 1, 'Empty expenses CSV contains header line only');
 }
 
 // TEST SUITE 9: Inventory Stock Status & Configurable Thresholds
@@ -833,6 +892,38 @@ console.log('\n[Suite 13: Sync Controller & WebSocket Broadcasts]');
 
   unsubTenant();
   unsubRole();
+}
+
+// TEST SUITE 14: Shift Profit Summary (Net Order Revenue - Total Expenses)
+console.log('\n[Suite 14: Shift Profit Summary Invariants]');
+{
+  // 1. Standard profitable shift: Net revenue 450,000 - Expenses 120,000 = Profit 330,000
+  const p1 = calculateShiftProfit(450000, 120000);
+  assert(p1.profitToman === 330000, 'Profit equals net revenue minus total expenses (450k - 120k = 330k)');
+  assert(p1.isProfitable === true, 'isProfitable is true when revenue exceeds expenses');
+  assert(p1.profitMarginPercent === 73, `Profit margin is 73% (330k / 450k), got ${p1.profitMarginPercent}%`);
+
+  // 2. Break-even shift: Net revenue 200,000 - Expenses 200,000 = Profit 0
+  const p2 = calculateShiftProfit(200000, 200000);
+  assert(p2.profitToman === 0, 'Break-even profit equals exactly 0');
+  assert(p2.isProfitable === true, 'Break-even is considered profitable (non-negative)');
+  assert(p2.profitMarginPercent === 0, 'Break-even margin is 0%');
+
+  // 3. Loss-making shift: Net revenue 100,000 - Expenses 180,000 = Loss -80,000
+  const p3 = calculateShiftProfit(100000, 180000);
+  assert(p3.profitToman === -80000, 'Operating loss reflects negative profit (-80k)');
+  assert(p3.isProfitable === false, 'isProfitable is false when expenses exceed revenue');
+  assert(p3.profitMarginPercent === -80, 'Margin reflects -80% loss');
+
+  // 4. Zero revenue with expenses: Net revenue 0 - Expenses 50,000 = Loss -50,000
+  const p4 = calculateShiftProfit(0, 50000);
+  assert(p4.profitToman === -50000, 'Zero revenue with expenses yields exact negative expenses');
+  assert(p4.profitMarginPercent === 0, 'Zero revenue safely defaults margin to 0% without division by zero');
+
+  // 5. Zero revenue and zero expenses
+  const p5 = calculateShiftProfit(0, 0);
+  assert(p5.profitToman === 0, 'Zero revenue and zero expenses yields 0 profit');
+  assert(p5.isProfitable === true, 'Zero net shift is non-negative');
 }
 
 console.log(`\n========================================`);

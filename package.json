@@ -13,6 +13,7 @@
     "test": "tsx tests/financialMath.test.ts"
   },
   "dependencies": {
+    "@ark-ui/react": "^5.39.3",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
@@ -22,6 +23,7 @@
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-is": "^19.0.0",
     "recharts": "^3.10.1",
     "vite": "^8.3.0"
   },

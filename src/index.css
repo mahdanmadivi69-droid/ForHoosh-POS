@@ -1,12 +1,65 @@
 @import "tailwindcss";
 
+@theme {
+  --color-brand-navy: #0F223D;
+  --color-brand-navyDark: #081425;
+  --color-brand-red: #D71921;
+  --color-brand-redHover: #B8141B;
+  --color-brand-cream: #F3E9DD;
+
+  --color-surface-charcoal: #121417;
+  --color-surface-dark: #1B222C;
+  --color-surface-darkElevated: #222B38;
+  --color-surface-border: #293444;
+  --color-surface-muted: #9EACB8;
+
+  --shadow-crimson-glow: 0 0 20px -3px rgba(215, 25, 33, 0.45);
+  --shadow-navy-glow: 0 0 20px -3px rgba(15, 34, 61, 0.6);
+}
+
+/* Custom Scrollbar for Sleek Industrial Look */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #121417;
+}
+::-webkit-scrollbar-thumb {
+  background: #293444;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #D71921;
+}
+
+/* Monospaced punchy numbers */
+.num-heavy {
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.02em;
+}
+
+/* Thermal Receipt Styling for Print & Modal Preview */
+.receipt-paper {
+  background: #FAFAFA;
+  color: #111111;
+  font-family: 'Vazirmatn', monospace;
+  position: relative;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+}
+
+.receipt-zigzag-bottom {
+  background: radial-gradient(circle, transparent, transparent 50%, #FAFAFA 50%, #FAFAFA 100%);
+  background-size: 14px 14px;
+}
+
 @media print {
   body {
     background-color: #ffffff !important;
     color: #000000 !important;
   }
 
-  header, nav, button, .print\:hidden {
+  header, nav, button, .print\:hidden, .no-print {
     display: none !important;
   }
 
@@ -15,7 +68,8 @@
   }
 
   #printable-receipt,
-  #printable-shift-summary {
+  #printable-shift-summary,
+  #receipt-modal-content {
     display: block !important;
     width: 78mm !important;
     max-width: 100% !important;

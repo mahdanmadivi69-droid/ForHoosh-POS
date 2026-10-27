@@ -224,11 +224,11 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-[#121417] text-white flex flex-col font-sans selection:bg-[#D71921] selection:text-white">
       {/* Toast Notification */}
       {feedbackToast && (
-        <div className="fixed bottom-5 left-5 z-50 bg-amber-500 text-stone-950 font-bold px-4 py-2.5 rounded-xl shadow-2xl text-xs flex items-center gap-2 animate-bounce">
-          <span>✓</span>
+        <div className="fixed bottom-5 left-5 z-50 bg-[#1B222C] border-r-4 border-[#D71921] border border-[#293444] text-white font-bold px-4 py-3 rounded-xl shadow-2xl text-xs flex items-center gap-2.5 animate-fadeIn">
+          <span className="text-[#D71921] text-base">●</span>
           <span>{feedbackToast}</span>
         </div>
       )}

@@ -183,6 +183,33 @@ export function compileShiftReport(
   };
 }
 
+/**
+ * Calculates operational profit for a shift by subtracting total recorded expenses
+ * from net order revenue. Strictly adheres to integer Toman invariants.
+ */
+export function calculateShiftProfit(
+  netRevenueToman: number,
+  totalExpensesToman: number
+): {
+  profitToman: number;
+  isProfitable: boolean;
+  profitMarginPercent: number;
+} {
+  const safeNet = Math.round(Number(netRevenueToman) || 0);
+  const safeExp = Math.round(Number(totalExpensesToman) || 0);
+  const profitToman = safeNet - safeExp;
+  const isProfitable = profitToman >= 0;
+  const profitMarginPercent = safeNet > 0
+    ? Math.round((profitToman / safeNet) * 100)
+    : 0;
+
+  return {
+    profitToman,
+    isProfitable,
+    profitMarginPercent,
+  };
+}
+
 export interface DailyRevenueDataPoint {
   dateKey: string;
   dateLabel: string;
@@ -285,10 +312,12 @@ export function escapeCSVCell(val: string | number | undefined | null): string {
   if (val === undefined || val === null) {
     return '""';
   }
-  if (typeof val === 'number') {
-    return isNaN(val) ? '0' : Math.round(val).toString();
-  }
-  const str = String(val);
+  const str =
+    typeof val === 'number'
+      ? isNaN(val)
+        ? '0'
+        : Math.round(val).toString()
+      : String(val);
   const escaped = str.replace(/"/g, '""');
   return `"${escaped}"`;
 }
@@ -435,6 +464,118 @@ export function downloadOrdersCSV(orders: Order[], filename?: string): boolean {
   const now = new Date();
   const dateStr = now.toISOString().split('T')[0];
   const safeFilename = filename || `smartorders-report-${dateStr}.csv`;
+  link.setAttribute('download', safeFilename);
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+  return true;
+}
+
+/**
+ * Generates an RFC 4180 compliant CSV string representing a list of expenses.
+ * Includes UTF-8 BOM (\uFEFF) to guarantee correct rendering of Persian (Farsi) text in Microsoft Excel.
+ */
+export function generateExpensesCSV(expenses: Expense[]): string {
+  const BOM = '\uFEFF';
+
+  const headers = [
+    'ردیف',
+    'شناسه ثبت',
+    'تاریخ و زمان شمسی',
+    'تاریخ و زمان میلادی',
+    'دسته‌بندی هزینه',
+    'شرح و جزئیات هزینه',
+    'مبلغ هزینه (تومان)',
+    'نحوه پرداخت',
+    'کاربر ثبت‌کننده',
+    'شناسه شیفت',
+  ];
+
+  const lines: string[] = [headers.map((h) => escapeCSVCell(h)).join(',')];
+
+  for (let idx = 0; idx < expenses.length; idx++) {
+    const expense = expenses[idx];
+
+    let dateFa = '-';
+    let timeFa = '-';
+    try {
+      const d = new Date(expense.createdAt);
+      if (!isNaN(d.getTime())) {
+        dateFa = d.toLocaleDateString('fa-IR');
+        timeFa = d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+      }
+    } catch {
+      // fallback
+    }
+    const persianDateTime = `${dateFa} ${timeFa}`;
+
+    const paymentSourceFa = expense.isPaidFromCashDrawer
+      ? 'کسر از کشوی نقد (صندوق)'
+      : 'پرداخت متفرقه / حساب بانکی';
+
+    const row = [
+      escapeCSVCell(idx + 1),
+      escapeCSVCell(expense.id),
+      escapeCSVCell(persianDateTime),
+      escapeCSVCell(expense.createdAt),
+      escapeCSVCell(expense.category || 'متفرقه'),
+      escapeCSVCell(expense.description || ''),
+      escapeCSVCell(expense.amountToman),
+      escapeCSVCell(paymentSourceFa),
+      escapeCSVCell(expense.recordedByUserName || 'نامشخص'),
+      escapeCSVCell(expense.shiftId || '-'),
+    ];
+
+    lines.push(row.join(','));
+  }
+
+  // Summary row at the bottom if expenses exist
+  if (expenses.length > 0) {
+    const totalAmount = expenses.reduce((sum, e) => sum + (e.amountToman || 0), 0);
+    const cashDrawerAmount = expenses
+      .filter((e) => e.isPaidFromCashDrawer)
+      .reduce((sum, e) => sum + (e.amountToman || 0), 0);
+    const nonCashAmount = expenses
+      .filter((e) => !e.isPaidFromCashDrawer)
+      .reduce((sum, e) => sum + (e.amountToman || 0), 0);
+
+    const summaryRow = [
+      escapeCSVCell(`مجموع کل (${expenses.length} ردیف)`),
+      escapeCSVCell(''),
+      escapeCSVCell(''),
+      escapeCSVCell(''),
+      escapeCSVCell(''),
+      escapeCSVCell(`نقدی: ${cashDrawerAmount} | غیرنقدی: ${nonCashAmount}`),
+      escapeCSVCell(totalAmount),
+      escapeCSVCell(''),
+      escapeCSVCell(''),
+      escapeCSVCell(''),
+    ];
+    lines.push(summaryRow.join(','));
+  }
+
+  return BOM + lines.join('\r\n');
+}
+
+/**
+ * Triggers a browser file download of the expenses CSV with proper filename and UTF-8 encoding.
+ */
+export function downloadExpensesCSV(expenses: Expense[], filename?: string): boolean {
+  if (typeof window === 'undefined' || typeof document === 'undefined') {
+    return false;
+  }
+
+  const csvContent = generateExpensesCSV(expenses);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+  const safeFilename = filename || `smartorders-expenses-${dateStr}.csv`;
   link.setAttribute('download', safeFilename);
 
   document.body.appendChild(link);

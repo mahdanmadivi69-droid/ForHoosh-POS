@@ -42,6 +42,15 @@ export interface MenuItem {
   description?: string;
   currentStock?: number; // موجودی فعلی انبار/کافه به عدد
   lowStockThreshold?: number; // آستانه هشدار کسری موجودی اختصاصی آیتم
+  roast?: 'all' | 'medium' | 'dark' | 'light';
+  roastLevelText?: string;
+  weight?: string;
+  origin?: string;
+  process?: string;
+  elevation?: string;
+  notes?: string[];
+  badge?: string | null;
+  isBean?: boolean;
 }
 
 export type ShiftStatus = 'OPEN' | 'CLOSED';

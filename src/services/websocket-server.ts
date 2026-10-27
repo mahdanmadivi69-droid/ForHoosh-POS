@@ -4,8 +4,6 @@
  * and live inventory overdraft incident alerting.
  */
 
-import { EventEmitter } from 'events';
-
 export interface BroadcastMessage {
   tenantId: string;
   role?: string;
@@ -16,15 +14,49 @@ export interface BroadcastMessage {
 
 type MessageListener = (message: BroadcastMessage) => void;
 
-class WebSocketServerManager extends EventEmitter {
+class WebSocketServerManager {
+  private events: Map<string, Set<Function>> = new Map();
   private listenersList: Set<MessageListener> = new Set();
   private recentMessages: BroadcastMessage[] = [];
   private instanceId: string = Math.random().toString(36).substring(2, 9);
   private broadcastChannel: BroadcastChannel | null = null;
 
   constructor() {
-    super();
     this.initBroadcastChannel();
+  }
+
+  public on(event: string, fn: Function): this {
+    let set = this.events.get(event);
+    if (!set) {
+      set = new Set();
+      this.events.set(event, set);
+    }
+    set.add(fn);
+    return this;
+  }
+
+  public off(event: string, fn: Function): this {
+    const set = this.events.get(event);
+    if (set) {
+      set.delete(fn);
+      if (set.size === 0) {
+        this.events.delete(event);
+      }
+    }
+    return this;
+  }
+
+  private emit(event: string, ...args: any[]): boolean {
+    const set = this.events.get(event);
+    if (!set || set.size === 0) return false;
+    for (const listener of set) {
+      try {
+        listener(...args);
+      } catch (err) {
+        console.error(`Error in websocket listener for event "${event}":`, err);
+      }
+    }
+    return true;
   }
 
   private initBroadcastChannel(): void {

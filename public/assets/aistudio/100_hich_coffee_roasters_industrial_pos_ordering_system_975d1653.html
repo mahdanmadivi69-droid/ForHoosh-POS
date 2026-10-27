@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>100 HICH Coffee Roasters | سیستم فروش و سفارش‌گیری صد هیچ</title>
+
+  <!-- Google Fonts: Vazirmatn -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              navy: '#0F223D',      // Deep Cobalt Navy (Primary Identity)
+              navyDark: '#081425',
+              red: '#D71921',       // Crimson Racing Red (Accent / CTA)
+              redHover: '#B8141B',
+              cream: '#F3E9DD',     // Warm Latte / Spec Accent
+            },
+            surface: {
+              charcoal: '#121417',  // Main Dark Viewport Background
+              dark: '#1B222C',      // Card / Container Surface
+              darkElevated: '#222B38',
+              border: '#293444',    // Subtle 1px structural borders
+              muted: '#9EACB8',     // Secondary metadata text
+            }
+          },
+          fontFamily: {
+            sans: ['Vazirmatn', 'system-ui', 'sans-serif'],
+          },
+          boxShadow: {
+            'crimson-glow': '0 0 20px -3px rgba(215, 25, 33, 0.45)',
+            'navy-glow': '0 0 20px -3px rgba(15, 34, 61, 0.6)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar for Sleek Industrial Look */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #121417;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #293444;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #D71921;
+    }
+
+    /* Thermal Receipt Styling for Print & Modal */
+    .receipt-paper {
+      background: #FAFAFA;
+      color: #111111;
+      font-family: 'Vazirmatn', monospace;
+      position: relative;
+      box-shadow: 0 15px 35px rgba(0,0,0,0.6);
+    }
+    .receipt-zigzag-bottom {
+      background: radial-gradient(circle, transparent, transparent 50%, #FAFAFA 50%, #FAFAFA 100%);
+      background-size: 14px 14px;
+    }
+
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #receipt-modal-content, #receipt-modal-content * {
+        visibility: visible;
+      }
+      #receipt-modal-content {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 80mm !important;
+        margin: 0;
+        padding: 8px;
+        box-shadow: none;
+        background: white;
+        color: black;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    /* Monospaced punchy numbers */
+    .num-heavy {
+      font-feature-settings: "tnum" 1;
+      letter-spacing: -0.02em;
+    }
+  </style>
+</head>
+<body class="bg-surface-charcoal text-white font-sans antialiased min-h-screen flex flex-col selection:bg-brand-red selection:text-white">
+
+  <!-- ================= TOP HEADER BAR ================= -->
+  <header class="bg-brand-navy border-b border-surface-border sticky top-0 z-40 px-4 py-2.5 transition-all shadow-md">
+    <div class="max-w-[1720px] mx-auto flex items-center justify-between gap-3">
+      
+      <!-- Brand & Branch Identity -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center bg-brand-navyDark border border-surface-border px-3 py-1.5 rounded-lg">
+          <div class="text-left font-black tracking-tighter leading-none pr-1">
+            <span class="text-2xl font-black text-white">100</span>
+            <span class="text-xs block text-brand-red tracking-widest font-black uppercase">HICH</span>
+          </div>
+          <div class="h-6 w-[1.5px] bg-surface-border mx-2.5"></div>
+          <div>
+            <h1 class="text-sm font-extrabold text-white flex items-center gap-1.5">
+              <span>قهوه‌فروشی صَد هیچ</span>
+              <span class="text-[10px] bg-brand-red text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">ROASTERS</span>
+            </h1>
+            <p class="text-[11px] text-surface-muted flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse inline-block"></span>
+              شعبه ۱: اکباتان - فاز ۱ (پیتزا پیت باکس)
+            </p>
+          </div>
+        </div>
+
+        <!-- POS / Customer Mode Switcher -->
+        <div class="hidden lg:flex items-center bg-surface-charcoal p-1 rounded-lg border border-surface-border text-xs font-bold">
+          <button id="mode-pos-btn" onclick="setAppMode('pos')" class="px-3 py-1.5 rounded bg-brand-red text-white shadow-sm flex items-center gap-1.5 transition-all">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            صندوق بارتندر (POS)
+          </button>
+          <button id="mode-customer-btn" onclick="setAppMode('customer')" class="px-3 py-1.5 rounded text-surface-muted hover:text-white flex items-center gap-1.5 transition-all">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+            منوی سلف‌سرویس مشتری
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Search & Filter -->
+      <div class="flex-1 max-w-md mx-2 relative">
+        <input 
+          type="text" 
+          id="search-input"
+          oninput="handleSearch(this.value)"
+          placeholder="جستجوی دان، بلند ۵۰/۵۰، کرک تی، نوشیدنی..." 
+          class="w-full bg-surface-charcoal/90 border border-surface-border text-white text-xs md:text-sm rounded-lg pr-9 pl-4 py-2 focus:outline-none focus:border-brand-red transition-colors placeholder:text-surface-muted"
+        >
+        <svg class="w-4 h-4 text-surface-muted absolute right-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+      </div>
+
+      <!-- Shift Info & Clock & Mobile Cart Trigger -->
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex flex-col text-left">
+          <span id="live-clock" class="text-xs font-mono font-bold text-white num-heavy">18:45:12</span>
+          <span class="text-[10px] text-surface-muted">شیفت عصر • فرزاد خلیلی</span>
+        </div>
+
+        <!-- Mobile Cart Button with count badge -->
+        <button onclick="toggleMobileCart()" class="xl:hidden relative bg-brand-red hover:bg-brand-redHover text-white p-2.5 rounded-lg flex items-center gap-1.5 font-bold shadow-crimson-glow">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          <span id="mobile-cart-badge" class="bg-white text-brand-red text-xs px-1.5 py-0.2 rounded-full font-black">0</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ================= MAIN LAYOUT ================= -->
+  <main class="max-w-[1720px] mx-auto w-full flex-1 flex flex-col xl:flex-row gap-4 p-3 md:p-5 relative">
+    
+    <!-- LEFT / MAIN: Catalog & Products Section -->
+    <section class="flex-1 flex flex-col min-w-0">
+      
+      <!-- Announcement / Banner Bar -->
+      <div class="bg-gradient-to-r from-brand-navy via-surface-dark to-brand-navy p-3 rounded-lg border border-surface-border mb-4 flex flex-wrap items-center justify-between gap-2 shadow-inner">
+        <div class="flex items-center gap-3">
+          <span class="bg-brand-red text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider uppercase">NEW ROAST</span>
+          <p class="text-xs md:text-sm font-semibold text-white">
+            روست هفتگی بلند اختصاصی <span class="text-brand-cream font-bold">50/50 Brazil & Indonesia</span> آماده ارسال و آسیاب تازه در بار
+          </p>
+        </div>
+        <div class="text-[11px] text-surface-muted flex items-center gap-2">
+          <span>دما و فشار بویلر: <strong class="text-white font-mono">93.5°C | 9.1 Bar</strong></span>
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        </div>
+      </div>
+
+      <!-- Categories Navigation Pills -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none mb-4 select-none" id="categories-container">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Quick Filter Sub-tags -->
+      <div class="flex items-center justify-between text-xs text-surface-muted pb-3 mb-1 border-b border-surface-border/60">
+        <div class="flex items-center gap-2 overflow-x-auto">
+          <span class="text-[11px] font-bold text-white">فیلتر رست:</span>
+          <button onclick="setRoastFilter('all')" class="roast-pill active px-2.5 py-1 rounded bg-surface-dark text-white border border-surface-border hover:border-brand-red text-[11px] font-medium transition">همه</button>
+          <button onclick="setRoastFilter('medium')" class="roast-pill px-2.5 py-1 rounded bg-surface-dark text-surface-muted border border-surface-border hover:border-brand-red text-[11px] font-medium transition">مدیوم رست (متعادل)</button>
+          <button onclick="setRoastFilter('dark')" class="roast-pill px-2.5 py-1 rounded bg-surface-dark text-surface-muted border border-surface-border hover:border-brand-red text-[11px] font-medium transition">مدیوم دارک / اسپرسو</button>
+          <button onclick="setRoastFilter('light')" class="roast-pill px-2.5 py-1 rounded bg-surface-dark text-surface-muted border border-surface-border hover:border-brand-red text-[11px] font-medium transition">لایت / دمی تخصصی</button>
+        </div>
+        <div class="hidden sm:block text-[11px]">
+          تعداد آیتم‌ها: <span id="product-count" class="font-bold text-white num-heavy">0</span> محصول
+        </div>
+      </div>
+
+      <!-- Product Cards Grid -->
+      <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-3 md:gap-4 flex-1 items-start">
+        <!-- Injected dynamically via JS -->
+      </div>
+
+    </section>
+
+    <!-- ================= RIGHT / SIDEBAR: ORDER & POS CART ================= -->
+    <aside id="pos-cart-panel" class="hidden xl:flex flex-col w-[420px] bg-surface-dark border border-surface-border rounded-xl sticky top-[72px] h-[calc(100vh-90px)] shadow-2xl transition-all">
+      
+      <!-- Cart Header & Order Type Toggle -->
+      <div class="p-3.5 border-b border-surface-border bg-brand-navy rounded-t-xl flex flex-col gap-2.5">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-brand-red animate-ping"></span>
+            <h2 class="text-sm font-extrabold text-white tracking-wide">سفارش جاری بار (فاکتور)</h2>
+          </div>
+          <span id="order-id-display" class="font-mono text-xs bg-brand-navyDark px-2 py-0.5 rounded text-brand-cream border border-surface-border font-bold">#100H-842</span>
+        </div>
+
+        <!-- Dine-in vs Takeaway Toggle -->
+        <div class="grid grid-cols-2 gap-1.5 bg-surface-charcoal/80 p-1 rounded-lg border border-surface-border text-xs font-bold">
+          <button id="type-takeaway" onclick="setOrderType('takeaway')" class="py-1.5 rounded bg-brand-red text-white flex items-center justify-center gap-1 transition-all">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+            بیرون‌بر (Takeaway)
+          </button>
+          <button id="type-dinein" onclick="setOrderType('dinein')" class="py-1.5 rounded text-surface-muted hover:text-white flex items-center justify-center gap-1 transition-all">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+            سرو در سالن (Dine-in)
+          </button>
+        </div>
+      </div>
+
+      <!-- Customer Detail / Table Note (POS Compact) -->
+      <div class="px-3 py-2 bg-surface-charcoal/50 border-b border-surface-border flex items-center justify-between text-xs gap-2">
+        <input 
+          type="text" 
+          id="customer-note-input" 
+          placeholder="نام مشتری یا شماره میز (اختیاری)..." 
+          class="bg-transparent text-white placeholder:text-surface-muted/70 text-xs w-full focus:outline-none"
+        >
+        <span class="text-[10px] text-surface-muted bg-surface-dark px-1.5 py-0.5 rounded border border-surface-border whitespace-nowrap">میز / تحویل</span>
+      </div>
+
+      <!-- Cart Items List (Scrollable Area) -->
+      <div id="cart-items-container" class="flex-1 overflow-y-auto p-3 space-y-2.5">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Empty Cart State -->
+      <div id="empty-cart-state" class="hidden flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div class="w-14 h-14 rounded-full bg-surface-charcoal flex items-center justify-center border border-surface-border mb-3 text-surface-muted">
+          <svg class="w-7 h-7 text-brand-red opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
+          </svg>
+        </div>
+        <p class="text-sm font-bold text-white mb-1">فاکتور هنوز خالی است</p>
+        <p class="text-xs text-surface-muted max-w-xs">آیتمی از منوی بلندها، بار گرم یا دانه‌های تخصصی انتخاب کنید تا به سفارش افزوده شود.</p>
+      </div>
+
+      <!-- Discount & POS Keypad Accelerators -->
+      <div class="px-3 pt-2 pb-1 border-t border-surface-border bg-surface-charcoal/40">
+        <div class="flex items-center justify-between text-[11px] text-surface-muted mb-1.5">
+          <span>اعمال تخفیف سریع:</span>
+          <span id="active-discount-label" class="text-brand-cream font-bold">بدون تخفیف</span>
+        </div>
+        <div class="grid grid-cols-4 gap-1.5 text-xs font-bold">
+          <button onclick="applyDiscount(0)" class="py-1 rounded bg-surface-dark border border-surface-border hover:border-brand-red text-white text-[11px]">۰٪</button>
+          <button onclick="applyDiscount(5)" class="py-1 rounded bg-surface-dark border border-surface-border hover:border-brand-red text-white text-[11px]">۵٪ ویژه</button>
+          <button onclick="applyDiscount(10)" class="py-1 rounded bg-surface-dark border border-surface-border hover:border-brand-red text-white text-[11px]">۱۰٪ باریستا</button>
+          <button onclick="applyDiscount(15)" class="py-1 rounded bg-surface-dark border border-surface-border hover:border-brand-red text-white text-[11px]">۱۵٪ همکار</button>
+        </div>
+      </div>
+
+      <!-- Calculations & Total Summary -->
+      <div class="p-3.5 bg-surface-charcoal border-t border-surface-border space-y-2 rounded-b-xl">
+        <div class="flex justify-between items-center text-xs text-surface-muted">
+          <span>جمع اقلام:</span>
+          <span id="cart-subtotal" class="font-bold text-white num-heavy">۰ تومان</span>
+        </div>
+        <div class="flex justify-between items-center text-xs text-surface-muted">
+          <span>کسر تخفیف:</span>
+          <span id="cart-discount-val" class="text-brand-cream num-heavy">۰ تومان</span>
+        </div>
+        <div class="h-[1px] bg-surface-border/80 my-1"></div>
+        <div class="flex justify-between items-baseline">
+          <span class="text-sm font-extrabold text-white">مبلغ نهایی فاکتور:</span>
+          <div class="text-right">
+            <span id="cart-grand-total" class="text-xl font-black text-brand-red num-heavy tracking-tight">۰</span>
+            <span class="text-xs text-surface-muted mr-1">تومان</span>
+          </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="grid grid-cols-5 gap-2 pt-2">
+          <button 
+            onclick="clearCart()" 
+            title="پاک کردن سبد"
+            class="col-span-1 bg-surface-dark hover:bg-surface-darkElevated border border-surface-border text-surface-muted hover:text-red-400 rounded-lg flex items-center justify-center transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          </button>
+          <button 
+            id="checkout-btn"
+            onclick="openCheckoutModal()" 
+            class="col-span-4 bg-brand-red hover:bg-brand-redHover text-white font-black py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-crimson-glow transition transform active:scale-[0.98]">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+            <span>ثبت نهایی و تسویه فاکتور</span>
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- ================= MOBILE CART DRAWER (Responsive Modal) ================= -->
+  <div id="mobile-cart-drawer" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex-col justify-end xl:hidden">
+    <div class="bg-surface-dark border-t border-surface-border rounded-t-2xl max-h-[85vh] flex flex-col p-4">
+      <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+        <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-brand-red"></span>
+          سبد سفارش صد هیچ
+        </h3>
+        <button onclick="toggleMobileCart()" class="text-surface-muted hover:text-white p-1">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div id="mobile-cart-items-container" class="flex-1 overflow-y-auto py-3 space-y-2">
+        <!-- Mirrored via JS -->
+      </div>
+
+      <div class="pt-3 border-t border-surface-border space-y-2">
+        <div class="flex justify-between items-baseline">
+          <span class="text-xs text-surface-muted">مبلغ کل قابل پرداخت:</span>
+          <div>
+            <span id="mobile-cart-total" class="text-lg font-black text-brand-red num-heavy">۰</span>
+            <span class="text-xs text-surface-muted mr-1">تومان</span>
+          </div>
+        </div>
+        <button onclick="toggleMobileCart(); openCheckoutModal();" class="w-full bg-brand-red text-white py-3 rounded-lg font-bold shadow-crimson-glow">
+          ثبت فاکتور و پرداخت
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PRODUCT OPTIONS & GRIND MODAL ================= -->
+  <div id="options-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-surface-dark border border-surface-border rounded-xl max-w-md w-full p-5 space-y-4 shadow-2xl relative">
+      <button onclick="closeOptionsModal()" class="absolute top-4 left-4 text-surface-muted hover:text-white">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+
+      <div>
+        <span id="modal-category-badge" class="text-[10px] bg-brand-navy border border-surface-border text-brand-cream px-2 py-0.5 rounded font-bold uppercase">SPECS</span>
+        <h3 id="modal-product-title" class="text-lg font-black text-white mt-1.5">عنوان محصول</h3>
+        <p id="modal-product-notes" class="text-xs text-surface-muted mt-0.5">یادداشت طعمی و خصوصیات</p>
+      </div>
+
+      <!-- Bean Grind Selection -->
+      <div id="modal-grind-section" class="space-y-2">
+        <label class="block text-xs font-bold text-white">نوع آسیاب یا بسته‌بندی:</label>
+        <div class="grid grid-cols-2 gap-2 text-xs" id="modal-grind-options">
+          <button type="button" onclick="selectGrindOption('دانه درسته (Whole Bean)')" class="grind-opt py-2 px-2.5 rounded border border-brand-red bg-brand-red/10 text-white font-semibold text-center">دانه درسته (بدون آسیاب)</button>
+          <button type="button" onclick="selectGrindOption('آسیاب اسپرسو صنعتی')" class="grind-opt py-2 px-2.5 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center">آسیاب اسپرسو صنعتی</button>
+          <button type="button" onclick="selectGrindOption('آسیاب موکاپات / خانگی')" class="grind-opt py-2 px-2.5 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center">آسیاب موکاپات / خانگی</button>
+          <button type="button" onclick="selectGrindOption('آسیاب دمی / V60 / کمکس')" class="grind-opt py-2 px-2.5 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center">آسیاب دمی (V60 / فیلتر)</button>
+          <button type="button" onclick="selectGrindOption('آسیاب فرنچ پرس / کلدبرو')" class="grind-opt py-2 px-2.5 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center">آسیاب درشت (فرنچ پرس)</button>
+          <button type="button" onclick="selectGrindOption('آسیاب جذوه / ترک')" class="grind-opt py-2 px-2.5 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center">آسیاب بسیار ریز (ترک)</button>
+        </div>
+      </div>
+
+      <!-- Size / Weight Selection -->
+      <div id="modal-size-section" class="space-y-2">
+        <label class="block text-xs font-bold text-white">وزن پاکت / سرو:</label>
+        <div class="grid grid-cols-3 gap-2 text-xs" id="modal-size-options">
+          <button type="button" onclick="selectSizeOption('250g', 1)" class="size-opt py-2 rounded border border-brand-red bg-brand-red/10 text-white font-bold text-center">پاکت ۲۵۰ گرمی</button>
+          <button type="button" onclick="selectSizeOption('500g', 1.95)" class="size-opt py-2 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center">۵۰۰ گرمی</button>
+          <button type="button" onclick="selectSizeOption('1KG', 3.8)" class="size-opt py-2 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center">۱ کیلوگرمی (صرفه)</button>
+        </div>
+      </div>
+
+      <!-- Add to order confirmation -->
+      <div class="pt-3 border-t border-surface-border flex items-center justify-between">
+        <div>
+          <span class="text-[10px] text-surface-muted block">قیمت این تنظیم:</span>
+          <span id="modal-calculated-price" class="text-base font-black text-brand-red num-heavy">۰ تومان</span>
+        </div>
+        <button onclick="confirmProductWithOptions()" class="bg-brand-red hover:bg-brand-redHover text-white font-bold px-6 py-2.5 rounded-lg shadow-crimson-glow transition">
+          افزودن به فاکتور
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= PAYMENT & THERMAL RECEIPT MODAL ================= -->
+  <div id="checkout-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden items-center justify-center p-3 overflow-y-auto">
+    <div class="max-w-xl w-full my-auto flex flex-col md:flex-row gap-4 items-stretch">
+      
+      <!-- Payment Method Selection Panel -->
+      <div class="flex-1 bg-surface-dark border border-surface-border rounded-xl p-5 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between pb-3 border-b border-surface-border">
+            <h3 class="text-base font-extrabold text-white flex items-center gap-2">
+              <span class="w-3 h-3 rounded bg-brand-red"></span>
+              روش تسویه حساب بار
+            </h3>
+            <button onclick="closeCheckoutModal()" class="text-surface-muted hover:text-white">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <div class="py-4 space-y-3">
+            <label class="text-xs text-surface-muted block">دستگاه پوز یا درگاه پرداخت را انتخاب کنید:</label>
+            <div class="grid grid-cols-2 gap-2.5">
+              <button onclick="setPaymentMethod('pos1')" class="pay-method-btn p-3 rounded-lg border-2 border-brand-red bg-brand-navy/60 text-right text-xs font-bold transition">
+                <span class="text-white block mb-0.5">پوز ۱ (بانک سامان)</span>
+                <span class="text-[10px] text-emerald-400 font-mono">متصل به بار اصلی</span>
+              </button>
+              <button onclick="setPaymentMethod('pos2')" class="pay-method-btn p-3 rounded-lg border border-surface-border bg-surface-charcoal text-right text-xs font-medium text-surface-muted hover:text-white transition">
+                <span class="text-white block mb-0.5">پوز ۲ (بانک ملت)</span>
+                <span class="text-[10px] text-surface-muted font-mono">پوز سیار سالن</span>
+              </button>
+              <button onclick="setPaymentMethod('cash')" class="pay-method-btn p-3 rounded-lg border border-surface-border bg-surface-charcoal text-right text-xs font-medium text-surface-muted hover:text-white transition">
+                <span class="text-white block mb-0.5">نقدی / کش دراور</span>
+                <span class="text-[10px] text-surface-muted">دریافت وجه نقد</span>
+              </button>
+              <button onclick="setPaymentMethod('card_transfer')" class="pay-method-btn p-3 rounded-lg border border-surface-border bg-surface-charcoal text-right text-xs font-medium text-surface-muted hover:text-white transition">
+                <span class="text-white block mb-0.5">کارت به کارت</span>
+                <span class="text-[10px] text-surface-muted">تایید فیش مشتری</span>
+              </button>
+            </div>
+
+            <!-- Fast Cash Numpad quick calc -->
+            <div class="pt-3 border-t border-surface-border">
+              <div class="flex justify-between items-center text-xs mb-2">
+                <span class="text-surface-muted">مبلغ کل قابل تسویه:</span>
+                <span id="modal-checkout-total" class="font-black text-brand-red text-base num-heavy">۰ تومان</span>
+              </div>
+              <div class="bg-surface-charcoal p-2.5 rounded-lg border border-surface-border text-xs flex justify-between items-center">
+                <span class="text-surface-muted">شناسه پیگیری تراکنش:</span>
+                <span id="pos-trace-id" class="font-mono text-white font-bold">TRC-892410</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-3 flex gap-2">
+          <button onclick="executePaymentAndPrint()" class="flex-1 bg-brand-red hover:bg-brand-redHover text-white py-3 rounded-lg font-extrabold flex items-center justify-center gap-2 shadow-crimson-glow">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            تایید تراکنش و چاپ فیش
+          </button>
+        </div>
+      </div>
+
+      <!-- Thermal Paper Receipt Preview -->
+      <div class="w-full md:w-[280px] receipt-paper rounded-lg p-4 flex flex-col justify-between text-xs border border-gray-300" id="receipt-modal-content">
+        <div>
+          <!-- Receipt Header -->
+          <div class="text-center pb-2 border-b-2 border-dashed border-gray-400">
+            <h4 class="font-black text-lg tracking-tight text-black">100 HICH</h4>
+            <p class="text-[10px] font-bold text-gray-700 uppercase tracking-widest">COFFEE ROASTERS</p>
+            <p class="text-[9px] text-gray-600 mt-1">اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس</p>
+            <p class="text-[9px] text-gray-600">تلفن سفارشات: ۰۲۱-۴۴۶۶۸۰۹۰</p>
+          </div>
+
+          <!-- Receipt Meta -->
+          <div class="py-2 border-b border-dashed border-gray-300 text-[10px] space-y-1">
+            <div class="flex justify-between">
+              <span class="text-gray-600">شماره فاکتور:</span>
+              <span id="receipt-invoice-num" class="font-mono font-bold">SH-10482</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">تاریخ و ساعت:</span>
+              <span id="receipt-timestamp" class="font-mono">۱۴۰۳/۰۸/۰۶ - ۱۸:۵۲</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">نوع سفارش:</span>
+              <span id="receipt-type" class="font-bold">بیرون‌بر</span>
+            </div>
+            <div class="flex justify-between" id="receipt-customer-row">
+              <span class="text-gray-600">مشتری / میز:</span>
+              <span id="receipt-customer-name" class="font-bold">-</span>
+            </div>
+          </div>
+
+          <!-- Items Table -->
+          <div class="py-2 border-b-2 border-dashed border-gray-400">
+            <table class="w-full text-right text-[10px]">
+              <thead>
+                <tr class="text-gray-600 border-b border-gray-200">
+                  <th class="pb-1 text-right">شرح کالا</th>
+                  <th class="pb-1 text-center">تعداد</th>
+                  <th class="pb-1 text-left">مبلغ (تومان)</th>
+                </tr>
+              </thead>
+              <tbody id="receipt-items-list" class="divide-y divide-gray-200">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Total Breakdown -->
+          <div class="py-2 space-y-1 text-[11px]">
+            <div class="flex justify-between">
+              <span class="text-gray-700">جمع کل:</span>
+              <span id="receipt-subtotal" class="font-bold font-mono">۰</span>
+            </div>
+            <div class="flex justify-between text-red-700">
+              <span>تخفیف:</span>
+              <span id="receipt-discount" class="font-bold font-mono">۰-</span>
+            </div>
+            <div class="flex justify-between font-black text-sm pt-1 border-t border-black">
+              <span>قابل پرداخت:</span>
+              <span id="receipt-final-total" class="font-mono">۰ تومان</span>
+            </div>
+          </div>
+
+          <!-- Barcode simulation & slogan -->
+          <div class="pt-3 text-center">
+            <div class="inline-block py-1 px-3 bg-gray-200 rounded font-mono text-[9px] tracking-widest text-black mb-1">
+              ||| | ||||| |||| || | |||| ||
+            </div>
+            <p class="text-[9px] font-bold text-gray-800">«صد هیچ؛ تمرکز محض روی اصالت قهوه»</p>
+            <p class="text-[8px] text-gray-500 mt-0.5">از خرید شما سپاسگزاریم • 100HICH.IR</p>
+          </div>
+        </div>
+
+        <button onclick="window.print()" class="no-print mt-3 w-full bg-black text-white text-[11px] py-2 rounded font-bold hover:bg-gray-800 transition">
+          پرینت مستقیم فیش (۸۰ میلی‌متری)
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= FLOATING TOAST CONTAINER ================= -->
+  <div id="toast-container" class="fixed bottom-5 left-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- ================= JAVASCRIPT APPLICATION LOGIC ================= -->
+  <script>
+    /* -------------------------------------------------------------
+       1. DATA DEFINITION: PRODUCTS & CATEGORIES
+       Reflecting 100 HICH specialty roastery & cafe menu
+    ------------------------------------------------------------- */
+    const CATEGORIES = [
+      { id: 'all', name: 'کل محصولات بار', icon: '⚡' },
+      { id: 'blends', name: 'بلندهای اختصاصی صد هیچ', icon: '🔥' },
+      { id: 'single_origin', name: 'تک خاستگاه (Single Origin)', icon: '🌍' },
+      { id: 'karak_tea', name: 'کرک تی و کسکرا', icon: '🫖' },
+      { id: 'hot_bar', name: 'اسپرسوبار و بار گرم', icon: '☕' },
+      { id: 'cold_bar', name: 'بار سرد و آیس', icon: '🧊' },
+      { id: 'gear', name: 'تجهیزات و اکسسوری', icon: '⚙️' }
+    ];
+
+    const PRODUCTS = [
+      {
+        id: 'p-blend-50-50',
+        name: 'بلند تخصصی ۵۰/۵۰ صد هیچ',
+        enName: '100 HICH Signature Blend 50/50',
+        category: 'blends',
+        price: 360000,
+        roast: 'medium',
+        roastLevelText: 'مدیوم دارک (اسپرسو)',
+        weight: '250 گرم',
+        origin: 'برزیل سرادو + اندونزی جاوا',
+        process: 'Washed / Natural',
+        elevation: '1200 - 1600m',
+        notes: ['شکلات تلخ', 'آجیل کاراملی', 'فول بادی', 'کرما غلیظ'],
+        badge: 'پرچمدار فروشگاه',
+        isBean: true
+      },
+      {
+        id: 'p-blend-70-30',
+        name: 'بلند صد هیچ ۷۰/۳۰ عربیکا',
+        enName: '100 HICH House Blend 70/30',
+        category: 'blends',
+        price: 395000,
+        roast: 'medium',
+        roastLevelText: 'مدیوم رست',
+        weight: '250 گرم',
+        origin: 'کلمبیا سوپریمو + ویتنام وت پولیش',
+        process: 'Washed',
+        elevation: '1400 - 1800m',
+        notes: ['شکلات شیری', 'بادام زمینی', 'اسیدیته متعادل'],
+        badge: 'محبوب باریستا',
+        isBean: true
+      },
+      {
+        id: 'p-blend-80-20',
+        name: 'بلند اسپرسو صد هیچ ۸۰/۲۰',
+        enName: 'Daily Espresso Blend 80/20',
+        category: 'blends',
+        price: 430000,
+        roast: 'dark',
+        roastLevelText: 'اسپرسو کلاسیک',
+        weight: '250 گرم',
+        origin: 'گواتمالا + هند چری PB',
+        process: 'Washed',
+        elevation: '1500m',
+        notes: ['کاکائو تلخ', 'ادویه‌ای', 'شیرینی ملاس'],
+        badge: null,
+        isBean: true
+      },
+      {
+        id: 'p-ethiopia-yirg',
+        name: 'اتیوپی یرگاچف تخصصی (گرید ۱)',
+        enName: 'Ethiopia Yirgacheffe G1',
+        category: 'single_origin',
+        price: 540000,
+        roast: 'light',
+        roastLevelText: 'لایت / دمی تخصصی',
+        weight: '250 گرم',
+        origin: 'اتیوپی، منطقه سیدامو / یرگاچف',
+        process: 'Anaerobic Natural',
+        elevation: '1900 - 2200m',
+        notes: ['یاسمن', 'ترنج و هلو', 'اسیدیته میوه‌ای درخشان'],
+        badge: 'تک‌خاستگاه ویژه',
+        isBean: true
+      },
+      {
+        id: 'p-colombia-huila',
+        name: 'کلمبیا هویلا پینک بوربون',
+        enName: 'Colombia Huila Pink Bourbon',
+        category: 'single_origin',
+        price: 520000,
+        roast: 'light',
+        roastLevelText: 'مدیوم لایت',
+        weight: '250 گرم',
+        origin: 'کلمبیا، منطقه هویلا',
+        process: 'Honey Processed',
+        elevation: '1750m',
+        notes: ['تمشک سرخ', 'شکر قهوه‌ای', 'ماندگاری طولانی طعم'],
+        badge: 'مخصوص V60',
+        isBean: true
+      },
+      {
+        id: 'p-karak-1kg',
+        name: 'چای کرک صد هیچ ۱ کیلوگرمی',
+        enName: '100 HICH Karak Tea Instant 1KG',
+        category: 'karak_tea',
+        price: 680000,
+        roast: 'medium',
+        roastLevelText: 'فرمول اختصاصی',
+        weight: '۱ کیلوگرم',
+        origin: 'چای سیلان + هل سبز گواتمالا + زعفران',
+        process: 'پودر غنی شده فوری',
+        elevation: '-',
+        notes: ['هل ممتاز', 'زعفران سرگل', 'زنجبیل تازه', 'شیرینی ملایم'],
+        badge: 'پرفروش‌ترین',
+        isBean: false
+      },
+      {
+        id: 'p-cascara',
+        name: 'کسکارا صد هیچ (پوسته گیلاس قهوه)',
+        enName: '100 HICH Sun-Dried Cascara',
+        category: 'karak_tea',
+        price: 280000,
+        roast: 'light',
+        roastLevelText: 'خشک شده آفتابی',
+        weight: '۱۵۰ گرم',
+        origin: 'کاستاریکا تارازو',
+        process: 'Sun Dried Pulp',
+        elevation: '1600m',
+        notes: ['آلبالو خشک', 'گل رز', 'آنتی‌اکسیدان بالا'],
+        badge: 'سوپرفود بار',
+        isBean: false
+      },
+      {
+        id: 'p-bar-espresso-double',
+        name: 'اسپرسو دبل شات (بلند ۵۰/۵۰)',
+        enName: 'Double Shot Espresso',
+        category: 'hot_bar',
+        price: 65000,
+        roast: 'medium',
+        roastLevelText: 'سرو تازه در بار',
+        weight: 'فنجان ۶۰ میلی',
+        origin: 'عصاره‌گیری ۱:۲ در ۹ بار',
+        process: 'تازه‌برشته',
+        elevation: '-',
+        notes: ['تن‌واری سنگین', 'کرمای ضخیم مخملی'],
+        badge: null,
+        isBean: false
+      },
+      {
+        id: 'p-bar-cortado',
+        name: 'کورتادو صد هیچ (Cortado)',
+        enName: '100 HICH Signature Cortado',
+        category: 'hot_bar',
+        price: 90000,
+        roast: 'medium',
+        roastLevelText: 'نسبت ۱ به ۱ شیر ابریشمی',
+        weight: '۱۳۰ میلی‌لیتر',
+        origin: 'شیر پرچرب محلی بخارداده شده',
+        process: '-',
+        elevation: '-',
+        notes: ['تعادل بی‌نقص قهوه و شیر', 'بافت مخملی'],
+        badge: 'انتخاب باریستا',
+        isBean: false
+      },
+      {
+        id: 'p-bar-v60',
+        name: 'قهوه دمی V60 تخصصی (تک‌خاستگاه)',
+        enName: 'Manual Pour-Over V60',
+        category: 'hot_bar',
+        price: 135000,
+        roast: 'light',
+        roastLevelText: 'دم‌آوری دستی تازه',
+        weight: '۲۴۰ میلی‌لیتر',
+        origin: 'انتخاب دان روز (اتیوپی / کلمبیا)',
+        process: 'فیلتر کاغذی ژاپنی',
+        elevation: '-',
+        notes: ['شفافیت عطر و طعم', 'نت‌های فلورال'],
+        badge: 'تخصصی',
+        isBean: false
+      },
+      {
+        id: 'p-cold-latte',
+        name: 'آیس لاته دبل شات صد هیچ',
+        enName: 'Iced Latte 100 HICH',
+        category: 'cold_bar',
+        price: 110000,
+        roast: 'medium',
+        roastLevelText: 'سرد و گوارا',
+        weight: '۳۸۰ میلی لیتر',
+        origin: 'اسپرسو تازه + یخ بلوری + شیر سرد',
+        process: '-',
+        elevation: '-',
+        notes: ['انرژی‌بخش', 'طعم ماندگار کارامل'],
+        badge: null,
+        isBean: false
+      },
+      {
+        id: 'p-cold-brew',
+        name: 'کلد برو ۱۸ ساعته نیتروژن',
+        enName: '18h Slow Nitro Cold Brew',
+        category: 'cold_bar',
+        price: 125000,
+        roast: 'light',
+        roastLevelText: 'عصاره‌گیری سرد طولانی',
+        weight: '۳۰۰ میلی‌لیتر',
+        origin: 'تک خاستگاه کلمبیا',
+        process: 'Cold Extraction',
+        elevation: '-',
+        notes: ['شیرینی طبیعی بالا', 'اسیدیته کم'],
+        badge: 'تعداد محدود',
+        isBean: false
+      },
+      {
+        id: 'p-gear-kettle',
+        name: 'کتل گردن غازی باریستا استیل',
+        enName: 'Gooseneck Pouring Kettle 800ml',
+        category: 'gear',
+        price: 1450000,
+        roast: 'all',
+        roastLevelText: 'ابزار استاندارد بار',
+        weight: '۸۰۰ میلی‌لیتر',
+        origin: 'بدنه استیل ۳۰۴ ضد زنگ',
+        process: 'دسته ارگونومیک چوبی',
+        elevation: '-',
+        notes: ['کنترل دقیق جریان آب', 'نشانگر دما'],
+        badge: 'تجهیزات',
+        isBean: false
+      }
+    ];
+
+    /* -------------------------------------------------------------
+       2. APPLICATION STATE
+    ------------------------------------------------------------- */
+    let state = {
+      mode: 'pos',               // 'pos' or 'customer'
+      activeCategory: 'all',
+      roastFilter: 'all',
+      searchQuery: '',
+      orderType: 'takeaway',     // 'takeaway' or 'dinein'
+      orderNumber: 1048,
+      cart: [],
+      discountPercent: 0,
+      customerNote: '',
+      paymentMethod: 'pos1',     // 'pos1', 'pos2', 'cash', 'card_transfer'
+      
+      // Temporary state for the options modal
+      selectedProductForOptions: null,
+      selectedGrind: 'دانه درسته (Whole Bean)',
+      selectedSizeName: '250g',
+      selectedSizeMultiplier: 1.0
+    };
+
+    /* -------------------------------------------------------------
+       3. AUDIO FEEDBACK (Synthesizer via Web Audio API)
+    ------------------------------------------------------------- */
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playBeep(type = 'click') {
+      try {
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+
+        if (type === 'click') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.05);
+          gain.gain.setValueAtTime(0.12, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.start(now);
+          osc.stop(now + 0.06);
+        } else if (type === 'success') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.setValueAtTime(880, now + 0.08);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'delete') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(320, now);
+          osc.frequency.exponentialRampToValueAtTime(160, now + 0.08);
+          gain.gain.setValueAtTime(0.1, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        }
+      } catch (e) {
+        // Audio might be blocked until user interacts
+      }
+    }
+
+    /* -------------------------------------------------------------
+       4. FORMATTERS & HELPERS
+    ------------------------------------------------------------- */
+    function formatMoney(amount) {
+      return Math.round(amount).toLocaleString('fa-IR');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = 'bg-surface-dark border-r-4 border-brand-red text-white text-xs px-4 py-3 rounded-lg shadow-2xl flex items-center gap-2 transform translate-y-2 opacity-0 transition-all duration-200 pointer-events-auto border border-surface-border';
+      
+      let icon = `<span class="text-brand-red">●</span>`;
+      if (type === 'success') icon = `<svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>`;
+      
+      toast.innerHTML = `${icon} <span class="font-bold">${message}</span>`;
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 250);
+      }, 2400);
+    }
+
+    /* -------------------------------------------------------------
+       5. INITIALIZATION & RENDERING
+    ------------------------------------------------------------- */
+    window.addEventListener('DOMContentLoaded', () => {
+      renderCategories();
+      renderProducts();
+      renderCart();
+      startLiveClock();
+    });
+
+    function startLiveClock() {
+      const clockEl = document.getElementById('live-clock');
+      function update() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        clockEl.textContent = `${h}:${m}:${s}`;
+      }
+      update();
+      setInterval(update, 1000);
+    }
+
+    function setAppMode(mode) {
+      state.mode = mode;
+      const posBtn = document.getElementById('mode-pos-btn');
+      const custBtn = document.getElementById('mode-customer-btn');
+      
+      if (mode === 'pos') {
+        posBtn.className = 'px-3 py-1.5 rounded bg-brand-red text-white shadow-sm flex items-center gap-1.5 transition-all';
+        custBtn.className = 'px-3 py-1.5 rounded text-surface-muted hover:text-white flex items-center gap-1.5 transition-all';
+        showToast('حالت صندوق باریستا فعال شد', 'info');
+      } else {
+        custBtn.className = 'px-3 py-1.5 rounded bg-brand-navy border border-brand-red text-white shadow-sm flex items-center gap-1.5 transition-all';
+        posBtn.className = 'px-3 py-1.5 rounded text-surface-muted hover:text-white flex items-center gap-1.5 transition-all';
+        showToast('حالت نمایش سلف‌سرویس مشتری فعال شد', 'info');
+      }
+      playBeep('click');
+      renderProducts();
+    }
+
+    function renderCategories() {
+      const container = document.getElementById('categories-container');
+      container.innerHTML = CATEGORIES.map(cat => {
+        const isActive = state.activeCategory === cat.id;
+        return `
+          <button 
+            onclick="selectCategory('${cat.id}')"
+            class="px-3.5 py-2 rounded-lg font-bold text-xs whitespace-nowrap transition-all flex items-center gap-2 border ${
+              isActive 
+                ? 'bg-brand-red border-brand-red text-white shadow-crimson-glow' 
+                : 'bg-surface-dark border-surface-border text-surface-muted hover:text-white hover:border-surface-border/90'
+            }">
+            <span>${cat.icon}</span>
+            <span>${cat.name}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function selectCategory(catId) {
+      state.activeCategory = catId;
+      playBeep('click');
+      renderCategories();
+      renderProducts();
+    }
+
+    function setRoastFilter(roastType) {
+      state.roastFilter = roastType;
+      playBeep('click');
+      document.querySelectorAll('.roast-pill').forEach(btn => {
+        btn.classList.remove('active', 'text-white', 'border-brand-red', 'bg-brand-navy');
+        btn.classList.add('text-surface-muted', 'bg-surface-dark');
+      });
+      event.target.classList.add('active', 'text-white', 'border-brand-red', 'bg-brand-navy');
+      event.target.classList.remove('text-surface-muted', 'bg-surface-dark');
+      renderProducts();
+    }
+
+    function handleSearch(query) {
+      state.searchQuery = query.trim().toLowerCase();
+      renderProducts();
+    }
+
+    /* -------------------------------------------------------------
+       6. PRODUCTS RENDERING (HIGH-CONTRAST INDUSTRIAL CARDS)
+    ------------------------------------------------------------- */
+    function renderProducts() {
+      const grid = document.getElementById('product-grid');
+      const countEl = document.getElementById('product-count');
+
+      // Filter products
+      const filtered = PRODUCTS.filter(p => {
+        const matchesCategory = state.activeCategory === 'all' || p.category === state.activeCategory;
+        const matchesRoast = state.roastFilter === 'all' || p.roast === state.roastFilter;
+        const matchesSearch = !state.searchQuery || 
+          p.name.toLowerCase().includes(state.searchQuery) ||
+          p.enName.toLowerCase().includes(state.searchQuery) ||
+          p.origin.toLowerCase().includes(state.searchQuery) ||
+          p.notes.some(n => n.toLowerCase().includes(state.searchQuery));
+        return matchesCategory && matchesRoast && matchesSearch;
+      });
+
+      countEl.textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-16 text-center text-surface-muted bg-surface-dark/40 border border-surface-border rounded-xl">
+            <svg class="w-12 h-12 mx-auto text-surface-muted mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <p class="font-bold text-white text-sm">هیچ محصولی با این مشخصات یافت نشد</p>
+            <p class="text-xs mt-1">امتحان کنید: «۵۰/۵۰»، «کرک»، «کلمبیا» یا کاتگوری دیگری را انتخاب نمایید.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        return `
+          <article class="bg-surface-dark border border-surface-border rounded-xl overflow-hidden hover:border-surface-muted/60 transition-all duration-200 flex flex-col justify-between group shadow-lg">
+            
+            <!-- Card Header & Badge -->
+            <div class="p-3.5 pb-2.5">
+              <div class="flex items-start justify-between gap-2 mb-2">
+                <span class="text-[10px] font-mono tracking-wider font-bold bg-brand-navy border border-surface-border text-brand-cream px-2 py-0.5 rounded">
+                  ${item.roastLevelText}
+                </span>
+                ${item.badge ? `
+                  <span class="text-[10px] font-black bg-brand-red text-white px-2 py-0.5 rounded uppercase tracking-wider">
+                    ${item.badge}
+                  </span>
+                ` : `
+                  <span class="text-[10px] text-surface-muted font-bold">${item.weight}</span>
+                `}
+              </div>
+
+              <!-- Product Titles -->
+              <h3 class="font-extrabold text-sm md:text-base text-white group-hover:text-brand-cream transition-colors leading-snug">
+                ${item.name}
+              </h3>
+              <p class="text-[11px] font-mono text-surface-muted mt-0.5 truncate tracking-tight">
+                ${item.enName}
+              </p>
+
+              <!-- Technical Roast Specs Grid -->
+              <div class="mt-3 pt-2.5 border-t border-surface-border/60 text-[11px] space-y-1">
+                <div class="flex items-center justify-between text-surface-muted">
+                  <span>خاستگاه:</span>
+                  <span class="text-white font-medium text-right max-w-[170px] truncate">${item.origin}</span>
+                </div>
+                ${item.process !== '-' ? `
+                <div class="flex items-center justify-between text-surface-muted">
+                  <span>فرآوری:</span>
+                  <span class="text-brand-cream font-mono text-[10px]">${item.process}</span>
+                </div>` : ''}
+              </div>
+
+              <!-- Taste Notes Tags -->
+              <div class="flex flex-wrap gap-1 mt-3">
+                ${item.notes.map(note => `
+                  <span class="text-[10px] bg-surface-charcoal text-surface-muted px-2 py-0.5 rounded border border-surface-border">
+                    ${note}
+                  </span>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- Card Bottom Bar: Price & Action CTA -->
+            <div class="p-3.5 pt-2.5 bg-surface-charcoal/60 border-t border-surface-border flex items-center justify-between gap-3">
+              <div>
+                <span class="text-[10px] text-surface-muted block leading-none mb-1">قیمت پایه:</span>
+                <div class="flex items-baseline gap-1">
+                  <span class="text-base md:text-lg font-black text-white num-heavy">${formatMoney(item.price)}</span>
+                  <span class="text-[10px] text-surface-muted font-normal">تومان</span>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1.5">
+                ${item.isBean ? `
+                  <button 
+                    onclick="openOptionsModal('${item.id}')"
+                    title="انتخاب درجه آسیاب و وزن"
+                    class="bg-brand-navy hover:bg-surface-border border border-surface-border text-white text-xs px-2.5 py-2 rounded-lg font-bold flex items-center gap-1 transition">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                    <span>تنظیم آسیاب</span>
+                  </button>
+                ` : ''}
+
+                <button 
+                  onclick="quickAddToCart('${item.id}')"
+                  class="bg-brand-red hover:bg-brand-redHover active:scale-95 text-white p-2 md:px-3 md:py-2 rounded-lg font-black flex items-center gap-1 shadow-crimson-glow transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                  <span class="hidden md:inline text-xs">افزودن</span>
+                </button>
+              </div>
+            </div>
+
+          </article>
+        `;
+      }).join('');
+    }
+
+    /* -------------------------------------------------------------
+       7. CART & ORDER STATE MANAGEMENT
+    ------------------------------------------------------------- */
+    function quickAddToCart(productId) {
+      const prod = PRODUCTS.find(p => p.id === productId);
+      if (!prod) return;
+
+      const defaultGrind = prod.isBean ? 'دانه درسته (Whole Bean)' : 'سرو باریستا';
+      const defaultSize = prod.weight || 'یک سرو';
+      
+      addItemToCart(prod, defaultGrind, defaultSize, prod.price);
+    }
+
+    function addItemToCart(product, grind, size, finalPrice) {
+      const cartKey = `${product.id}__${grind}__${size}`;
+      const existing = state.cart.find(item => item.key === cartKey);
+
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        state.cart.push({
+          key: cartKey,
+          productId: product.id,
+          name: product.name,
+          enName: product.enName,
+          unitPrice: finalPrice,
+          grind: grind,
+          size: size,
+          quantity: 1
+        });
+      }
+
+      playBeep('click');
+      showToast(`${product.name} به فاکتور افزوده شد`, 'success');
+      renderCart();
+    }
+
+    function updateItemQuantity(cartKey, delta) {
+      const item = state.cart.find(i => i.key === cartKey);
+      if (!item) return;
+
+      item.quantity += delta;
+      if (item.quantity <= 0) {
+        state.cart = state.cart.filter(i => i.key !== cartKey);
+        playBeep('delete');
+      } else {
+        playBeep('click');
+      }
+      renderCart();
+    }
+
+    function removeItemFromCart(cartKey) {
+      state.cart = state.cart.filter(i => i.key !== cartKey);
+      playBeep('delete');
+      showToast('مورد از فاکتور حذف شد', 'info');
+      renderCart();
+    }
+
+    function clearCart() {
+      if (state.cart.length === 0) return;
+      state.cart = [];
+      state.discountPercent = 0;
+      playBeep('delete');
+      showToast('فاکتور جاری پاک شد', 'info');
+      renderCart();
+    }
+
+    function setOrderType(type) {
+      state.orderType = type;
+      playBeep('click');
+      const takeawayBtn = document.getElementById('type-takeaway');
+      const dineinBtn = document.getElementById('type-dinein');
+
+      if (type === 'takeaway') {
+        takeawayBtn.className = 'py-1.5 rounded bg-brand-red text-white flex items-center justify-center gap-1 transition-all';
+        dineinBtn.className = 'py-1.5 rounded text-surface-muted hover:text-white flex items-center justify-center gap-1 transition-all';
+      } else {
+        dineinBtn.className = 'py-1.5 rounded bg-brand-red text-white flex items-center justify-center gap-1 transition-all';
+        takeawayBtn.className = 'py-1.5 rounded text-surface-muted hover:text-white flex items-center justify-center gap-1 transition-all';
+      }
+    }
+
+    function applyDiscount(percent) {
+      state.discountPercent = percent;
+      playBeep('click');
+      const label = document.getElementById('active-discount-label');
+      label.textContent = percent > 0 ? `${percent}٪ تخفیف فعال` : 'بدون تخفیف';
+      renderCart();
+    }
+
+    function calculateTotals() {
+      const subtotal = state.cart.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+      const discountVal = (subtotal * state.discountPercent) / 100;
+      const grandTotal = Math.max(0, subtotal - discountVal);
+      return { subtotal, discountVal, grandTotal };
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cart-items-container');
+      const mobileContainer = document.getElementById('mobile-cart-items-container');
+      const emptyState = document.getElementById('empty-cart-state');
+      const badge = document.getElementById('mobile-cart-badge');
+      const subtotalEl = document.getElementById('cart-subtotal');
+      const discountEl = document.getElementById('cart-discount-val');
+      const grandTotalEl = document.getElementById('cart-grand-total');
+      const mobileGrandTotalEl = document.getElementById('mobile-cart-total');
+
+      const totalItemsCount = state.cart.reduce((sum, i) => sum + i.quantity, 0);
+      badge.textContent = totalItemsCount;
+
+      const { subtotal, discountVal, grandTotal } = calculateTotals();
+
+      subtotalEl.textContent = `${formatMoney(subtotal)} تومان`;
+      discountEl.textContent = discountVal > 0 ? `-${formatMoney(discountVal)} تومان` : '۰ تومان';
+      grandTotalEl.textContent = formatMoney(grandTotal);
+      mobileGrandTotalEl.textContent = formatMoney(grandTotal);
+
+      if (state.cart.length === 0) {
+        container.innerHTML = '';
+        mobileContainer.innerHTML = '<p class="text-xs text-center text-surface-muted py-6">سبد خالی است.</p>';
+        emptyState.classList.remove('hidden');
+        emptyState.classList.add('flex');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      emptyState.classList.remove('flex');
+
+      const itemsHtml = state.cart.map(item => {
+        const itemTotal = item.unitPrice * item.quantity;
+        return `
+          <div class="bg-surface-charcoal border border-surface-border rounded-lg p-2.5 flex flex-col gap-2 transition hover:border-surface-border/90">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex-1 min-w-0">
+                <h4 class="text-xs font-bold text-white truncate">${item.name}</h4>
+                <div class="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-surface-muted">
+                  <span class="text-brand-cream font-medium">${item.size}</span>
+                  <span>•</span>
+                  <span class="truncate max-w-[140px]">${item.grind}</span>
+                </div>
+              </div>
+              <button onclick="removeItemFromCart('${item.key}')" class="text-surface-muted hover:text-red-400 p-1">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <div class="flex items-center justify-between pt-1 border-t border-surface-border/50">
+              <div class="flex items-center bg-surface-dark border border-surface-border rounded-md">
+                <button onclick="updateItemQuantity('${item.key}', -1)" class="w-6 h-6 flex items-center justify-center text-surface-muted hover:text-white font-black text-sm active:bg-brand-red">-</button>
+                <span class="w-7 text-center font-bold text-xs text-white num-heavy">${item.quantity}</span>
+                <button onclick="updateItemQuantity('${item.key}', 1)" class="w-6 h-6 flex items-center justify-center text-surface-muted hover:text-white font-black text-sm active:bg-brand-red">+</button>
+              </div>
+
+              <div class="text-left">
+                <span class="text-xs font-black text-white num-heavy">${formatMoney(itemTotal)}</span>
+                <span class="text-[9px] text-surface-muted mr-0.5">تومان</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.innerHTML = itemsHtml;
+      mobileContainer.innerHTML = itemsHtml;
+    }
+
+    function toggleMobileCart() {
+      const drawer = document.getElementById('mobile-cart-drawer');
+      drawer.classList.toggle('hidden');
+      drawer.classList.toggle('flex');
+    }
+
+    /* -------------------------------------------------------------
+       8. MODAL: PRODUCT GRIND & PACKAGING SPECS
+    ------------------------------------------------------------- */
+    function openOptionsModal(productId) {
+      const prod = PRODUCTS.find(p => p.id === productId);
+      if (!prod) return;
+
+      state.selectedProductForOptions = prod;
+      state.selectedGrind = 'دانه درسته (Whole Bean)';
+      state.selectedSizeName = '250g';
+      state.selectedSizeMultiplier = 1.0;
+
+      document.getElementById('modal-product-title').textContent = prod.name;
+      document.getElementById('modal-product-notes').textContent = `${prod.origin} • نت‌ها: ${prod.notes.join('، ')}`;
+      
+      updateModalCalculatedPrice();
+      
+      // Reset active UI styles on grind options
+      document.querySelectorAll('.grind-opt').forEach((btn, idx) => {
+        if (idx === 0) {
+          btn.className = 'grind-opt py-2 px-2.5 rounded border border-brand-red bg-brand-red/10 text-white font-semibold text-center';
+        } else {
+          btn.className = 'grind-opt py-2 px-2.5 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center';
+        }
+      });
+
+      // Reset sizes
+      document.querySelectorAll('.size-opt').forEach((btn, idx) => {
+        if (idx === 0) {
+          btn.className = 'size-opt py-2 rounded border border-brand-red bg-brand-red/10 text-white font-bold text-center';
+        } else {
+          btn.className = 'size-opt py-2 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center';
+        }
+      });
+
+      const modal = document.getElementById('options-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      playBeep('click');
+    }
+
+    function closeOptionsModal() {
+      const modal = document.getElementById('options-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      state.selectedProductForOptions = null;
+    }
+
+    function selectGrindOption(grindName) {
+      state.selectedGrind = grindName;
+      playBeep('click');
+      document.querySelectorAll('.grind-opt').forEach(btn => {
+        if (btn.textContent.includes(grindName.split(' ')[0])) {
+          btn.className = 'grind-opt py-2 px-2.5 rounded border border-brand-red bg-brand-red/10 text-white font-semibold text-center';
+        } else {
+          btn.className = 'grind-opt py-2 px-2.5 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center';
+        }
+      });
+    }
+
+    function selectSizeOption(sizeName, multiplier) {
+      state.selectedSizeName = sizeName;
+      state.selectedSizeMultiplier = multiplier;
+      playBeep('click');
+
+      document.querySelectorAll('.size-opt').forEach(btn => {
+        if (btn.textContent.includes(sizeName)) {
+          btn.className = 'size-opt py-2 rounded border border-brand-red bg-brand-red/10 text-white font-bold text-center';
+        } else {
+          btn.className = 'size-opt py-2 rounded border border-surface-border bg-surface-charcoal text-surface-muted hover:text-white font-medium text-center';
+        }
+      });
+
+      updateModalCalculatedPrice();
+    }
+
+    function updateModalCalculatedPrice() {
+      if (!state.selectedProductForOptions) return;
+      const price = state.selectedProductForOptions.price * state.selectedSizeMultiplier;
+      document.getElementById('modal-calculated-price').textContent = `${formatMoney(price)} تومان`;
+    }
+
+    function confirmProductWithOptions() {
+      if (!state.selectedProductForOptions) return;
+      const finalPrice = Math.round(state.selectedProductForOptions.price * state.selectedSizeMultiplier);
+      addItemToCart(
+        state.selectedProductForOptions, 
+        state.selectedGrind, 
+        state.selectedSizeName, 
+        finalPrice
+      );
+      closeOptionsModal();
+    }
+
+    /* -------------------------------------------------------------
+       9. MODAL: CHECKOUT & THERMAL RECEIPT
+    ------------------------------------------------------------- */
+    function openCheckoutModal() {
+      if (state.cart.length === 0) {
+        showToast('ابتدا اقلامی به فاکتور اضافه فرمایید', 'info');
+        return;
+      }
+
+      state.customerNote = document.getElementById('customer-note-input').value.trim();
+      const { subtotal, discountVal, grandTotal } = calculateTotals();
+
+      document.getElementById('modal-checkout-total').textContent = `${formatMoney(grandTotal)} تومان`;
+      
+      // Fill receipt metadata
+      state.orderNumber += 1;
+      document.getElementById('receipt-invoice-num').textContent = `100H-${state.orderNumber}`;
+      
+      const now = new Date();
+      const timeStr = `${now.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}`;
+      document.getElementById('receipt-timestamp').textContent = `امروز - ${timeStr}`;
+      document.getElementById('receipt-type').textContent = state.orderType === 'takeaway' ? 'بیرون‌بر (Takeaway)' : 'سالن (Dine-in)';
+      
+      const customerRow = document.getElementById('receipt-customer-row');
+      const customerNameEl = document.getElementById('receipt-customer-name');
+      if (state.customerNote) {
+        customerRow.style.display = 'flex';
+        customerNameEl.textContent = state.customerNote;
+      } else {
+        customerNameEl.textContent = 'مشتری بار';
+      }
+
+      // Populate thermal receipt table
+      const receiptTable = document.getElementById('receipt-items-list');
+      receiptTable.innerHTML = state.cart.map(item => `
+        <tr class="py-1">
+          <td class="py-1 text-right font-medium">
+            <div>${item.name}</div>
+            <div class="text-[8px] text-gray-500">${item.grind} (${item.size})</div>
+          </td>
+          <td class="py-1 text-center font-bold font-mono">${item.quantity}</td>
+          <td class="py-1 text-left font-mono">${formatMoney(item.unitPrice * item.quantity)}</td>
+        </tr>
+      `).join('');
+
+      document.getElementById('receipt-subtotal').textContent = formatMoney(subtotal);
+      document.getElementById('receipt-discount').textContent = discountVal > 0 ? `${formatMoney(discountVal)}-` : '۰';
+      document.getElementById('receipt-final-total').textContent = `${formatMoney(grandTotal)} تومان`;
+
+      const modal = document.getElementById('checkout-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      playBeep('click');
+    }
+
+    function closeCheckoutModal() {
+      const modal = document.getElementById('checkout-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    function setPaymentMethod(method) {
+      state.paymentMethod = method;
+      playBeep('click');
+      document.querySelectorAll('.pay-method-btn').forEach(btn => {
+        btn.classList.remove('border-brand-red', 'bg-brand-navy/60');
+        btn.classList.add('border-surface-border', 'bg-surface-charcoal', 'text-surface-muted');
+      });
+      event.currentTarget.classList.add('border-brand-red', 'bg-brand-navy/60');
+      event.currentTarget.classList.remove('border-surface-border', 'bg-surface-charcoal', 'text-surface-muted');
+    }
+
+    function executePaymentAndPrint() {
+      playBeep('success');
+      showToast('پرداخت با موفقیت ثبت و ارسال شد', 'success');
+
+      // Trigger automatic printing preview dialog
+      setTimeout(() => {
+        window.print();
+      }, 350);
+
+      // Clean up after order finalized
+      setTimeout(() => {
+        closeCheckoutModal();
+        clearCart();
+        document.getElementById('customer-note-input').value = '';
+        document.getElementById('order-id-display').textContent = `#100H-${state.orderNumber + 1}`;
+      }, 1000);
+    }
+  </script>
+</body>
+</html>

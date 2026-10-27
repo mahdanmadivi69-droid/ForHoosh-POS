@@ -1,19 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Coffee,
   Clock,
   DollarSign,
-  PlusCircle,
   FileText,
   Shield,
   UtensilsCrossed,
   UserCheck,
   PowerOff,
-  Store,
 } from 'lucide-react';
 import { Shift, User, Tenant } from '../types/domain';
 import { formatToman } from '../services/financialMath';
 import { PWAInstallButton } from './PWAInstallButton';
+import { playPosBeep } from '../services/soundEffects';
 
 interface HeaderProps {
   tenant: Tenant;
@@ -44,181 +43,296 @@ export const Header: React.FC<HeaderProps> = ({
   baristaActiveCount = 0,
   onUserChange,
 }) => {
+  const [liveClock, setLiveClock] = useState<string>('');
+
+  useEffect(() => {
+    const update = () => {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      setLiveClock(`${h}:${m}:${s}`);
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <header className="bg-stone-900 border-b border-stone-800 sticky top-0 z-30 shadow-md">
-      {/* Top Utility Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs border-b border-stone-800/60">
+    <header className="bg-[#0F223D] border-b border-[#293444] sticky top-0 z-40 transition-all shadow-md select-none">
+      {/* Top Main Brand & Control Bar */}
+      <div className="max-w-[1720px] mx-auto px-3 md:px-5 py-2.5 flex items-center justify-between gap-3">
+        {/* Brand & Branch Identity */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-amber-500 font-bold text-sm tracking-wide">
-            <Coffee className="w-5 h-5 text-amber-500" />
-            <span>SmartOrders</span>
-            <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-1.5 py-0.5 rounded">
-              MVP v1.0
-            </span>
+          <div className="flex items-center bg-[#081425] border border-[#293444] px-3 py-1.5 rounded-lg">
+            <div className="text-left font-black tracking-tighter leading-none pr-1">
+              <span className="text-2xl font-black text-white">100</span>
+              <span className="text-[10px] block text-[#D71921] tracking-widest font-black uppercase">
+                HICH
+              </span>
+            </div>
+            <div className="h-6 w-[1.5px] bg-[#293444] mx-2.5"></div>
+            <div>
+              <h1 className="text-sm font-extrabold text-white flex items-center gap-1.5">
+                <span>{tenant.name || 'قهوه‌فروشی صَد هیچ'}</span>
+                <span className="text-[10px] bg-[#D71921] text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                  ROASTERS
+                </span>
+              </h1>
+              <p className="text-[11px] text-[#9EACB8] flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+                <span>{tenant.address || 'شعبه ۱: اکباتان - فاز ۱ (پیتزا پیت باکس)'}</span>
+              </p>
+            </div>
           </div>
 
-          <div className="h-4 w-px bg-stone-700 hidden sm:block" />
+          {/* Navigation Tabs (POS, Reports, Menu, Audit) */}
+          <nav className="hidden lg:flex items-center bg-[#121417] p-1 rounded-lg border border-[#293444] text-xs font-bold gap-1">
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onTabChange('pos');
+              }}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                currentTab === 'pos'
+                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+              }`}
+            >
+              <UtensilsCrossed className="w-3.5 h-3.5" />
+              <span>صندوق بارتندر (POS)</span>
+            </button>
 
-          <div className="flex items-center gap-1.5 text-stone-300">
-            <Store className="w-3.5 h-3.5 text-stone-400" />
-            <span className="font-medium text-stone-200">{tenant.name}</span>
-          </div>
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onTabChange('reports');
+              }}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                currentTab === 'reports'
+                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>شیفت و گزارش مالی</span>
+            </button>
+
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onTabChange('menu');
+              }}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                currentTab === 'menu'
+                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+              }`}
+            >
+              <Coffee className="w-3.5 h-3.5" />
+              <span>مدیریت منو و قیمت‌ها</span>
+            </button>
+
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onTabChange('audit');
+              }}
+              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                currentTab === 'audit'
+                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>لاگ حسابرسی</span>
+            </button>
+          </nav>
         </div>
 
-        {/* Shift Status & Role Selection */}
-        <div className="flex items-center gap-3">
+        {/* Live Status, Clock & Actions */}
+        <div className="flex items-center gap-2.5">
+          {/* Shift Status Indicator */}
           {activeShift ? (
-            <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-800/50 text-emerald-400 px-2.5 py-1 rounded-md text-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>شیفت فعال:</span>
-              <span className="font-semibold text-emerald-300">
-                موجودی اولیه {formatToman(activeShift.openingCashToman)} تومان
+            <div className="hidden sm:flex items-center gap-1.5 bg-emerald-950/50 border border-emerald-800/60 text-emerald-400 px-2.5 py-1 rounded-lg text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="font-semibold">
+                شیفت فعال: {formatToman(activeShift.openingCashToman)} ت
               </span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 bg-rose-950/40 border border-rose-800/50 text-rose-400 px-2.5 py-1 rounded-md text-xs">
-              <span className="w-2 h-2 rounded-full bg-rose-400" />
-              <span>شیفت کاری بسته است</span>
+            <div className="hidden sm:flex items-center gap-1.5 bg-rose-950/50 border border-rose-800/60 text-rose-400 px-2.5 py-1 rounded-lg text-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+              <span>شیفت بسته است</span>
             </div>
           )}
 
-          {/* User & Role Switcher */}
-          <div className="flex items-center gap-1.5 bg-stone-800 border border-stone-700 rounded-md px-2 py-0.5">
-            <UserCheck className="w-3.5 h-3.5 text-stone-400" />
-            <span className="text-stone-400">کاربر:</span>
-            <select
-              value={activeUser.id}
-              onChange={(e) => onUserChange(e.target.value)}
-              className="bg-transparent text-stone-200 focus:outline-none text-xs font-medium cursor-pointer"
-            >
-              {allUsers.map((u) => (
-                <option key={u.id} value={u.id} className="bg-stone-800 text-stone-100">
-                  {u.fullName} ({u.role === 'OWNER' ? 'مالک' : u.role === 'MANAGER' ? 'مدیر شیفت' : u.role === 'CASHIER' ? 'صندوق‌دار' : 'باریستا'})
-                </option>
-              ))}
-            </select>
+          {/* Live Clock & Cashier Info */}
+          <div className="hidden md:flex flex-col text-left pl-1">
+            <span className="text-xs font-mono font-bold text-white num-heavy leading-tight">
+              {liveClock || '00:00:00'}
+            </span>
+            <span className="text-[10px] text-[#9EACB8] leading-tight">
+              {activeUser.fullName.split(' ')[0]} •{' '}
+              {activeUser.role === 'OWNER'
+                ? 'مالک'
+                : activeUser.role === 'MANAGER'
+                ? 'مدیر'
+                : activeUser.role === 'CASHIER'
+                ? 'صندوق‌دار'
+                : 'باریستا'}
+            </span>
           </div>
 
-          {/* PWA In-App Install Button */}
-          <PWAInstallButton />
-
-          {/* Backup & Restore button (for Owner & Manager) */}
-          {(activeUser.role === 'OWNER' || activeUser.role === 'MANAGER') && (
-            <button
-              onClick={onOpenBackupModal}
-              className="flex items-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 rounded-md px-2.5 py-1 text-xs font-medium transition cursor-pointer"
-              title="پشتیبان‌گیری و بازیابی اطلاعات کافه"
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-400" />
-              <span>پشتیبان‌گیری</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Main Navigation & Quick Action Bar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3">
-        {/* Navigation Tabs */}
-        <nav className="flex items-center gap-1 bg-stone-950/60 p-1 rounded-lg border border-stone-800">
+          {/* Barista KDS Trigger */}
           <button
-            onClick={() => onTabChange('pos')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-sm font-semibold transition-all ${
-              currentTab === 'pos'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-            }`}
+            onClick={() => {
+              playPosBeep('click');
+              onOpenBaristaKds();
+            }}
+            className="flex items-center gap-1.5 bg-[#1B222C] hover:bg-[#222B38] text-white border border-[#293444] px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer relative"
+            title="نمایشگر زنده بار باریستا (KDS)"
           >
-            <UtensilsCrossed className="w-4 h-4" />
-            <span>صندوق فروش (POS)</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('reports')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-sm font-semibold transition-all ${
-              currentTab === 'reports'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>شیفت و گزارش مالی</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('menu')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-sm font-semibold transition-all ${
-              currentTab === 'menu'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-            }`}
-          >
-            <Coffee className="w-4 h-4" />
-            <span>مدیریت منو و قیمت‌ها</span>
-          </button>
-
-          <button
-            onClick={() => onTabChange('audit')}
-            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-md text-sm font-semibold transition-all ${
-              currentTab === 'audit'
-                ? 'bg-amber-600 text-white shadow-sm'
-                : 'text-stone-400 hover:text-stone-200 hover:bg-stone-800/50'
-            }`}
-          >
-            <Shield className="w-4 h-4" />
-            <span>لاگ حسابرسی</span>
-          </button>
-        </nav>
-
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2">
-          {/* Barista Bar KDS Modal Button */}
-          <button
-            onClick={onOpenBaristaKds}
-            className="flex items-center gap-1.5 bg-stone-800 hover:bg-stone-750 text-stone-200 border border-stone-700 px-3 py-1.5 rounded-md text-xs font-semibold transition relative cursor-pointer"
-            title="نمایشگر بار باریستا (KDS) و دریافت زنده فیش‌های تسویه‌شده"
-          >
-            <Coffee className="w-3.5 h-3.5 text-amber-400" />
-            <span>بار باریستا</span>
+            <Coffee className="w-3.5 h-3.5 text-[#F3E9DD]" />
+            <span className="hidden sm:inline">بار باریستا</span>
             {baristaActiveCount > 0 ? (
-              <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full animate-pulse">
+              <span className="bg-[#D71921] text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-[0_0_8px_rgba(215,25,33,0.8)]">
                 {baristaActiveCount}
               </span>
             ) : (
-              <span className="text-[10px] text-stone-400">KDS</span>
+              <span className="text-[10px] text-[#9EACB8]">KDS</span>
             )}
           </button>
 
+          {/* Expense Modal Button */}
           {activeShift && (
             <button
-              onClick={onOpenExpenseModal}
-              className="flex items-center gap-1.5 bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 px-3 py-1.5 rounded-md text-xs font-medium transition cursor-pointer"
+              onClick={() => {
+                playPosBeep('click');
+                onOpenExpenseModal();
+              }}
+              className="hidden lg:flex items-center gap-1 bg-[#1B222C] hover:bg-[#222B38] text-rose-300 border border-[#293444] px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+              title="ثبت هزینه تنخواه از صندوق نقد"
             >
               <DollarSign className="w-3.5 h-3.5 text-rose-400" />
-              <span>ثبت هزینه تنخواه</span>
+              <span>هزینه تنخواه</span>
             </button>
           )}
 
+          {/* Open / Close Shift Button */}
           <button
-            onClick={onOpenShiftModal}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition ${
+            onClick={() => {
+              playPosBeep('click');
+              onOpenShiftModal();
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition cursor-pointer ${
               activeShift
-                ? 'bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700'
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow'
+                ? 'bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/80'
+                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md'
             }`}
           >
             {activeShift ? (
               <>
                 <PowerOff className="w-3.5 h-3.5" />
-                <span>بستن و شمارش شیفت</span>
+                <span className="hidden sm:inline">بستن شیفت</span>
               </>
             ) : (
               <>
                 <Clock className="w-3.5 h-3.5" />
-                <span>باز کردن شیفت کاری</span>
+                <span>شروع شیفت</span>
               </>
             )}
           </button>
+
+          {/* User & Role Switcher */}
+          <div className="flex items-center gap-1 bg-[#121417] border border-[#293444] rounded-lg px-2 py-1">
+            <UserCheck className="w-3.5 h-3.5 text-[#9EACB8]" />
+            <select
+              value={activeUser.id}
+              onChange={(e) => onUserChange(e.target.value)}
+              className="bg-transparent text-white focus:outline-none text-xs font-semibold cursor-pointer max-w-[110px] truncate"
+            >
+              {allUsers.map((u) => (
+                <option key={u.id} value={u.id} className="bg-[#1B222C] text-white">
+                  {u.fullName}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Backup Button (for Owner & Manager) */}
+          {(activeUser.role === 'OWNER' || activeUser.role === 'MANAGER') && (
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onOpenBackupModal();
+              }}
+              className="hidden xl:flex items-center gap-1 bg-[#1B222C] hover:bg-[#222B38] text-[#F3E9DD] border border-[#293444] rounded-lg px-2.5 py-1.5 text-xs font-medium transition cursor-pointer"
+              title="پشتیبان‌گیری و بازیابی اطلاعات"
+            >
+              <Shield className="w-3.5 h-3.5 text-[#F3E9DD]" />
+              <span>پشتیبان</span>
+            </button>
+          )}
+
+          {/* In-app PWA install button */}
+          <PWAInstallButton />
         </div>
+      </div>
+
+      {/* Mobile Navigation Tabs (visible only on small screens) */}
+      <div className="lg:hidden border-t border-[#293444] px-3 py-1.5 flex items-center justify-around bg-[#081425] text-xs font-bold overflow-x-auto scrollbar-none">
+        <button
+          onClick={() => {
+            playPosBeep('click');
+            onTabChange('pos');
+          }}
+          className={`px-2.5 py-1 rounded flex items-center gap-1 ${
+            currentTab === 'pos' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
+          }`}
+        >
+          <UtensilsCrossed className="w-3 h-3" />
+          <span>صندوق (POS)</span>
+        </button>
+
+        <button
+          onClick={() => {
+            playPosBeep('click');
+            onTabChange('reports');
+          }}
+          className={`px-2.5 py-1 rounded flex items-center gap-1 ${
+            currentTab === 'reports' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
+          }`}
+        >
+          <FileText className="w-3 h-3" />
+          <span>گزارشات</span>
+        </button>
+
+        <button
+          onClick={() => {
+            playPosBeep('click');
+            onTabChange('menu');
+          }}
+          className={`px-2.5 py-1 rounded flex items-center gap-1 ${
+            currentTab === 'menu' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
+          }`}
+        >
+          <Coffee className="w-3 h-3" />
+          <span>منو</span>
+        </button>
+
+        <button
+          onClick={() => {
+            playPosBeep('click');
+            onTabChange('audit');
+          }}
+          className={`px-2.5 py-1 rounded flex items-center gap-1 ${
+            currentTab === 'audit' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
+          }`}
+        >
+          <Shield className="w-3 h-3" />
+          <span>حسابرسی</span>
+        </button>
       </div>
     </header>
   );
