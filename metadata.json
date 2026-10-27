@@ -1,0 +1,6 @@
+{
+  "name": "SmartOrders",
+  "description": "Cloud-based POS and operational management SaaS for independent cafes and small food-service businesses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

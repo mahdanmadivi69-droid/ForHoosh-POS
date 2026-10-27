@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SmartOrders | سامانه مدیریت سفارش و صندوق کافه</title>
+    <meta name="description" content="سامانه ابری و هوشمند مدیریت صندوق، شیفت، سفارشات و گزارشات مالی کافه‌ها" />
+    <meta property="og:title" content="SmartOrders | سامانه مدیریت سفارش و صندوق کافه" />
+    <meta property="og:description" content="سامانه ابری و هوشمند مدیریت صندوق، شیفت، سفارشات و گزارشات مالی کافه‌ها" />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#1c1917" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="SmartOrders" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <script>
+      (function() {
+        // Fix for browser extensions attempting to assign to window.fetch when it only has a getter
+        try {
+          var _fetch = window.fetch;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return _fetch;
+            },
+            set: function(fn) {
+              _fetch = fn;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (e) {}
+
+        // 1. Intercept console.error and console.warn to suppress [vite] WebSocket errors in proxied environments
+        var origConsoleError = console.error;
+        console.error = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var str = args.map(function(a) {
+            return (a instanceof Error) ? (a.message + ' ' + (a.stack || '')) : (typeof a === 'object' ? JSON.stringify(a) : String(a));
+          }).join(' ');
+          if (
+            str.indexOf('WebSocket closed without opened') !== -1 ||
+            str.indexOf('[vite] Error: WebSocket') !== -1 ||
+            (str.indexOf('@vite/client') !== -1 && str.indexOf('WebSocket') !== -1)
+          ) {
+            return;
+          }
+          return origConsoleError.apply(console, arguments);
+        };
+
+        var origConsoleWarn = console.warn;
+        console.warn = function() {
+          var args = Array.prototype.slice.call(arguments);
+          var str = args.map(function(a) { return String(a); }).join(' ');
+          if (str.indexOf('[vite]') !== -1 && str.indexOf('WebSocket') !== -1) {
+            return;
+          }
+          return origConsoleWarn.apply(console, arguments);
+        };
+
+        // 2. Intercept window.WebSocket for Vite HMR so it stays in OPEN readyState
+        if (typeof window !== 'undefined' && window.WebSocket) {
+          var NativeWebSocket = window.WebSocket;
+          var MockWebSocket = function(url, protocols) {
+            if (
+              protocols === 'vite-hmr' ||
+              (typeof url === 'string' && (
+                url.indexOf('vite') !== -1 ||
+                url.indexOf('24678') !== -1 ||
+                url.indexOf('token=') !== -1 ||
+                url.indexOf('ais-dev') !== -1 ||
+                url.indexOf('run.app') !== -1 ||
+                url.indexOf('localhost') !== -1
+              ))
+            ) {
+              var listeners = { open: [], message: [], close: [], error: [] };
+              var _onopen = null;
+              var dummy = {
+                url: url,
+                readyState: 1, // 1 = OPEN (isOpened = socket.readyState === socket.OPEN becomes true)
+                CONNECTING: 0,
+                OPEN: 1,
+                CLOSING: 2,
+                CLOSED: 3,
+                bufferedAmount: 0,
+                protocol: 'vite-hmr',
+                extensions: '',
+                binaryType: 'blob',
+                onclose: null,
+                onerror: null,
+                onmessage: null,
+                send: function() {},
+                close: function() {
+                  dummy.readyState = 3;
+                },
+                addEventListener: function(type, listener) {
+                  if (typeof listener !== 'function') return;
+                  if (!listeners[type]) listeners[type] = [];
+                  listeners[type].push(listener);
+                  if (type === 'open') {
+                    setTimeout(function() {
+                      try {
+                        listener.call(dummy, { type: 'open', target: dummy });
+                      } catch (e) {}
+                    }, 0);
+                  }
+                },
+                removeEventListener: function(type, listener) {
+                  if (listeners[type]) {
+                    listeners[type] = listeners[type].filter(function(l) { return l !== listener; });
+                  }
+                },
+                dispatchEvent: function() { return false; }
+              };
+
+              Object.defineProperty(dummy, 'onopen', {
+                get: function() { return _onopen; },
+                set: function(fn) {
+                  _onopen = fn;
+                  if (typeof fn === 'function') {
+                    setTimeout(function() {
+                      try { fn.call(dummy, { type: 'open', target: dummy }); } catch (e) {}
+                    }, 0);
+                  }
+                }
+              });
+
+              return dummy;
+            }
+            return new NativeWebSocket(url, protocols);
+          };
+          MockWebSocket.prototype = NativeWebSocket.prototype;
+          MockWebSocket.CONNECTING = 0;
+          MockWebSocket.OPEN = 1;
+          MockWebSocket.CLOSING = 2;
+          MockWebSocket.CLOSED = 3;
+          window.WebSocket = MockWebSocket;
+        }
+
+        // 3. Prevent external extension errors & HMR WebSocket disconnects from bubbling up to the application
+        window.addEventListener('error', function(event) {
+          if (
+            (event.filename && event.filename.indexOf('chrome-extension://') !== -1) ||
+            (event.message && event.message.indexOf('Cannot set property fetch') !== -1) ||
+            (event.message && (event.message.indexOf('WebSocket') !== -1 || event.message.indexOf('ws') !== -1)) ||
+            (event.filename && event.filename.indexOf('@vite/client') !== -1)
+          ) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          var reason = event.reason ? (event.reason.message || String(event.reason)) : '';
+          var stack = (event.reason && event.reason.stack) ? String(event.reason.stack) : '';
+          if (
+            reason.indexOf('WebSocket') !== -1 ||
+            reason.indexOf('@vite/client') !== -1 ||
+            stack.indexOf('WebSocket') !== -1 ||
+            stack.indexOf('@vite/client') !== -1
+          ) {
+            event.stopImmediatePropagation();
+            event.preventDefault();
+            return true;
+          }
+        }, true);
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  </head>
+  <body class="bg-stone-900 text-stone-100 antialiased selection:bg-amber-600 selection:text-white" style="font-family: 'Vazirmatn', system-ui, sans-serif;">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
