@@ -1,3 +1,4 @@
+import { printThermalReceipt } from '../services/receiptPrinter';
 import React from 'react';
 import { Printer, X, Clock, Coffee, ShieldCheck, AlertTriangle, UserCheck } from 'lucide-react';
 import { Shift, Tenant, Order, Payment, Expense, User } from '../types/domain';

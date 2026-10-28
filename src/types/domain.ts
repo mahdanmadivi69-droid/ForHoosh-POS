@@ -5,11 +5,17 @@
 
 export type UserRole = 'OWNER' | 'MANAGER' | 'CASHIER' | 'BARISTA';
 
+export function isManagerOrOwner(role: UserRole): boolean {
+  return role === 'OWNER' || role === 'MANAGER';
+}
+
 export interface User {
   id: string;
   tenantId: string;
   fullName: string;
   phoneNumber: string;
+  username: string;
+  password?: string;
   role: UserRole;
   isActive: boolean;
 }

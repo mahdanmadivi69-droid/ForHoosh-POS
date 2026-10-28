@@ -16,8 +16,10 @@ import {
   Expense,
   AuditLog,
   PaymentMethod,
+  isManagerOrOwner,
 } from './types/domain';
 import { Header } from './components/Header';
+import { LoginView } from './components/LoginView';
 import { PosView } from './components/PosView';
 import { ShiftModal } from './components/ShiftModal';
 import { ExpenseModal } from './components/ExpenseModal';
@@ -45,6 +47,7 @@ export default function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(SmartOrdersStore.getAuditLogs());
 
   // UI state
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
   const [currentTab, setCurrentTab] = useState<'pos' | 'reports' | 'menu' | 'audit'>('pos');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -96,6 +99,21 @@ export default function App() {
     setPayments(SmartOrdersStore.getPayments());
     setExpenses(SmartOrdersStore.getExpenses());
     setAuditLogs(SmartOrdersStore.getAuditLogs());
+  };
+
+  // RBAC Tab Protection Guard
+  useEffect(() => {
+    if (!isManagerOrOwner(activeUser.role) && (currentTab === 'menu' || currentTab === 'audit')) {
+      setCurrentTab('pos');
+      showToast('دسترسی به بخش مدیریت منو و حسابرسی فقط برای مدیر و مالک مجاز است.');
+    }
+  }, [activeUser.role, currentTab]);
+
+  // User Authentication Handlers
+  const handleLogout = () => {
+    SmartOrdersStore.logout();
+    setIsAuthenticated(false);
+    showToast('شما با موفقیت از سیستم خارج شدید.');
   };
 
   // User Switching
@@ -223,6 +241,22 @@ export default function App() {
     }
   };
 
+  // Unauthenticated Barrier: Must log in with username & password before entering POS
+  if (!isAuthenticated) {
+    return (
+      <LoginView
+        tenant={tenant}
+        onLoginSuccess={(loggedInUser) => {
+          SmartOrdersStore.setActiveUserId(loggedInUser.id);
+          setActiveUser(loggedInUser);
+          setIsAuthenticated(true);
+          refreshState();
+          showToast(`خوش آمدید، ${loggedInUser.fullName}`);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#121417] text-white flex flex-col font-sans selection:bg-[#D71921] selection:text-white">
       {/* Toast Notification */}
@@ -254,6 +288,7 @@ export default function App() {
         onOpenBaristaKds={() => setIsBaristaKdsOpen(true)}
         baristaActiveCount={baristaActiveCount}
         onUserChange={handleUserChange}
+        onLogout={handleLogout}
       />
 
       {/* Main View Area */}

@@ -8,8 +8,10 @@ import {
   UtensilsCrossed,
   UserCheck,
   PowerOff,
+  LogOut,
+  Lock,
 } from 'lucide-react';
-import { Shift, User, Tenant } from '../types/domain';
+import { Shift, User, Tenant, isManagerOrOwner } from '../types/domain';
 import { formatToman } from '../services/financialMath';
 import { PWAInstallButton } from './PWAInstallButton';
 import { playPosBeep } from '../services/soundEffects';
@@ -27,6 +29,7 @@ interface HeaderProps {
   onOpenBaristaKds: () => void;
   baristaActiveCount?: number;
   onUserChange: (userId: string) => void;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -42,7 +45,9 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenBaristaKds,
   baristaActiveCount = 0,
   onUserChange,
+  onLogout,
 }) => {
+  const isManager = isManagerOrOwner(activeUser.role);
   const [liveClock, setLiveClock] = useState<string>('');
 
   useEffect(() => {
@@ -118,35 +123,59 @@ export const Header: React.FC<HeaderProps> = ({
               <span>شیفت و گزارش مالی</span>
             </button>
 
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('menu');
-              }}
-              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                currentTab === 'menu'
-                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
-              }`}
-            >
-              <Coffee className="w-3.5 h-3.5" />
-              <span>مدیریت منو و قیمت‌ها</span>
-            </button>
+            {/* Menu tab: Accessible only to Owner & Manager */}
+            {isManager ? (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('menu');
+                }}
+                className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                  currentTab === 'menu'
+                    ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                    : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                }`}
+              >
+                <Coffee className="w-3.5 h-3.5" />
+                <span>مدیریت منو و قیمت‌ها</span>
+              </button>
+            ) : (
+              <button
+                disabled
+                title="مخصوص مدیر و مالک (برای صندوق‌دار و باریستا قفل است)"
+                className="px-3 py-1.5 rounded flex items-center gap-1.5 text-[#526071] bg-[#121417]/50 cursor-not-allowed opacity-60 border border-transparent"
+              >
+                <Lock className="w-3 h-3 text-amber-500/70" />
+                <span>منو (قفل مدیر)</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('audit');
-              }}
-              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                currentTab === 'audit'
-                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>لاگ حسابرسی</span>
-            </button>
+            {/* Audit tab: Accessible only to Owner & Manager */}
+            {isManager ? (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('audit');
+                }}
+                className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                  currentTab === 'audit'
+                    ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                    : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>لاگ حسابرسی</span>
+              </button>
+            ) : (
+              <button
+                disabled
+                title="مخصوص مدیر و مالک (برای صندوق‌دار و باریستا قفل است)"
+                className="px-3 py-1.5 rounded flex items-center gap-1.5 text-[#526071] bg-[#121417]/50 cursor-not-allowed opacity-60 border border-transparent"
+              >
+                <Lock className="w-3 h-3 text-amber-500/70" />
+                <span>حسابرسی (قفل)</span>
+              </button>
+            )}
           </nav>
         </div>
 
@@ -260,6 +289,19 @@ export const Header: React.FC<HeaderProps> = ({
             </select>
           </div>
 
+          {/* Logout / Lock Button */}
+          <button
+            onClick={() => {
+              playPosBeep('click');
+              onLogout();
+            }}
+            className="flex items-center gap-1.5 bg-[#1B222C] hover:bg-rose-950/60 text-[#CAD5E2] hover:text-rose-200 border border-[#293444] hover:border-rose-800/60 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+            title="خروج از حساب و بازگشت به صفحه لاگین"
+          >
+            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden sm:inline">خروج</span>
+          </button>
+
           {/* Backup Button (for Owner & Manager) */}
           {(activeUser.role === 'OWNER' || activeUser.role === 'MANAGER') && (
             <button
@@ -308,31 +350,55 @@ export const Header: React.FC<HeaderProps> = ({
           <span>گزارشات</span>
         </button>
 
-        <button
-          onClick={() => {
-            playPosBeep('click');
-            onTabChange('menu');
-          }}
-          className={`px-2.5 py-1 rounded flex items-center gap-1 ${
-            currentTab === 'menu' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
-          }`}
-        >
-          <Coffee className="w-3 h-3" />
-          <span>منو</span>
-        </button>
+        {/* Menu Tab (Mobile) */}
+        {isManager ? (
+          <button
+            onClick={() => {
+              playPosBeep('click');
+              onTabChange('menu');
+            }}
+            className={`px-2.5 py-1 rounded flex items-center gap-1 ${
+              currentTab === 'menu' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
+            }`}
+          >
+            <Coffee className="w-3 h-3" />
+            <span>منو</span>
+          </button>
+        ) : (
+          <button
+            disabled
+            className="px-2 py-1 rounded flex items-center gap-1 text-[#526071] opacity-50 cursor-not-allowed"
+            title="مخصوص مدیر و مالک"
+          >
+            <Lock className="w-3 h-3 text-amber-500/70" />
+            <span>منو</span>
+          </button>
+        )}
 
-        <button
-          onClick={() => {
-            playPosBeep('click');
-            onTabChange('audit');
-          }}
-          className={`px-2.5 py-1 rounded flex items-center gap-1 ${
-            currentTab === 'audit' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
-          }`}
-        >
-          <Shield className="w-3 h-3" />
-          <span>حسابرسی</span>
-        </button>
+        {/* Audit Tab (Mobile) */}
+        {isManager ? (
+          <button
+            onClick={() => {
+              playPosBeep('click');
+              onTabChange('audit');
+            }}
+            className={`px-2.5 py-1 rounded flex items-center gap-1 ${
+              currentTab === 'audit' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
+            }`}
+          >
+            <Shield className="w-3 h-3" />
+            <span>حسابرسی</span>
+          </button>
+        ) : (
+          <button
+            disabled
+            className="px-2 py-1 rounded flex items-center gap-1 text-[#526071] opacity-50 cursor-not-allowed"
+            title="مخصوص مدیر و مالک"
+          >
+            <Lock className="w-3 h-3 text-amber-500/70" />
+            <span>حسابرسی</span>
+          </button>
+        )}
       </div>
     </header>
   );

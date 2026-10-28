@@ -1,3 +1,4 @@
+import { printThermalReceipt } from '../services/receiptPrinter';
 import React, { useEffect, useState } from 'react';
 import { SegmentGroup, Dialog, Portal } from '@ark-ui/react';
 import { OfflineSyncQueue } from './offline-sync-queue';

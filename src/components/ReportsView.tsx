@@ -19,6 +19,7 @@ import {
   BarChart3,
   Download,
   Coins,
+  Lock,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -29,7 +30,7 @@ import {
   CartesianGrid,
   Tooltip,
 } from 'recharts';
-import { Shift, Order, Payment, Expense, User, Tenant } from '../types/domain';
+import { Shift, Order, Payment, Expense, User, Tenant, isManagerOrOwner } from '../types/domain';
 import {
   formatToman,
   compileShiftReport,
@@ -921,21 +922,30 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                               </button>
 
                               {/* Manager cancellation button for completed orders */}
-                              {order.status === 'COMPLETED' &&
-                                (activeUser.role === 'OWNER' || activeUser.role === 'MANAGER') && (
+                              {order.status === 'COMPLETED' && (
+                                isManagerOrOwner(activeUser.role) ? (
                                   <button
                                     onClick={() => {
                                       setOrderToCancel(order);
                                       setCancellationReasonInput('');
                                       setCancelError('');
                                     }}
-                                    className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white p-1.5 rounded-lg border border-rose-900/60 transition inline-flex items-center gap-1 text-[11px]"
-                                    title="ابطال این سفارش"
+                                    className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 hover:text-white p-1.5 rounded-lg border border-rose-900/60 transition inline-flex items-center gap-1 text-[11px] cursor-pointer"
+                                    title="ابطال این سفارش (دسترسی مدیریت)"
                                   >
                                     <X className="w-3.5 h-3.5" />
                                     <span>ابطال</span>
                                   </button>
-                                )}
+                                ) : (
+                                  <span
+                                    className="bg-stone-900/80 text-stone-500 border border-stone-800 p-1.5 rounded-lg inline-flex items-center gap-1 text-[10px] cursor-not-allowed opacity-60"
+                                    title="تدوین و لغو سفارش فقط با دسترسی مدیر و مالک امکان‌پذیر است"
+                                  >
+                                    <Lock className="w-3 h-3 text-amber-500/60" />
+                                    <span>لغو (قفل)</span>
+                                  </span>
+                                )
+                              )}
                             </div>
                           </td>
                         </tr>

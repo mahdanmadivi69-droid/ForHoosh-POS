@@ -4,6 +4,7 @@ import { Printer, X, CheckCircle, Coffee, ShieldCheck } from 'lucide-react';
 import { Order, Payment } from '../types/domain';
 import { formatToman } from '../services/financialMath';
 import { playPosBeep } from '../services/soundEffects';
+import { printThermalReceipt } from '../services/receiptPrinter';
 
 interface ReceiptPreviewProps {
   order: Order;

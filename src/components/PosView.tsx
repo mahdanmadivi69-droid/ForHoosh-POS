@@ -23,6 +23,7 @@ import {
   Store,
   Layers,
   ArrowRight,
+  Lock,
 } from 'lucide-react';
 import {
   Category,
@@ -35,6 +36,7 @@ import {
   Shift,
   Tenant,
   User,
+  isManagerOrOwner,
 } from '../types/domain';
 import {
   formatToman,
@@ -55,6 +57,7 @@ import {
   printDirectWebBluetooth,
 } from '../services/escposThermalPrinter';
 import { playPosBeep } from '../services/soundEffects';
+import { printThermalReceipt } from '../services/receiptPrinter';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -90,6 +93,7 @@ export const PosView: React.FC<PosViewProps> = ({
   onOrderCompleted,
   onOpenShiftRequired,
 }) => {
+  const canEditFinancials = isManagerOrOwner(activeUser.role);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [roastFilter, setRoastFilter] = useState<'all' | 'medium' | 'dark' | 'light'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -343,6 +347,10 @@ export const PosView: React.FC<PosViewProps> = ({
   };
 
   const handleApplyDiscountPercent = (percent: number) => {
+    if (!canEditFinancials && percent > 0) {
+      alert('دسترسی تدوین تخفیف فقط برای مدیر و مالک سیستم مجاز است.');
+      return;
+    }
     playPosBeep('click');
     setDiscountPercent(percent);
     const calculatedDiscount = Math.round((grossAmountToman * percent) / 100);
@@ -558,11 +566,7 @@ export const PosView: React.FC<PosViewProps> = ({
         createdByUserName: completedReceiptOrder.createdByUserName,
       };
 
-      const canvas = renderReceiptToCanvas(orderAggregate, {
-        shopName: tenant.name || 'قهوه‌فروشی صَد هیچ (100 HICH)',
-        shopPhone: tenant.phone || '021-44668090',
-        shopAddress: tenant.address || 'اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس',
-      });
+      const canvas = renderReceiptToCanvas(orderAggregate, tenant);
 
       const rasterBytes = convertCanvasToEscPosRaster(canvas);
 
@@ -801,7 +805,7 @@ export const PosView: React.FC<PosViewProps> = ({
                   }`}
                 >
                   {/* Card Header & Badges */}
-                  <div className="p-3.5 pb-2.5">
+                  <div className="p-3 pb-2 flex-1 flex flex-col justify-between">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {item.roastLevelText ? (
@@ -877,10 +881,10 @@ export const PosView: React.FC<PosViewProps> = ({
                     {/* Taste Notes Tags */}
                     {item.notes && item.notes.length > 0 && (
                       <div className="flex flex-wrap gap-1 mt-2.5">
-                        {item.notes.map((note, nIdx) => (
+                        {item.notes.slice(0, 3).map((note, nIdx) => (
                           <span
                             key={nIdx}
-                            className="text-[10px] bg-[#121417] text-[#9EACB8] px-2 py-0.5 rounded border border-[#293444]"
+                            className="text-[9.5px] bg-[#121417] text-[#9EACB8] px-1.5 py-0.5 rounded border border-[#293444] leading-tight"
                           >
                             {note}
                           </span>
@@ -890,30 +894,30 @@ export const PosView: React.FC<PosViewProps> = ({
                   </div>
 
                   {/* Card Bottom Bar: Price & Action CTA */}
-                  <div className="p-3.5 pt-2.5 bg-[#121417]/60 border-t border-[#293444] flex items-center justify-between gap-3">
-                    <div>
-                      <span className="text-[10px] text-[#9EACB8] block leading-none mb-1">
+                  <div className="px-3 py-2 bg-[#121417]/90 border-t border-[#293444] rounded-b-xl flex items-center justify-between gap-1.5 mt-auto overflow-hidden">
+                    <div className="min-w-0 pr-0.5">
+                      <span className="text-[9px] text-[#9EACB8] block leading-none mb-0.5 font-medium">
                         قیمت پایه:
                       </span>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-base md:text-lg font-black text-white num-heavy">
+                        <span className="text-sm font-black text-white num-heavy tracking-tight">
                           {formatToman(item.priceToman)}
                         </span>
-                        <span className="text-[10px] text-[#9EACB8]">تومان</span>
+                        <span className="text-[9px] text-[#9EACB8] shrink-0">تومان</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {/* Customize / Modifiers button */}
                       <button
                         type="button"
                         onClick={(e) => handleOpenModifierModal(e, item)}
-                        title="تنظیم درجه آسیاب یا مودیفایرهای نوشیدنی"
-                        className="bg-[#0F223D] hover:bg-[#293444] border border-[#293444] text-white text-xs px-2.5 py-2 rounded-lg font-bold flex items-center gap-1 transition cursor-pointer"
+                        title={item.isBean ? 'تنظیم درجه آسیاب' : 'تنظیم مودیفایر'}
+                        className="bg-[#0F223D] hover:bg-[#222B38] border border-[#293444] text-[#F3E9DD] h-7 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition cursor-pointer text-xs shrink-0 active:scale-95"
                       >
-                        <Sliders className="w-3.5 h-3.5 text-[#F3E9DD]" />
-                        <span className="hidden sm:inline">
-                          {item.isBean ? 'آسیاب' : 'مودیفایر'}
+                        <Sliders className="w-3 h-3 text-[#F3E9DD] shrink-0" />
+                        <span className="text-[10px] font-semibold">
+                          {item.isBean ? 'آسیاب' : 'آپشن'}
                         </span>
                       </button>
 
@@ -925,10 +929,11 @@ export const PosView: React.FC<PosViewProps> = ({
                           handleAddItem(item);
                         }}
                         disabled={isOutOfStock}
-                        className="bg-[#D71921] hover:bg-[#B8141B] active:scale-95 disabled:bg-stone-700 text-white p-2 md:px-3 md:py-2 rounded-lg font-black flex items-center gap-1 shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)] transition cursor-pointer"
+                        title="افزودن به سفارش"
+                        className="bg-[#D71921] hover:bg-[#B8141B] active:scale-95 disabled:bg-stone-700 text-white h-7 px-2.5 rounded-lg font-bold flex items-center justify-center gap-1 shadow-md shadow-[#D71921]/30 transition cursor-pointer text-xs shrink-0"
                       >
-                        <Plus className="w-4 h-4" />
-                        <span className="hidden md:inline text-xs">افزودن</span>
+                        <Plus className="w-3.5 h-3.5 shrink-0" />
+                        <span className="text-xs font-black">افزودن</span>
                       </button>
                     </div>
                   </div>
@@ -1111,7 +1116,15 @@ export const PosView: React.FC<PosViewProps> = ({
         {/* Discount & POS Keypad Accelerators */}
         <div className="px-3 pt-2 pb-1 border-t border-[#293444] bg-[#121417]/40">
           <div className="flex items-center justify-between text-[11px] text-[#9EACB8] mb-1.5">
-            <span>اعمال تخفیف سریع:</span>
+            <span className="flex items-center gap-1.5">
+              <span>تخفیف سریع فاکتور:</span>
+              {!canEditFinancials && (
+                <span className="flex items-center gap-0.5 text-[9px] bg-amber-950/60 text-amber-300 border border-amber-800/60 px-1.5 py-0.2 rounded font-bold">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span>قفل مدیر</span>
+                </span>
+              )}
+            </span>
             <span className="text-[#F3E9DD] font-bold">
               {discountPercent > 0 ? `${discountPercent}٪ تخفیف فعال` : 'بدون تخفیف'}
             </span>
@@ -1130,33 +1143,45 @@ export const PosView: React.FC<PosViewProps> = ({
             </button>
             <button
               type="button"
+              disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(5)}
-              className={`py-1 rounded border text-[11px] cursor-pointer ${
-                discountPercent === 5
-                  ? 'bg-[#0F223D] border-[#D71921] text-white'
-                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
+              className={`py-1 rounded border text-[11px] ${
+                !canEditFinancials
+                  ? 'opacity-40 cursor-not-allowed bg-[#1B222C] border-[#293444] text-[#9EACB8]'
+                  : discountPercent === 5
+                  ? 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white cursor-pointer'
               }`}
             >
               ۵٪ ویژه
             </button>
             <button
               type="button"
+              disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(10)}
-              className={`py-1 rounded border text-[11px] cursor-pointer ${
-                discountPercent === 10
-                  ? 'bg-[#0F223D] border-[#D71921] text-white'
-                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
+              className={`py-1 rounded border text-[11px] ${
+                !canEditFinancials
+                  ? 'opacity-40 cursor-not-allowed bg-[#1B222C] border-[#293444] text-[#9EACB8]'
+                  : discountPercent === 10
+                  ? 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white cursor-pointer'
               }`}
             >
               ۱۰٪ باریستا
             </button>
             <button
               type="button"
+              disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(15)}
-              className={`py-1 rounded border text-[11px] cursor-pointer ${
-                discountPercent === 15
-                  ? 'bg-[#0F223D] border-[#D71921] text-white'
-                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
+              className={`py-1 rounded border text-[11px] ${
+                !canEditFinancials
+                  ? 'opacity-40 cursor-not-allowed bg-[#1B222C] border-[#293444] text-[#9EACB8]'
+                  : discountPercent === 15
+                  ? 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
+                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white cursor-pointer'
               }`}
             >
               ۱۵٪ همکار

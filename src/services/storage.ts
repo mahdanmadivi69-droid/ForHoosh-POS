@@ -19,6 +19,7 @@ const STORAGE_KEYS = {
   TENANT: 'smartorders_tenant_v1',
   USERS: 'smartorders_users_v1',
   ACTIVE_USER_ID: 'smartorders_active_user_id_v1',
+  IS_LOGGED_IN: 'smartorders_is_logged_in_v1',
   CATEGORIES: 'smartorders_categories_v1',
   MENU_ITEMS: 'smartorders_menu_items_v1',
   SHIFTS: 'smartorders_shifts_v1',
@@ -41,33 +42,41 @@ const DEFAULT_TENANT: Tenant = {
 const DEFAULT_USERS: User[] = [
   {
     id: 'user-01',
-    tenantId: 'tenant-naranj-01',
+    tenantId: 'tenant-100hich-01',
     fullName: 'مهدان مددی (مدیر و مالک)',
     phoneNumber: '09120000001',
+    username: 'admin',
+    password: '123',
     role: 'OWNER',
     isActive: true,
   },
   {
     id: 'user-02',
-    tenantId: 'tenant-naranj-01',
+    tenantId: 'tenant-100hich-01',
     fullName: 'سارا رضایی (سرپرست شیفت)',
     phoneNumber: '09120000002',
+    username: 'sara',
+    password: '123',
     role: 'MANAGER',
     isActive: true,
   },
   {
     id: 'user-03',
-    tenantId: 'tenant-naranj-01',
+    tenantId: 'tenant-100hich-01',
     fullName: 'علی مرادی (صندوق‌دار)',
     phoneNumber: '09120000003',
+    username: 'ali',
+    password: '123',
     role: 'CASHIER',
     isActive: true,
   },
   {
     id: 'user-04',
-    tenantId: 'tenant-naranj-01',
+    tenantId: 'tenant-100hich-01',
     fullName: 'نیما کمالی (باریستا)',
     phoneNumber: '09120000004',
+    username: 'nima',
+    password: '123',
     role: 'BARISTA',
     isActive: true,
   },
@@ -432,7 +441,7 @@ export class SmartOrdersStore {
     return merged;
   }
 
-  // Users
+  // Users & Authentication
   static getUsers(): User[] {
     return load(STORAGE_KEYS.USERS, DEFAULT_USERS);
   }
@@ -445,6 +454,59 @@ export class SmartOrdersStore {
 
   static setActiveUserId(userId: string): void {
     save(STORAGE_KEYS.ACTIVE_USER_ID, userId);
+  }
+
+  static isAuthenticated(): boolean {
+    if (typeof window === 'undefined') return false;
+    try {
+      // Require active session so freshly opening the application starts at Login
+      return window.sessionStorage?.getItem('smartorders_session_active_v1') === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  static login(usernameOrPhone: string, password: string): { success: boolean; user?: User; error?: string } {
+    const trimmed = (usernameOrPhone || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+    if (!trimmed || !cleanPass) {
+      return { success: false, error: 'لطفاً نام کاربری و رمز عبور را وارد نمایید.' };
+    }
+
+    const users = this.getUsers();
+    const matched = users.find(
+      (u) =>
+        u.isActive &&
+        (u.username?.toLowerCase() === trimmed ||
+          u.phoneNumber === trimmed ||
+          u.phoneNumber.replace(/^0/, '') === trimmed.replace(/^0/, ''))
+    );
+
+    if (!matched) {
+      return { success: false, error: 'کاربری با این مشخصات یافت نشد یا حساب غیرفعال است.' };
+    }
+
+    if (matched.password && matched.password !== cleanPass) {
+      return { success: false, error: 'رمز عبور وارد شده نادرست است.' };
+    }
+
+    this.setActiveUserId(matched.id);
+    try {
+      window.sessionStorage?.setItem('smartorders_session_active_v1', 'true');
+    } catch {}
+    save(STORAGE_KEYS.IS_LOGGED_IN, true);
+    this.addAuditLog('USER_LOGIN', 'User', matched.id, `ورود موفق کاربر ${matched.fullName} (${matched.username}) با نقش ${matched.role}`);
+
+    return { success: true, user: matched };
+  }
+
+  static logout(): void {
+    const user = this.getActiveUser();
+    try {
+      window.sessionStorage?.removeItem('smartorders_session_active_v1');
+    } catch {}
+    save(STORAGE_KEYS.IS_LOGGED_IN, false);
+    this.addAuditLog('USER_LOGOUT', 'User', user.id, `خروج کاربر ${user.fullName}`);
   }
 
   // Categories
@@ -862,6 +924,24 @@ export class SmartOrdersStore {
     }
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
       save(STORAGE_KEYS.USERS, DEFAULT_USERS);
+    } else {
+      const users = this.getUsers();
+      let updated = false;
+      const patched = users.map((u) => {
+        const def = DEFAULT_USERS.find((du) => du.id === u.id);
+        if (!u.username || !u.password) {
+          updated = true;
+          return {
+            ...u,
+            username: u.username || def?.username || u.phoneNumber,
+            password: u.password || def?.password || '123',
+          };
+        }
+        return u;
+      });
+      if (updated) {
+        save(STORAGE_KEYS.USERS, patched);
+      }
     }
     if (!localStorage.getItem(STORAGE_KEYS.TENANT)) {
       save(STORAGE_KEYS.TENANT, DEFAULT_TENANT);
