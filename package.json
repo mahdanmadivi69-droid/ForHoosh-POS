@@ -1,7 +1,9 @@
 {
-  "name": "react-example",
+  "name": "smartorders-pos",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "سامانه مدیریت صندوق و سفارشات کافه ۱۰۰هیچ (100 Hich Coffee Roasters)",
+  "homepage": "https://mahdanmadivi69-droid.github.io/ForHoosh-POS",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",

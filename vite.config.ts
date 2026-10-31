@@ -5,7 +5,11 @@ import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(() => {
+  const isGitHubPages = process.env.GITHUB_PAGES === 'true';
+  const basePath = isGitHubPages ? '/ForHoosh-POS/' : '/';
+
   return {
+    base: basePath,
     plugins: [
       react(),
       tailwindcss(),
@@ -13,15 +17,15 @@ export default defineConfig(() => {
         registerType: 'autoUpdate',
         includeAssets: ['icon.svg', 'apple-touch-icon.png'],
         manifest: {
-          id: '/',
+          id: basePath,
           name: 'SmartOrders - سامانه صندوق کافه ۱۰۰هیچ',
           short_name: 'SmartOrders',
           description: 'سامانه ابری و هوشمند مدیریت صندوق، شیفت، سفارشات و گزارشات مالی کافه ۱۰۰هیچ',
           theme_color: '#0F223D',
           background_color: '#121417',
           display: 'standalone',
-          start_url: '/',
-          scope: '/',
+          start_url: basePath,
+          scope: basePath,
           icons: [
             {
               src: '/pwa-192x192.png',

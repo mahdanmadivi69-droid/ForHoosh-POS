@@ -1,11 +1,31 @@
-# وضعیت پروژه: CAFE OS (PROJECT STATUS)
-**تاریخ آخرین به‌روزرسانی:** ۰۵/۰۸/۱۴۰۵  
+# وضعیت پروژه: SmartOrders POS (PROJECT STATUS)
+**تاریخ آخرین به‌روزرسانی:** ۱۰/۰۸/۱۴۰۵  
 **پایلوت هدف:** قهوه‌فروشی ۱۰۰هیچ (100 Hich Specialty Coffee Lab)  
-**فاز جاری:** فاز ۴ (گردش کار سفارش، تسویه، کش آفلاین IndexedDB، سرویس اتمیک PostgreSQL RLS، دیسپچر بار باریستا، و کنترلر همگام‌سازی سوکت)
+**فاز جاری:** فاز ۵ (دیتابیس آفلاین Dexie، کنترل رسپی و موجودی BOM، مودال پین‌کد مدیر، ایزولاسیون پرینت حرارتی ۸۰mm و دپلویمنت خودکار گیت‌هاب)
 
 ---
 
-## ۱. وضعیت نیازمندی‌های فاز ۴ و آزمون‌ها (Verification & Test Evidence)
+## ۱. وضعیت نیازمندی‌های فاز ۵ و آزمون‌ها (Verification & Test Evidence)
+- **پایگاه‌داده آفلاین کلاینت با Dexie (IndexedDB Native Database):** [VERIFIED]
+  - پیاده‌سازی کامل دیتابیس لوکال `CafeOS_LocalDB` در `src/db/cafeDb.ts` بر پایه کتابخانه قدرتمند Dexie.
+  - تعاریف جامع انواع داده و جداول `inventoryItems`, `menuItems`, `orders`, `auditLogs` در `src/types/db.ts`.
+- **موتور تراکنشی مدیریت سفارش و کسر رسپی انبار (BOM Recipe Engine):** [VERIFIED]
+  - پیاده‌سازی سرویس `src/services/orderService.ts` با کسر اتمیک مواد اولیه در تراکنش‌های `db.transaction('rw', ...)`.
+  - کسر آنی متریال هنگام انتقال سفارش به `sent_to_bar` یا `settled`.
+  - بازگشت خودکار مواد اولیه مصرفی به موجودی انبار در صورت ابطال سفارش (`voided`).
+  - ثبت جزئیات دقیق تمامی ویرایش‌ها و علل تغییرات در جدول `auditLogs`.
+- **مودال تایید پین‌کد مدیر و ابطال ایمن فاکتور (`OrderActionModal`):** [VERIFIED]
+  - پیاده‌سازی کامپوننت `src/components/OrderActionModal.tsx` مجهز به کنترل پین‌کد مدیر (پیش‌فرض: `1234`).
+  - الزام ورود فیلد «علت ابطال/ویرایش» برای ثبت در زنجیره حسابرسی امنیتی و انبارداری.
+  - بازخورد صوتی و پیام‌های استاندارد خطا و موفقیت.
+- **ایزولاسیون کامل چاپ حرارتی ۸۰ میلی‌متری (Zero Viewport Leakage):** [VERIFIED]
+  - ایجاد کامپوننت اتمیک `src/components/ReceiptPrintTemplate.tsx` منطبق با ابعاد رول حرارتی ۸۰mm و فاکتور رسمی ۱۰۰هیچ.
+  - بازنویسی سرویس `src/services/receiptPrinter.ts` بر پایه سندباکس IFrame ایزوله بدون کوچک‌ترین نشت المان‌های UI (کاتالوگ ۷۵ آیتمی، وضعیت بویلرها و نمودارها).
+  - حذف قطعی متد پیش‌فرض `window.print()` و اعمال استایل‌های محکم `@media print` در `src/index.css`.
+- **کانفیگ PWA و کش استاتیک و پایپ‌لاین گیت‌هاب Actions:** [VERIFIED]
+  - پیکربندی مانیفست اختصاصی کافه ۱۰۰هیچ با تم رنگی `#0F223D` و بک‌گراند `#121417` در `vite.config.ts`.
+  - تنظیم کش کامل `workbox.globPatterns` برای کلیه فایل‌های استاتیک، فونت‌ها و اسکریپت‌ها.
+  - ایجاد پایپ‌لاین CI/CD در مسیر `.github/workflows/deploy.yml` جهت اعتبارسنجی کیفیت و دپلوی خودکار PWA روی GitHub Pages.
 - **سرویس پایگاه‌داده اتمیک PostgreSQL با Row-Level Security (Multi-Tenant RLS):** [VERIFIED]
   - پیاده‌سازی `src/services/dbOrderService.ts` با سیاست‌های امنیتی RLS بر پایه `SET LOCAL app.current_tenant_id = $1`.
   - جلوگیری قطعی از تکرار فاکتور با بررسی و ثبت کلیدهای Idempotency در جدول `idempotency_keys` بر اساس `clientGeneratedId` (UUIDv4).
