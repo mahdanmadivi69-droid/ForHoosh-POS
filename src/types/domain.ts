@@ -103,6 +103,7 @@ export interface Order {
   orderType: OrderType;
   tableLabel?: string;
   customerName?: string;
+  notes?: string;
   status: OrderStatus;
   items: OrderItem[];
   grossAmountToman: number; // مجموع قیمت آیتم‌ها قبل از تخفیف

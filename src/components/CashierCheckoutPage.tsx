@@ -429,7 +429,7 @@ export function CashierCheckoutPage({
                   فیش صادرشده برای مشتری با شناسه یکتا و اقلام سفارش:
                 </Dialog.Description>
 
-                <div className="bg-stone-950 p-3 rounded-xl border border-stone-800 text-xs space-y-2">
+                <div id="thermal-receipt" className="receipt-paper bg-stone-950 p-3 rounded-xl border border-stone-800 text-xs space-y-2">
                   <div className="flex justify-between text-stone-400 text-[11px]">
                     <span>شماره سفارش: #{lastProcessedOrder.orderNumber}</span>
                     <span>{new Date(lastProcessedOrder.createdAt).toLocaleTimeString('fa-IR')}</span>
@@ -456,10 +456,10 @@ export function CashierCheckoutPage({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2 pt-2 print:hidden">
                   <button
                     onClick={() => {
-                      window.print();
+                      printThermalReceipt('thermal-receipt');
                     }}
                     className="flex-1 bg-amber-600 hover:bg-amber-500 text-white py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                   >

@@ -54,35 +54,103 @@
 }
 
 @media print {
-  body {
-    background-color: #ffffff !important;
-    color: #000000 !important;
+  @page {
+    size: 80mm auto !important;
+    margin: 0 !important;
   }
 
-  header, nav, button, .print\:hidden, .no-print {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, Tahoma, Arial, sans-serif !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 1. Complete isolation: Hide all elements by default */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* 2. Completely collapse background app shell, menus, and graphs from layout flow */
+  body:has(#pos-thermal-receipt) #root,
+  body:has(#thermal-receipt) #root,
+  body:has(#printable-shift-summary) #root,
+  header,
+  nav,
+  aside,
+  main,
+  footer,
+  button,
+  .print\:hidden,
+  .no-print,
+  .recharts-responsive-container,
+  .recharts-wrapper {
     display: none !important;
   }
 
-  .print\:block {
-    display: block !important;
+  /* 3. Reset modal overlay containers so they do not add black backgrounds or centering offsets */
+  .fixed.inset-0,
+  div[role="dialog"],
+  [data-scope="dialog"],
+  div[data-portal] {
+    position: static !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    inset: auto !important;
+    border: none !important;
+    box-shadow: none !important;
   }
 
+  /* 4. Target 80mm thermal receipt components exclusively */
+  #pos-thermal-receipt,
+  #pos-thermal-receipt *,
+  #thermal-receipt,
+  #thermal-receipt *,
+  #printable-receipt,
+  #printable-receipt *,
+  #printable-shift-summary,
+  #printable-shift-summary *,
+  #receipt-modal-content,
+  #receipt-modal-content * {
+    visibility: visible !important;
+  }
+
+  #pos-thermal-receipt,
+  #thermal-receipt,
   #printable-receipt,
   #printable-shift-summary,
   #receipt-modal-content {
     display: block !important;
-    width: 78mm !important;
-    max-width: 100% !important;
-    margin: 0 auto !important;
-    padding: 2mm !important;
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 !important;
+    padding: 4mm 2mm !important;
+    background: #ffffff !important;
+    color: #000000 !important;
     border: none !important;
     box-shadow: none !important;
-    color: #000000 !important;
-    background-color: #ffffff !important;
+    border-radius: 0 !important;
+    page-break-after: avoid !important;
+    page-break-before: avoid !important;
+    break-inside: avoid !important;
+    box-sizing: border-box !important;
   }
 
-  @page {
-    margin: 0;
-    size: 80mm auto;
+  #thermal-receipt *,
+  #printable-receipt *,
+  #printable-shift-summary *,
+  #receipt-modal-content * {
+    color: #000000 !important;
+    border-color: #333333 !important;
+    background-color: transparent !important;
   }
 }

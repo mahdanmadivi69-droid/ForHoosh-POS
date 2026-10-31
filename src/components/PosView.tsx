@@ -114,6 +114,7 @@ export const PosView: React.FC<PosViewProps> = ({
   const [orderType, setOrderType] = useState<OrderType>('TAKEAWAY');
   const [tableLabel, setTableLabel] = useState<string>('میز ۱');
   const [customerName, setCustomerName] = useState<string>('');
+  const [orderNotes, setOrderNotes] = useState<string>('');
   const [discountToman, setDiscountToman] = useState<number>(0);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
@@ -344,6 +345,7 @@ export const PosView: React.FC<PosViewProps> = ({
     setDiscountToman(0);
     setDiscountPercent(0);
     setCustomerName('');
+    setOrderNotes('');
   };
 
   const handleApplyDiscountPercent = (percent: number) => {
@@ -400,6 +402,7 @@ export const PosView: React.FC<PosViewProps> = ({
       orderType,
       tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
       customerName: customerName.trim() || undefined,
+      notes: orderNotes.trim() || undefined,
       status: 'COMPLETED',
       items: cartItems,
       grossAmountToman,
@@ -501,7 +504,7 @@ export const PosView: React.FC<PosViewProps> = ({
 
       if (autoPrint) {
         setTimeout(() => {
-          window.print();
+          printThermalReceipt('thermal-receipt');
         }, 300);
       }
     }
@@ -999,7 +1002,7 @@ export const PosView: React.FC<PosViewProps> = ({
           </div>
         </div>
 
-        {/* Customer Detail / Table Note */}
+        {/* Customer Detail */}
         <div className="px-3 py-2 bg-[#121417]/50 border-b border-[#293444] flex items-center justify-between text-xs gap-2">
           <input
             type="text"
@@ -1007,8 +1010,8 @@ export const PosView: React.FC<PosViewProps> = ({
             onChange={(e) => setCustomerName(e.target.value)}
             placeholder={
               orderType === 'DINE_IN'
-                ? 'شماره میز یا نام مهمان سالن...'
-                : 'نام مشتری یا شماره سفارش بیرون‌بر...'
+                ? 'نام مشتری / مهمان سالن...'
+                : 'نام مشتری بیرون‌بر...'
             }
             className="bg-transparent text-white placeholder:text-[#9EACB8]/70 text-xs w-full focus:outline-none"
           />
@@ -1031,6 +1034,17 @@ export const PosView: React.FC<PosViewProps> = ({
               بیرون‌بر
             </span>
           )}
+        </div>
+
+        {/* Invoice Notes */}
+        <div className="px-3 py-1.5 bg-[#121417]/30 border-b border-[#293444] flex items-center text-xs gap-2">
+          <input
+            type="text"
+            value={orderNotes}
+            onChange={(e) => setOrderNotes(e.target.value)}
+            placeholder="یادداشت فاکتور (توضیحات کلی سفارش)..."
+            className="bg-transparent text-white placeholder:text-[#9EACB8]/50 text-xs w-full focus:outline-none"
+          />
         </div>
 
         {/* Cart Items List (Scrollable Area) */}

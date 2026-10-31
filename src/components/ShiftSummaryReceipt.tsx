@@ -1,5 +1,6 @@
 import { printThermalReceipt } from '../services/receiptPrinter';
 import React from 'react';
+import { Portal } from '@ark-ui/react';
 import { Printer, X, Clock, Coffee, ShieldCheck, AlertTriangle, UserCheck } from 'lucide-react';
 import { Shift, Tenant, Order, Payment, Expense, User } from '../types/domain';
 import { formatToman, calculateExpectedCash, calculateCashDiscrepancy } from '../services/financialMath';
@@ -19,7 +20,7 @@ interface ShiftSummaryReceiptProps {
 
 export const ShiftSummaryReceipt: React.FC<ShiftSummaryReceiptProps> = ({
   shift,
-  tenant = { id: 't1', name: 'کافه نارنج (Naranj Coffee)', currency: 'TOMAN', phone: '۰۲۱-۸۸۹۹۷۷۶۶', address: 'تهران، ولیعصر' },
+  tenant = { id: 't1', name: '100 HICH COFFEE ROASTERS', currency: 'TOMAN', phone: '۰۲۱-۴۴۶۶۸۰۹۰', address: 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس' },
   orders,
   payments,
   expenses,
@@ -30,7 +31,9 @@ export const ShiftSummaryReceipt: React.FC<ShiftSummaryReceiptProps> = ({
   onClose,
 }) => {
   const handlePrint = () => {
-    window.print();
+    printThermalReceipt('printable-shift-summary', {
+      documentTitle: `صورت‌جلسه تسویه شیفت - ${tenant.name}`,
+    });
   };
 
   // Filter payments belonging to this shift
@@ -92,8 +95,9 @@ export const ShiftSummaryReceipt: React.FC<ShiftSummaryReceiptProps> = ({
   const closedDate = shift.closedAt ? new Date(shift.closedAt) : new Date();
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto">
-      <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-md w-full p-4 shadow-2xl flex flex-col gap-3 print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full print:bg-white">
+    <Portal>
+      <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto print:p-0 print:bg-white print:static print:inset-auto">
+        <div className="bg-stone-900 border border-stone-800 rounded-3xl max-w-md w-full p-4 shadow-2xl flex flex-col gap-3 print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full print:bg-white">
         
         {/* Modal Top Actions (Hidden in print) */}
         <div className="flex items-center justify-between pb-2 border-b border-stone-800 print:hidden">
@@ -331,5 +335,6 @@ export const ShiftSummaryReceipt: React.FC<ShiftSummaryReceiptProps> = ({
 
       </div>
     </div>
-  );
+  </Portal>
+);
 };

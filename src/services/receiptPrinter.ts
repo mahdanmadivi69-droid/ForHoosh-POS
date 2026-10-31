@@ -1,54 +1,74 @@
+import React from 'react';
+import { ReceiptOrderData, renderReceiptTemplateHtml } from '../components/ReceiptPrintTemplate';
+
 /**
- * Dedicated POS Thermal Receipt Printing Service
- * Isolates receipt DOM into a dedicated sandbox IFrame to guarantee
- * 100% zero leakage of background dashboard, charts, or navigation into print preview.
+ * Dedicated POS Thermal Receipt Printing Service (Isolated Sandboxed Iframe)
+ * Guarantees 100% zero leakage of background POS catalog, boilers, or charts.
+ * Never falls back to parent window.print() to prevent viewport dumps.
  */
 
-interface PrintOptions {
+export interface PrintOptions {
   documentTitle?: string;
+  tenantAddress?: string;
+  tenantPhone?: string;
 }
 
 export function printThermalReceipt(
-  targetElementOrId: HTMLElement | string,
+  targetOrData: HTMLElement | string | ReceiptOrderData = 'pos-thermal-receipt',
   options: PrintOptions = {}
 ): Promise<boolean> {
   return new Promise((resolve) => {
     try {
-      let targetEl: HTMLElement | null = null;
-      if (typeof targetElementOrId === 'string') {
-        targetEl = document.getElementById(targetElementOrId);
+      let receiptHtml = '';
+
+      if (typeof targetOrData === 'object' && targetOrData !== null && !('nodeType' in targetOrData)) {
+        // Direct data rendering via ReceiptPrintTemplate
+        receiptHtml = renderReceiptTemplateHtml(targetOrData as ReceiptOrderData, {
+          address: options.tenantAddress,
+          phone: options.tenantPhone,
+        });
       } else {
-        targetEl = targetElementOrId;
+        let targetEl: HTMLElement | null = null;
+        if (typeof targetOrData === 'string') {
+          targetEl =
+            document.getElementById(targetOrData) ||
+            document.getElementById('pos-thermal-receipt') ||
+            document.getElementById('thermal-receipt') ||
+            document.getElementById('printable-shift-summary') ||
+            document.getElementById('printable-receipt');
+        } else if ('nodeType' in targetOrData) {
+          targetEl = targetOrData as HTMLElement;
+        }
+
+        if (!targetEl) {
+          console.warn('[ThermalPrinter] Target receipt element not found in DOM, aborting print without viewport leakage');
+          resolve(false);
+          return;
+        }
+
+        receiptHtml = targetEl.outerHTML;
       }
 
-      if (!targetEl) {
-        // Fallback to window.print if element not found
-        window.print();
-        resolve(true);
-        return;
-      }
-
-      // Clone HTML of the receipt
-      const receiptHtml = targetEl.outerHTML;
-
-      // Create an invisible iframe sandbox
+      // Create an isolated sandbox iframe
       const iframe = document.createElement('iframe');
+      iframe.setAttribute('role', 'presentation');
+      iframe.setAttribute('title', 'Receipt Print Sandbox');
       iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = 'none';
-      iframe.style.opacity = '0';
+      iframe.style.left = '0';
+      iframe.style.top = '0';
+      iframe.style.width = '80mm';
+      iframe.style.height = '140px';
+      iframe.style.border = '0';
+      iframe.style.opacity = '0.001';
+      iframe.style.pointerEvents = 'none';
       iframe.style.zIndex = '-9999';
 
       document.body.appendChild(iframe);
 
       const doc = iframe.contentWindow?.document;
       if (!doc) {
-        window.print();
-        document.body.removeChild(iframe);
-        resolve(true);
+        if (document.body.contains(iframe)) document.body.removeChild(iframe);
+        resolve(false);
         return;
       }
 
@@ -58,14 +78,14 @@ export function printThermalReceipt(
         <html lang="fa" dir="rtl">
         <head>
           <meta charset="utf-8" />
-          <title>${options.documentTitle || 'رسید فاکتور'}</title>
+          <title>${options.documentTitle || 'رسید حرارتی ۸۰ میلی‌متری'}</title>
           <style>
             @page {
-              size: 80mm auto;
+              size: 80mm auto !important;
               margin: 0mm !important;
             }
             *, *::before, *::after {
-              box-sizing: border-box;
+              box-sizing: border-box !important;
               margin: 0;
               padding: 0;
               box-shadow: none !important;
@@ -75,28 +95,33 @@ export function printThermalReceipt(
             }
             html, body {
               width: 80mm !important;
+              max-width: 80mm !important;
               margin: 0 auto !important;
               padding: 0 !important;
               background: #ffffff !important;
               color: #000000 !important;
-              font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, Tahoma, Arial, sans-serif;
-              direction: rtl;
-              text-align: right;
-              font-size: 11px;
-              line-height: 1.35;
+              font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, Tahoma, Arial, sans-serif !important;
+              direction: rtl !important;
+              text-align: right !important;
+              font-size: 11px !important;
+              line-height: 1.35 !important;
             }
-            #printable-receipt,
+            #pos-thermal-receipt,
+            #thermal-receipt,
             #printable-shift-summary,
-            #receipt-print-area,
-            .receipt-paper {
+            #printable-receipt,
+            .thermal-receipt-container {
               display: block !important;
-              width: 72mm !important;
-              max-width: 72mm !important;
+              visibility: visible !important;
+              width: 80mm !important;
+              max-width: 80mm !important;
               margin: 0 auto !important;
-              padding: 3mm 1mm 6mm 1mm !important;
+              padding: 4mm 2mm !important;
               background: #ffffff !important;
               color: #000000 !important;
               border: none !important;
+              border-radius: 0 !important;
+              box-shadow: none !important;
             }
             table {
               width: 100% !important;
@@ -121,20 +146,32 @@ export function printThermalReceipt(
       setTimeout(() => {
         const frameWin = iframe.contentWindow;
         if (!frameWin) {
-          document.body.removeChild(iframe);
+          if (document.body.contains(iframe)) document.body.removeChild(iframe);
           resolve(false);
           return;
         }
 
+        // Force layout reflow before triggering print
+        try {
+          if (frameWin.document.body) {
+            void frameWin.document.body.offsetHeight;
+          }
+        } catch {
+          // ignore reflow probe error
+        }
+
         frameWin.focus();
 
+        let isDone = false;
         const cleanup = () => {
+          if (isDone) return;
+          isDone = true;
           setTimeout(() => {
             if (document.body.contains(iframe)) {
               document.body.removeChild(iframe);
             }
             resolve(true);
-          }, 100);
+          }, 150);
         };
 
         frameWin.onafterprint = cleanup;
@@ -142,17 +179,40 @@ export function printThermalReceipt(
         try {
           frameWin.print();
         } catch (e) {
-          console.error('Iframe print error, falling back:', e);
-          window.print();
+          console.error('[ThermalPrinter] Iframe print invocation error:', e);
+          cleanup();
         }
 
         // Fallback cleanup in case onafterprint doesn't trigger
-        setTimeout(cleanup, 2500);
-      }, 100);
+        setTimeout(cleanup, 3500);
+      }, 150);
     } catch (err) {
-      console.error('printThermalReceipt failure, falling back to window.print', err);
-      window.print();
-      resolve(true);
+      console.error('[ThermalPrinter] printThermalReceipt failure:', err);
+      resolve(false);
     }
   });
+}
+
+/**
+ * Dedicated hook to trigger thermal receipt print with layout reflow guarantee
+ */
+export function usePrintReceipt() {
+  const [isPrinting, setIsPrinting] = React.useState(false);
+
+  const printReceipt = React.useCallback(
+    async (
+      targetOrData: HTMLElement | string | ReceiptOrderData = 'pos-thermal-receipt',
+      title?: string
+    ) => {
+      setIsPrinting(true);
+      try {
+        await printThermalReceipt(targetOrData, { documentTitle: title });
+      } finally {
+        setIsPrinting(false);
+      }
+    },
+    []
+  );
+
+  return { printReceipt, isPrinting };
 }

@@ -118,9 +118,6 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
 
   const handlePrintShiftSummary = () => {
     setShowSummaryReceipt(true);
-    if (typeof window !== 'undefined' && typeof window.print === 'function') {
-      window.print();
-    }
   };
 
   return (

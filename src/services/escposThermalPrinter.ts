@@ -51,18 +51,16 @@ export function renderReceiptToCanvas(
 
   // Header
   ctx.font = 'bold 28px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText(tenant.name || 'قهوه‌فروشی ۱۰۰هیچ', width / 2, y);
-  y += 35;
+  ctx.fillText('100 HICH', width / 2, y);
+  y += 32;
 
-  ctx.font = '18px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText('تخصصی‌ترین قهوه تجربی و اسپشیالتی', width / 2, y);
-  y += 30;
+  ctx.font = 'bold 16px Vazirmatn, Tahoma, sans-serif';
+  ctx.fillText('COFFEE ROASTERS', width / 2, y);
+  y += 28;
 
-  if (tenant.phone) {
-    ctx.font = '16px Vazirmatn, Tahoma, sans-serif';
-    ctx.fillText(`تلفن تماس: ${tenant.phone}`, width / 2, y);
-    y += 26;
-  }
+  ctx.font = '14px Vazirmatn, Tahoma, sans-serif';
+  ctx.fillText('اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس | ۰۲۱-۴۴۶۶۸۰۹۰', width / 2, y);
+  y += 24;
 
   // Separator line
   ctx.lineWidth = 2;
@@ -212,12 +210,12 @@ export function renderReceiptToCanvas(
 
   // Footer message
   y += 15;
-  ctx.font = '17px Vazirmatn, Tahoma, sans-serif';
+  ctx.font = 'bold 16px Vazirmatn, Tahoma, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('از همراهی شما با قهوه‌فروشی ۱۰۰هیچ سپاسگزاریم', width / 2, y);
-  y += 25;
+  ctx.fillText('صد هیچ، تمرکز محض روی اصالت قهوه', width / 2, y);
+  y += 24;
   ctx.font = '14px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText('نرم‌افزار مدیریت هوشمند کافه — CAFE OS', width / 2, y);
+  ctx.fillText('100HICH.IR', width / 2, y);
 
   return canvas;
 }

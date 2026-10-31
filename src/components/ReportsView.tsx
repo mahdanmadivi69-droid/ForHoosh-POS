@@ -318,7 +318,10 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </select>
 
           <button
-            onClick={() => currentShift && setShiftForSummaryReceipt(currentShift)}
+            onClick={() => {
+              const target = currentShift || (shifts.length > 0 ? shifts[0] : null);
+              if (target) setShiftForSummaryReceipt(target);
+            }}
             className="bg-stone-800 hover:bg-stone-750 text-amber-400 hover:text-amber-300 border border-stone-700 hover:border-amber-500/50 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer"
             title="چاپ فیش حرارتی صورت‌جلسه تسویه شیفت"
           >
@@ -377,11 +380,15 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           </button>
 
           <button
-            onClick={() => window.print()}
-            className="bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+            onClick={() => {
+              const target = currentShift || (shifts.length > 0 ? shifts[0] : null);
+              if (target) setShiftForSummaryReceipt(target);
+            }}
+            className="bg-amber-600 hover:bg-amber-500 text-white border border-amber-500 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+            title="پیش‌نمایش و چاپ فیش حرارتی ۸۰ میلی‌متری تسویه شیفت"
           >
-            <Printer className="w-4 h-4 text-stone-400" />
-            <span>چاپ کل صفحه</span>
+            <Printer className="w-4 h-4" />
+            <span>چاپ فیش تسویه (۸۰mm)</span>
           </button>
         </div>
       </div>
