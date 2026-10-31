@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+:root {
+  --font-fa-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono-numbers: 'Fira Code', 'JetBrains Mono', monospace;
+}
+
+[dir="rtl"] {
+  font-family: var(--font-fa-sans);
+  letter-spacing: 0 !important;
+}
+
 @theme {
   --color-brand-navy: #0F223D;
   --color-brand-navyDark: #081425;

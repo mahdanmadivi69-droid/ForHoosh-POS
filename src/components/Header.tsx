@@ -10,19 +10,21 @@ import {
   PowerOff,
   LogOut,
   Lock,
+  Zap,
 } from 'lucide-react';
 import { Shift, User, Tenant, isManagerOrOwner } from '../types/domain';
 import { formatToman } from '../services/financialMath';
 import { PWAInstallButton } from './PWAInstallButton';
 import { playPosBeep } from '../services/soundEffects';
+import { FEATURES } from '../modules/smart-orders';
 
 interface HeaderProps {
   tenant: Tenant;
   activeShift: Shift | null;
   activeUser: User;
   allUsers: User[];
-  currentTab: 'pos' | 'reports' | 'menu' | 'audit';
-  onTabChange: (tab: 'pos' | 'reports' | 'menu' | 'audit') => void;
+  currentTab: 'pos' | 'zero-g' | 'reports' | 'menu' | 'audit';
+  onTabChange: (tab: 'pos' | 'zero-g' | 'reports' | 'menu' | 'audit') => void;
   onOpenShiftModal: () => void;
   onOpenExpenseModal: () => void;
   onOpenBackupModal: () => void;
@@ -107,6 +109,27 @@ export const Header: React.FC<HeaderProps> = ({
               <UtensilsCrossed className="w-3.5 h-3.5" />
               <span>صندوق بارتندر (POS)</span>
             </button>
+
+            {FEATURES.ENABLE_ZERO_G_SMART_ORDERS && (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('zero-g');
+                }}
+                className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer font-bold ${
+                  currentTab === 'zero-g'
+                    ? 'bg-gradient-to-r from-[#D71921] to-[#E52E38] text-white shadow-[0_0_15px_-2px_rgba(215,25,33,0.6)] ring-1 ring-red-400'
+                    : 'text-amber-400 hover:text-amber-300 hover:bg-[#1B222C] border border-amber-500/30'
+                }`}
+                title="سامانه مافوق سریع Zero-G (کلیدهای ۱ تا ۹ بدون تأخیر)"
+              >
+                <Zap className="w-3.5 h-3.5 fill-current" />
+                <span>Zero-G سریع</span>
+                <span className="text-[9px] bg-red-600/90 text-white px-1 py-0.2 rounded font-mono">
+                  &lt;1ms
+                </span>
+              </button>
+            )}
 
             <button
               onClick={() => {
@@ -336,6 +359,23 @@ export const Header: React.FC<HeaderProps> = ({
           <UtensilsCrossed className="w-3 h-3" />
           <span>صندوق (POS)</span>
         </button>
+
+        {FEATURES.ENABLE_ZERO_G_SMART_ORDERS && (
+          <button
+            onClick={() => {
+              playPosBeep('click');
+              onTabChange('zero-g');
+            }}
+            className={`px-2.5 py-1 rounded flex items-center gap-1 ${
+              currentTab === 'zero-g'
+                ? 'bg-[#D71921] text-white'
+                : 'text-amber-400 border border-amber-500/30'
+            }`}
+          >
+            <Zap className="w-3 h-3 fill-current" />
+            <span>Zero-G</span>
+          </button>
+        )}
 
         <button
           onClick={() => {

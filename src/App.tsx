@@ -32,6 +32,7 @@ import { BaristaKdsModal } from './components/BaristaKdsModal';
 import { baristaDispatcher } from './services/baristaDispatcher';
 import { InventoryAlertBanner } from './components/InventoryAlertBanner';
 import { useInventoryAlerts } from './hooks/useInventoryAlerts';
+import { SmartOrdersContainer, FEATURES } from './modules/smart-orders';
 
 export default function App() {
   const [tenant, setTenant] = useState<Tenant>(SmartOrdersStore.getTenant());
@@ -48,7 +49,7 @@ export default function App() {
 
   // UI state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
-  const [currentTab, setCurrentTab] = useState<'pos' | 'reports' | 'menu' | 'audit'>('pos');
+  const [currentTab, setCurrentTab] = useState<'pos' | 'zero-g' | 'reports' | 'menu' | 'audit'>('pos');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
@@ -293,6 +294,12 @@ export default function App() {
 
       {/* Main View Area */}
       <main className="flex-1 pb-10">
+        {currentTab === 'zero-g' && FEATURES.ENABLE_ZERO_G_SMART_ORDERS && (
+          <SmartOrdersContainer
+            onBackToStandardPos={() => setCurrentTab('pos')}
+          />
+        )}
+
         {currentTab === 'pos' && (
           <PosView
             tenant={tenant}
