@@ -1,15 +1,36 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-export default defineConfig(() => {
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+export default defineConfig(({ mode }) => {
   const isGitHubPages = process.env.GITHUB_PAGES === 'true';
   const basePath = isGitHubPages ? '/ForHoosh-POS/' : '/';
 
+  // Determine active tenant branding
+  const tenantId = process.env.VITE_TENANT_ID || (mode === 'modendo' ? 'tenant-modendo-01' : 'tenant-100hich-01');
+  const isModendo = tenantId === 'tenant-modendo-01';
+
+  const appName = isModendo
+    ? 'Modendo POS — سامانه کافه بردگیم و گیمینگ مودندو'
+    : 'Cafe OS — سامانه صندوق کافه ۱۰۰هیچ';
+  const shortName = isModendo ? 'Modendo POS' : '100 Hich POS';
+  const description = isModendo
+    ? 'سامانه مدیریت سفارشات، میزهای بازی، اتاق کنسول PS5 و حسابداری کافه مودندو'
+    : 'سامانه ابری و هوشمند مدیریت صندوق، شیفت، رسپی و گزارشات مالی کافه ۱۰۰هیچ';
+  const themeColor = isModendo ? '#0B0D11' : '#0F223D';
+  const bgColor = isModendo ? '#0B0D11' : '#121417';
+
   return {
     base: basePath,
+    define: {
+      'import.meta.env.VITE_TENANT_ID': JSON.stringify(tenantId),
+    },
     plugins: [
       react(),
       tailwindcss(),
@@ -18,11 +39,11 @@ export default defineConfig(() => {
         includeAssets: ['icon.svg', 'apple-touch-icon.png'],
         manifest: {
           id: basePath,
-          name: 'SmartOrders - سامانه صندوق کافه ۱۰۰هیچ',
-          short_name: 'SmartOrders',
-          description: 'سامانه ابری و هوشمند مدیریت صندوق، شیفت، سفارشات و گزارشات مالی کافه ۱۰۰هیچ',
-          theme_color: '#0F223D',
-          background_color: '#121417',
+          name: appName,
+          short_name: shortName,
+          description: description,
+          theme_color: themeColor,
+          background_color: bgColor,
           display: 'standalone',
           start_url: basePath,
           scope: basePath,

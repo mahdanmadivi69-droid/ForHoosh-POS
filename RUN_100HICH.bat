@@ -17,10 +17,10 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo [2/3] بررسی بیلد پروداکشن...
+echo [2/3] بررسی بیلد پروداکشن ۱۰۰ هیچ...
 if not exist "dist\index.html" (
     echo [اطلاع] فایل‌های بیلد یافت نشد. در حال کامپایل خودکار...
-    call npm run build
+    call npm run build:100hich
 )
 
 echo [3/3] اجرای سرور پرسرعت کافه روی پورت ۳۰۰۰...
@@ -28,9 +28,10 @@ echo.
 echo ------------------------------------------------------------
 echo ✅ سرور آماده به کار است.
 echo 🌐 آدرس صندوق فروش: http://localhost:3000
-echo 👤 کاربر مدیر: admin   | رمز: 123
-echo 👤 سرپرست شیفت: sara   | رمز: 123
-echo 👤 باریستا: nima       | رمز: 123
+echo 👤 کاربر مدیر و مالک: admin   | رمز: 123
+echo 👤 سرپرست شیفت:       sara    | رمز: 123
+echo 👤 صندوق‌دار:          ali     | رمز: 123
+echo 👤 باریستا:           nima    | رمز: 123
 echo ------------------------------------------------------------
 echo.
 echo در حال باز کردن مرورگر پیش‌فرض...
@@ -38,6 +39,8 @@ start http://localhost:3000
 
 :: اجرای سرور پروداکشن
 set NODE_ENV=production
+set VITE_TENANT_ID=tenant-100hich-01
+set PORT=3000
 node --loader tsx server.ts
 if %errorlevel% neq 0 (
     echo تلاش با دستور جایگزین tsx...

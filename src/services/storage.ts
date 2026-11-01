@@ -1602,8 +1602,18 @@ function save<T>(key: string, data: T): void {
 }
 
 export class SmartOrdersStore {
+  // Tenant-scoped key helper
+  static getTenantKey(baseKey: string): string {
+    const activeTenantId = this.getActiveTenantId();
+    return `${baseKey}_${activeTenantId}`;
+  }
+
   // Active Tenant Management
   static getActiveTenantId(): string {
+    const envTenant = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) || '';
+    if (envTenant) {
+      return envTenant;
+    }
     return load<string>(STORAGE_KEYS.ACTIVE_TENANT_ID, 'tenant-modendo-01');
   }
 
@@ -1621,6 +1631,7 @@ export class SmartOrdersStore {
     if (users.length > 0) {
       this.setActiveUserId(users[0].id);
     }
+    this.initSeedData();
     return this.getTenant();
   }
 
@@ -1872,7 +1883,23 @@ export class SmartOrdersStore {
 
   // Shifts
   static getShifts(): Shift[] {
-    return load<Shift[]>(STORAGE_KEYS.SHIFTS, []);
+    const key = this.getTenantKey(STORAGE_KEYS.SHIFTS);
+    const activeTenantId = this.getActiveTenantId();
+    const scoped = load<Shift[]>(key, []);
+    if (scoped.length > 0) return scoped;
+
+    const legacy = load<Shift[]>(STORAGE_KEYS.SHIFTS, []);
+    const matching = legacy.filter((s) => s.tenantId === activeTenantId);
+    if (matching.length > 0) {
+      save(key, matching);
+      return matching;
+    }
+    return [];
+  }
+
+  static saveShifts(shifts: Shift[]): void {
+    const key = this.getTenantKey(STORAGE_KEYS.SHIFTS);
+    save(key, shifts);
   }
 
   static getActiveShift(): Shift | null {
@@ -1901,8 +1928,9 @@ export class SmartOrdersStore {
     };
 
     const shifts = [newShift, ...this.getShifts()];
-    save(STORAGE_KEYS.SHIFTS, shifts);
-    save(STORAGE_KEYS.ACTIVE_SHIFT_ID, newShift.id);
+    this.saveShifts(shifts);
+    const activeShiftKey = this.getTenantKey(STORAGE_KEYS.ACTIVE_SHIFT_ID);
+    save(activeShiftKey, newShift.id);
 
     this.addAuditLog(
       'SHIFT_OPENED',
@@ -1942,8 +1970,12 @@ export class SmartOrdersStore {
     if (notes) shift.notes = (shift.notes ? shift.notes + ' | ' : '') + notes;
 
     shifts[idx] = shift;
-    save(STORAGE_KEYS.SHIFTS, shifts);
-    localStorage.removeItem(STORAGE_KEYS.ACTIVE_SHIFT_ID);
+    this.saveShifts(shifts);
+    const activeShiftKey = this.getTenantKey(STORAGE_KEYS.ACTIVE_SHIFT_ID);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(activeShiftKey);
+      localStorage.removeItem(STORAGE_KEYS.ACTIVE_SHIFT_ID);
+    }
 
     this.addAuditLog(
       'SHIFT_CLOSED',
@@ -1957,11 +1989,23 @@ export class SmartOrdersStore {
 
   // Orders
   static getOrders(): Order[] {
-    return load<Order[]>(STORAGE_KEYS.ORDERS, []);
+    const key = this.getTenantKey(STORAGE_KEYS.ORDERS);
+    const activeTenantId = this.getActiveTenantId();
+    const scoped = load<Order[]>(key, []);
+    if (scoped.length > 0) return scoped;
+
+    const legacy = load<Order[]>(STORAGE_KEYS.ORDERS, []);
+    const matching = legacy.filter((o) => o.tenantId === activeTenantId);
+    if (matching.length > 0) {
+      save(key, matching);
+      return matching;
+    }
+    return [];
   }
 
   static saveOrders(orders: Order[]): void {
-    save(STORAGE_KEYS.ORDERS, orders);
+    const key = this.getTenantKey(STORAGE_KEYS.ORDERS);
+    save(key, orders);
   }
 
   static createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>): Order {
@@ -2049,7 +2093,7 @@ export class SmartOrdersStore {
       }
       return p;
     });
-    save(STORAGE_KEYS.PAYMENTS, updatedPayments);
+    this.savePayments(updatedPayments);
 
     // Restore stock for cancelled order items
     const menuItems = this.getMenuItems();
@@ -2077,7 +2121,23 @@ export class SmartOrdersStore {
 
   // Payments
   static getPayments(): Payment[] {
-    return load<Payment[]>(STORAGE_KEYS.PAYMENTS, []);
+    const key = this.getTenantKey(STORAGE_KEYS.PAYMENTS);
+    const activeTenantId = this.getActiveTenantId();
+    const scoped = load<Payment[]>(key, []);
+    if (scoped.length > 0) return scoped;
+
+    const legacy = load<Payment[]>(STORAGE_KEYS.PAYMENTS, []);
+    const matching = legacy.filter((p) => p.tenantId === activeTenantId);
+    if (matching.length > 0) {
+      save(key, matching);
+      return matching;
+    }
+    return [];
+  }
+
+  static savePayments(payments: Payment[]): void {
+    const key = this.getTenantKey(STORAGE_KEYS.PAYMENTS);
+    save(key, payments);
   }
 
   static recordPayment(payment: Omit<Payment, 'id' | 'createdAt'>): Payment {
@@ -2098,7 +2158,7 @@ export class SmartOrdersStore {
     };
 
     payments.unshift(newPayment);
-    save(STORAGE_KEYS.PAYMENTS, payments);
+    this.savePayments(payments);
 
     // Also mark order as COMPLETED
     this.updateOrderStatus(payment.orderId, 'COMPLETED');
@@ -2115,7 +2175,23 @@ export class SmartOrdersStore {
 
   // Expenses
   static getExpenses(): Expense[] {
-    return load<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+    const key = this.getTenantKey(STORAGE_KEYS.EXPENSES);
+    const activeTenantId = this.getActiveTenantId();
+    const scoped = load<Expense[]>(key, []);
+    if (scoped.length > 0) return scoped;
+
+    const legacy = load<Expense[]>(STORAGE_KEYS.EXPENSES, []);
+    const matching = legacy.filter((e) => e.tenantId === activeTenantId);
+    if (matching.length > 0) {
+      save(key, matching);
+      return matching;
+    }
+    return [];
+  }
+
+  static saveExpenses(expenses: Expense[]): void {
+    const key = this.getTenantKey(STORAGE_KEYS.EXPENSES);
+    save(key, expenses);
   }
 
   static recordExpense(expense: Omit<Expense, 'id' | 'createdAt'>): Expense {
@@ -2129,7 +2205,7 @@ export class SmartOrdersStore {
     };
 
     expenses.unshift(newExpense);
-    save(STORAGE_KEYS.EXPENSES, expenses);
+    this.saveExpenses(expenses);
 
     this.addAuditLog(
       'EXPENSE_RECORDED',
@@ -2143,7 +2219,23 @@ export class SmartOrdersStore {
 
   // Audit Logs
   static getAuditLogs(): AuditLog[] {
-    return load<AuditLog[]>(STORAGE_KEYS.AUDIT_LOGS, []);
+    const key = this.getTenantKey(STORAGE_KEYS.AUDIT_LOGS);
+    const activeTenantId = this.getActiveTenantId();
+    const scoped = load<AuditLog[]>(key, []);
+    if (scoped.length > 0) return scoped;
+
+    const legacy = load<AuditLog[]>(STORAGE_KEYS.AUDIT_LOGS, []);
+    const matching = legacy.filter((l) => l.tenantId === activeTenantId);
+    if (matching.length > 0) {
+      save(key, matching);
+      return matching;
+    }
+    return [];
+  }
+
+  static saveAuditLogs(logs: AuditLog[]): void {
+    const key = this.getTenantKey(STORAGE_KEYS.AUDIT_LOGS);
+    save(key, logs);
   }
 
   static addAuditLog(action: string, entityName: string, entityId: string, details: string): void {
@@ -2165,7 +2257,7 @@ export class SmartOrdersStore {
 
     logs.unshift(newLog);
     // Keep last 300 logs
-    save(STORAGE_KEYS.AUDIT_LOGS, logs.slice(0, 300));
+    this.saveAuditLogs(logs.slice(0, 300));
   }
 
   // Seed sample initial shift and history if fresh install

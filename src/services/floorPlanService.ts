@@ -10,8 +10,8 @@ import {
   TableGeometry,
 } from '../types/floor-plan';
 import { INITIAL_MODENDO_FLOOR_PLAN } from '../data/modendoFloorPlanData';
-
-const STORAGE_KEY = 'modendo_floor_plan_v6.3';
+import { INITIAL_100HICH_FLOOR_PLAN } from '../data/100hichFloorPlanData';
+import { SmartOrdersStore } from './storage';
 
 type FloorPlanListener = (schema: ModendoFloorPlanSchema) => void;
 
@@ -23,10 +23,26 @@ class FloorPlanServiceClass {
     this.schema = this.loadFromStorage();
   }
 
+  private getStorageKey(): string {
+    const tenantId = SmartOrdersStore.getActiveTenantId();
+    return tenantId === 'tenant-100hich-01'
+      ? '100hich_floor_plan_v1.0'
+      : 'modendo_floor_plan_v6.3';
+  }
+
+  private getDefaultPlan(): ModendoFloorPlanSchema {
+    const tenantId = SmartOrdersStore.getActiveTenantId();
+    return tenantId === 'tenant-100hich-01'
+      ? INITIAL_100HICH_FLOOR_PLAN
+      : INITIAL_MODENDO_FLOOR_PLAN;
+  }
+
   private loadFromStorage(): ModendoFloorPlanSchema {
-    if (typeof window === 'undefined') return INITIAL_MODENDO_FLOOR_PLAN;
+    const defaultPlan = this.getDefaultPlan();
+    if (typeof window === 'undefined') return defaultPlan;
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const storageKey = this.getStorageKey();
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.modendo_schema_version === '6.3') {
@@ -36,17 +52,23 @@ class FloorPlanServiceClass {
     } catch (e) {
       console.warn('[FloorPlanService] Could not parse stored floor plan, resetting to defaults:', e);
     }
-    this.saveToStorage(INITIAL_MODENDO_FLOOR_PLAN);
-    return INITIAL_MODENDO_FLOOR_PLAN;
+    this.saveToStorage(defaultPlan);
+    return defaultPlan;
   }
 
   private saveToStorage(data: ModendoFloorPlanSchema) {
     if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      const storageKey = this.getStorageKey();
+      localStorage.setItem(storageKey, JSON.stringify(data));
     } catch (e) {
       console.error('[FloorPlanService] Failed to save floor plan:', e);
     }
+  }
+
+  public reloadForTenant(): void {
+    this.schema = this.loadFromStorage();
+    this.notify();
   }
 
   private notify() {

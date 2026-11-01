@@ -7,12 +7,16 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
+    "dev:modendo": "tsx server.ts",
+    "dev:100hich": "tsx server.ts",
     "start": "node server.ts",
     "build": "vite build",
+    "build:modendo": "vite build --mode modendo",
+    "build:100hich": "vite build --mode 100hich",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoIsolationAndGateway.test.ts"
+    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoIsolationAndGateway.test.ts && tsx tests/dualCafeIsolation.test.ts"
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.3",

@@ -168,16 +168,23 @@ export class SettingsService {
   /**
    * Initializes default settings and printer profiles in IndexedDB if empty
    */
-  public static async initDefaults(): Promise<void> {
-    if (this.isInitialized) return;
+  public static async initDefaults(forceReload = false): Promise<void> {
+    if (this.isInitialized && !forceReload) return;
 
     try {
+      const activeTenantId = SmartOrdersStore.getActiveTenantId();
+      const isModendo = activeTenantId === 'tenant-modendo-01';
+
+      const targetStoreProfile = isModendo ? MODENDO_STORE_PROFILE : DEFAULT_STORE_PROFILE;
+      const targetReceiptTemplate = isModendo ? MODENDO_RECEIPT_TEMPLATE : DEFAULT_RECEIPT_TEMPLATE;
+      const targetPrinters = isModendo ? MODENDO_PRINTER_PROFILES : DEFAULT_PRINTER_PROFILES;
+
       // 1. Check App Settings
       const storeSetting = await db.appSettings.get('store_profile');
-      if (!storeSetting) {
+      if (!storeSetting || forceReload) {
         await db.appSettings.put({
           key: 'store_profile',
-          value: DEFAULT_STORE_PROFILE,
+          value: targetStoreProfile,
           updatedAt: Date.now(),
         });
       }
@@ -192,10 +199,10 @@ export class SettingsService {
       }
 
       const receiptSetting = await db.appSettings.get('receipt_template');
-      if (!receiptSetting) {
+      if (!receiptSetting || forceReload) {
         await db.appSettings.put({
           key: 'receipt_template',
-          value: DEFAULT_RECEIPT_TEMPLATE,
+          value: targetReceiptTemplate,
           updatedAt: Date.now(),
         });
       }
@@ -213,8 +220,11 @@ export class SettingsService {
 
       // 2. Check Printer Profiles
       const printerCount = await db.printerProfiles.count();
-      if (printerCount === 0) {
-        for (const profile of DEFAULT_PRINTER_PROFILES) {
+      if (printerCount === 0 || forceReload) {
+        if (forceReload) {
+          await db.printerProfiles.clear();
+        }
+        for (const profile of targetPrinters) {
           await db.printerProfiles.put(profile);
         }
       }
@@ -223,6 +233,10 @@ export class SettingsService {
     } catch (err) {
       console.error('[SettingsService] Failed to initialize default settings in IndexedDB:', err);
     }
+  }
+
+  public static async reloadForTenant(): Promise<void> {
+    return this.initDefaults(true);
   }
 
   /**

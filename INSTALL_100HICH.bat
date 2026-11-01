@@ -20,7 +20,7 @@ call npm install --omit=dev --no-audit
 
 echo.
 echo [۲] کامپایل و ساخت پکیج نهایی پروداکشن (Vite + PWA)...
-call npm run build
+call npm run build:100hich
 
 echo.
 echo [۳] اجرای آزمون‌های راستی‌آزمایی ریاضیات مالی...
