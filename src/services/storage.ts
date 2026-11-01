@@ -16,12 +16,17 @@ import {
 } from '../types/domain';
 
 const STORAGE_KEYS = {
+  ACTIVE_TENANT_ID: 'smartorders_active_tenant_id_v2',
   TENANT: 'smartorders_tenant_v1',
+  TENANT_MODENDO: 'smartorders_tenant_modendo_v1',
   USERS: 'smartorders_users_v1',
+  USERS_MODENDO: 'smartorders_users_modendo_v1',
   ACTIVE_USER_ID: 'smartorders_active_user_id_v1',
   IS_LOGGED_IN: 'smartorders_is_logged_in_v1',
   CATEGORIES: 'smartorders_categories_v2',
+  CATEGORIES_MODENDO: 'smartorders_categories_modendo_v1',
   MENU_ITEMS: 'smartorders_menu_items_v2',
+  MENU_ITEMS_MODENDO: 'smartorders_menu_items_modendo_v1',
   SHIFTS: 'smartorders_shifts_v1',
   ACTIVE_SHIFT_ID: 'smartorders_active_shift_id_v1',
   ORDERS: 'smartorders_orders_v1',
@@ -30,7 +35,376 @@ const STORAGE_KEYS = {
   AUDIT_LOGS: 'smartorders_audit_logs_v1',
 };
 
-// Pilot Tenant: قهوه‌فروشی ۱۰۰هیچ (100 Hich Specialty Coffee Roasters)
+// Modendo Cafe (Modendo Boardgame & Gaming Cafe - Primary Tenant)
+export const MODENDO_TENANT: Tenant = {
+  id: 'tenant-modendo-01',
+  name: 'کافه بردگیم و گیمینگ مودندو (Modendo Cafe)',
+  currency: 'TOMAN',
+  phone: '021-88997766',
+  address: 'تهران، خیابان شریعتی، مجتمع تجاری مودندو، طبقه منفی ۱ و همکف',
+};
+
+export const MODENDO_USERS: User[] = [
+  {
+    id: 'user-mod-01',
+    tenantId: 'tenant-modendo-01',
+    fullName: 'مهدان مددی (مدیر کل و مالک)',
+    phoneNumber: '09121110001',
+    username: 'admin',
+    password: '123',
+    pin: '1380',
+    role: 'OWNER',
+    isActive: true,
+  },
+  {
+    id: 'user-mod-02',
+    tenantId: 'tenant-modendo-01',
+    fullName: 'علی شریفی (سرپرست و مدیر سالن)',
+    phoneNumber: '09121110002',
+    username: 'ali',
+    password: '123',
+    pin: '2468',
+    role: 'MANAGER',
+    isActive: true,
+  },
+  {
+    id: 'user-mod-03',
+    tenantId: 'tenant-modendo-01',
+    fullName: 'مهسا کاظمی (صندوق‌دار شیفت)',
+    phoneNumber: '09121110003',
+    username: 'mahsa',
+    password: '123',
+    pin: '1122',
+    role: 'CASHIER',
+    isActive: true,
+  },
+  {
+    id: 'user-mod-04',
+    tenantId: 'tenant-modendo-01',
+    fullName: 'پویا مرادی (بارتندر و باریستا)',
+    phoneNumber: '09121110004',
+    username: 'pouya',
+    password: '123',
+    pin: '3344',
+    role: 'BARISTA',
+    isActive: true,
+  },
+  {
+    id: 'user-mod-05',
+    tenantId: 'tenant-modendo-01',
+    fullName: 'آرین خسروی (گیم‌مستر و مسئول کنسول PS5)',
+    phoneNumber: '09121110005',
+    username: 'arian',
+    password: '123',
+    pin: '5566',
+    role: 'BARISTA',
+    isActive: true,
+  },
+];
+
+export const MODENDO_CATEGORIES: Category[] = [
+  { id: 'cat-mod-gaming', tenantId: 'tenant-modendo-01', nameFa: 'سشن‌های بازی و کنسول PS5', nameEn: 'Boardgame & PS5 Sessions', sortOrder: 1, isActive: true },
+  { id: 'cat-mod-espresso', tenantId: 'tenant-modendo-01', nameFa: 'بار گرم و اسپرسو بار', nameEn: 'Hot Espresso Bar', sortOrder: 2, isActive: true },
+  { id: 'cat-mod-cold', tenantId: 'tenant-modendo-01', nameFa: 'بار سرد و ماکتل‌های گیمینگ', nameEn: 'Gaming Mocktails & Cold Bar', sortOrder: 3, isActive: true },
+  { id: 'cat-mod-food', tenantId: 'tenant-modendo-01', nameFa: 'برگر، پنینی و اسنک گرم', nameEn: 'Burgers, Panini & Snacks', sortOrder: 4, isActive: true },
+  { id: 'cat-mod-terrace', tenantId: 'tenant-modendo-01', nameFa: 'پذیرایی تراس و دمنوش‌های آرامش', nameEn: 'Terrace & Herbal Blends', sortOrder: 5, isActive: true },
+];
+
+export const MODENDO_MENU_ITEMS: MenuItem[] = [
+  // 1. سشن‌های بازی و کنسول
+  {
+    id: 'item-mod-bg-hourly',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-gaming',
+    nameFa: 'ورودی بردگیم (ساعتی / هر نفر)',
+    nameEn: 'Boardgame Table Fee (Per Person/Hr)',
+    priceToman: 50000,
+    isAvailable: true,
+    currentStock: 999,
+    lowStockThreshold: 10,
+    badge: 'بردگیم',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-ps5-hourly',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-gaming',
+    nameFa: 'کنسول پلی‌استیشن ۵ (ساعتی)',
+    nameEn: 'PS5 Gaming Pod (Hourly)',
+    priceToman: 120000,
+    isAvailable: true,
+    currentStock: 999,
+    lowStockThreshold: 10,
+    badge: 'PS5 Standard',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-lounge-token',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-gaming',
+    nameFa: 'پکیج ژتون لانژ (سفارش آزاد)',
+    nameEn: 'Lounge Token Pass',
+    priceToman: 80000,
+    isAvailable: true,
+    currentStock: 999,
+    lowStockThreshold: 10,
+    badge: 'ژتون لانژ',
+    station: 'BAR',
+  },
+  // 2. بار گرم و اسپرسو بار
+  {
+    id: 'item-mod-esp-single',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-espresso',
+    nameFa: 'اسپرسو سینگل مودندو',
+    nameEn: 'Single Espresso Modendo',
+    priceToman: 110000,
+    isAvailable: true,
+    currentStock: 100,
+    lowStockThreshold: 15,
+    badge: 'اسپرسو',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-esp-double',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-espresso',
+    nameFa: 'اسپرسو دبل مودندو',
+    nameEn: 'Double Espresso Modendo',
+    priceToman: 130000,
+    isAvailable: true,
+    currentStock: 100,
+    lowStockThreshold: 15,
+    badge: 'دبل شات',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-americano',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-espresso',
+    nameFa: 'آمریکانو گیمر (بزرگ)',
+    nameEn: 'Americano Gamer Size',
+    priceToman: 135000,
+    isAvailable: true,
+    currentStock: 80,
+    lowStockThreshold: 15,
+    badge: 'آمریکانو',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-latte',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-espresso',
+    nameFa: 'کافه لاته مخملی',
+    nameEn: 'Velvet Cafe Latte',
+    priceToman: 150000,
+    isAvailable: true,
+    currentStock: 80,
+    lowStockThreshold: 15,
+    badge: 'لاته',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-cappuccino',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-espresso',
+    nameFa: 'کاپوچینو ایتالیایی',
+    nameEn: 'Italian Cappuccino',
+    priceToman: 150000,
+    isAvailable: true,
+    currentStock: 70,
+    lowStockThreshold: 15,
+    badge: 'کاپوچینو',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-caramel-mac',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-espresso',
+    nameFa: 'کارامل ماکیاتو ویژه',
+    nameEn: 'Caramel Macchiato Special',
+    priceToman: 165000,
+    isAvailable: true,
+    currentStock: 60,
+    lowStockThreshold: 12,
+    badge: 'کارامل',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-mocha',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-espresso',
+    nameFa: 'دارک موکا شکلات بلژیکی',
+    nameEn: 'Belgian Dark Mocha',
+    priceToman: 170000,
+    isAvailable: true,
+    currentStock: 50,
+    lowStockThreshold: 10,
+    badge: 'شکلات',
+    station: 'BAR',
+  },
+  // 3. بار سرد و ماکتل‌های گیمینگ
+  {
+    id: 'item-mod-blue-electric',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-cold',
+    nameFa: 'ماکتل الکتریک گیمر (بلوبری و سودا)',
+    nameEn: 'Electric Gamer Mocktail',
+    priceToman: 165000,
+    isAvailable: true,
+    currentStock: 60,
+    lowStockThreshold: 10,
+    badge: 'ویژه گیمینگ',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-mojito',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-cold',
+    nameFa: 'موهیتو کراش نعنا لیمو تازه',
+    nameEn: 'Fresh Mint Lime Mojito',
+    priceToman: 145000,
+    isAvailable: true,
+    currentStock: 60,
+    lowStockThreshold: 10,
+    badge: 'موهیتو',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-iced-latte',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-cold',
+    nameFa: 'آیس لاته با سیروپ وانیل',
+    nameEn: 'Iced Vanilla Latte',
+    priceToman: 160000,
+    isAvailable: true,
+    currentStock: 70,
+    lowStockThreshold: 10,
+    badge: 'آیس',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-redbull-special',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-cold',
+    nameFa: 'ردبول میکس استوایی گیمر',
+    nameEn: 'RedBull Tropical Mix',
+    priceToman: 185000,
+    isAvailable: true,
+    currentStock: 45,
+    lowStockThreshold: 8,
+    badge: 'انرژی‌زا',
+    station: 'BAR',
+  },
+  // 4. برگر، پنینی و اسنک گرم (آشپزخانه)
+  {
+    id: 'item-mod-burger-classic',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-food',
+    nameFa: 'برگر کلاسیک دست‌ساز مودندو (۲۰۰ گرم)',
+    nameEn: 'Modendo Classic Beef Burger',
+    priceToman: 295000,
+    isAvailable: true,
+    currentStock: 35,
+    lowStockThreshold: 5,
+    badge: 'آشپزخانه',
+    station: 'KITCHEN',
+  },
+  {
+    id: 'item-mod-panini-turkey',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-food',
+    nameFa: 'پنینی بوقلمون دودی و پنیر گودا',
+    nameEn: 'Smoked Turkey Gouda Panini',
+    priceToman: 240000,
+    isAvailable: true,
+    currentStock: 30,
+    lowStockThreshold: 5,
+    badge: 'پنینی',
+    station: 'KITCHEN',
+  },
+  {
+    id: 'item-mod-panini-pesto',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-food',
+    nameFa: 'پنینی فیله مرغ گریل و سس پستو',
+    nameEn: 'Grilled Chicken Pesto Panini',
+    priceToman: 230000,
+    isAvailable: true,
+    currentStock: 30,
+    lowStockThreshold: 5,
+    badge: 'پنینی',
+    station: 'KITCHEN',
+  },
+  {
+    id: 'item-mod-fries-cheddar',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-food',
+    nameFa: 'سیب‌زمینی سرخ‌کرده ویژه با دیپ چدار',
+    nameEn: 'Special Fries with Hot Cheddar Dip',
+    priceToman: 145000,
+    isAvailable: true,
+    currentStock: 50,
+    lowStockThreshold: 10,
+    badge: 'پیش‌غذا',
+    station: 'KITCHEN',
+  },
+  {
+    id: 'item-mod-croissant-ham',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-food',
+    nameFa: 'کروسان برشته ژامبون و پنیر',
+    nameEn: 'Ham & Cheese Croissant',
+    priceToman: 160000,
+    isAvailable: true,
+    currentStock: 25,
+    lowStockThreshold: 5,
+    badge: 'بیکری',
+    station: 'KITCHEN',
+  },
+  {
+    id: 'item-mod-cheesecake',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-food',
+    nameFa: 'چیزکیک سن سباستین با سس شکلات',
+    nameEn: 'San Sebastian Cheesecake',
+    priceToman: 155000,
+    isAvailable: true,
+    currentStock: 25,
+    lowStockThreshold: 5,
+    badge: 'دسر',
+    station: 'KITCHEN',
+  },
+  // 5. پذیرایی تراس و دمنوش‌های آرامش
+  {
+    id: 'item-mod-tea-lahijan',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-terrace',
+    nameFa: 'چای دمی لاهیجان قوری ۲ نفره با نبات و هل',
+    nameEn: 'Lahijan Black Tea Pot (2 Person)',
+    priceToman: 85000,
+    isAvailable: true,
+    currentStock: 80,
+    lowStockThreshold: 15,
+    badge: 'تراس',
+    station: 'BAR',
+  },
+  {
+    id: 'item-mod-herbal-calm',
+    tenantId: 'tenant-modendo-01',
+    categoryId: 'cat-mod-terrace',
+    nameFa: 'دمنوش آرامش گیمر (به‌لیمو، بابونه و گل‌گاوزبان)',
+    nameEn: 'Calm Gamer Herbal Infusion',
+    priceToman: 95000,
+    isAvailable: true,
+    currentStock: 60,
+    lowStockThreshold: 10,
+    badge: 'دمنوش',
+    station: 'BAR',
+  },
+];
+
+// Secondary Tenant: قهوه‌فروشی ۱۰۰هیچ (100 Hich Specialty Coffee Roasters)
 const DEFAULT_TENANT: Tenant = {
   id: 'tenant-100hich-01',
   name: 'قهوه‌فروشی صَد هیچ (100 HICH Coffee Roasters)',
@@ -91,6 +465,8 @@ const DEFAULT_CATEGORIES: Category[] = [
   { id: 'cat-cold-drinks', tenantId: 'tenant-100hich-01', nameFa: 'نوشیدنی سرد بر پایه سیروپ', nameEn: 'Cold Drinks & Mocktails', sortOrder: 6, isActive: true },
   { id: 'cat-brewed', tenantId: 'tenant-100hich-01', nameFa: 'قهوه‌های دمی', nameEn: 'Brewed Coffee (Single Origin)', sortOrder: 7, isActive: true },
   { id: 'cat-retail-beans', tenantId: 'tenant-100hich-01', nameFa: 'دان و پودر قهوه (کیلویی)', nameEn: 'Beans & Retail Powders', sortOrder: 8, isActive: true },
+  { id: 'cat-bakery', tenantId: 'tenant-100hich-01', nameFa: 'بیکری و شیرینی‌جات', nameEn: 'Bakery & Pastry', sortOrder: 9, isActive: true },
+  { id: 'cat-warm-food', tenantId: 'tenant-100hich-01', nameFa: 'ساندویچ و غذای گرم', nameEn: 'Sandwiches & Warm Food', sortOrder: 10, isActive: true },
 ];
 
 const DEFAULT_MENU_ITEMS: MenuItem[] = [
@@ -1110,45 +1486,172 @@ const DEFAULT_MENU_ITEMS: MenuItem[] = [
     weight: '۱ کیلوگرم',
     badge: 'موجودی: ۰.۶۷۵ کیلو',
     isBean: false,
+    station: 'BAR',
+  },
+  // -------------------------------------------------------------
+  // ۹. بیکری و شیرینی‌جات (KITCHEN)
+  // -------------------------------------------------------------
+  {
+    id: 'item-bakery-croissant',
+    tenantId: 'tenant-100hich-01',
+    categoryId: 'cat-bakery',
+    nameFa: 'کروسان فرانسوی کره‌ای',
+    nameEn: 'Butter Croissant',
+    priceToman: 110000,
+    isAvailable: true,
+    currentStock: 24,
+    lowStockThreshold: 5,
+    station: 'KITCHEN',
+    badge: 'تازه پخت',
+    isBean: false,
+  },
+  {
+    id: 'item-bakery-carrot-cake',
+    tenantId: 'tenant-100hich-01',
+    categoryId: 'cat-bakery',
+    nameFa: 'کیک هویج و گردو اسپشیال',
+    nameEn: 'Carrot Walnut Cake',
+    priceToman: 135000,
+    isAvailable: true,
+    currentStock: 18,
+    lowStockThreshold: 4,
+    station: 'KITCHEN',
+    badge: 'شیرینی روز',
+    isBean: false,
+  },
+  {
+    id: 'item-bakery-cheesecake',
+    tenantId: 'tenant-100hich-01',
+    categoryId: 'cat-bakery',
+    nameFa: 'چیزکیک سن سباستین',
+    nameEn: 'San Sebastian Cheesecake',
+    priceToman: 160000,
+    isAvailable: true,
+    currentStock: 12,
+    lowStockThreshold: 3,
+    station: 'KITCHEN',
+    badge: 'محبوب',
+    isBean: false,
+  },
+  // -------------------------------------------------------------
+  // ۱۰. ساندویچ و غذای گرم (KITCHEN)
+  // -------------------------------------------------------------
+  {
+    id: 'item-food-turkey-sandwich',
+    tenantId: 'tenant-100hich-01',
+    categoryId: 'cat-warm-food',
+    nameFa: 'ساندویچ بوقلمون دودی و پنیر گودا',
+    nameEn: 'Smoked Turkey Sandwich',
+    priceToman: 240000,
+    isAvailable: true,
+    currentStock: 15,
+    lowStockThreshold: 4,
+    station: 'KITCHEN',
+    badge: 'غذای گرم',
+    isBean: false,
+  },
+  {
+    id: 'item-food-spinach-toast',
+    tenantId: 'tenant-100hich-01',
+    categoryId: 'cat-warm-food',
+    nameFa: 'تست پنیر گودا و اسفناج',
+    nameEn: 'Spinach & Gouda Toast',
+    priceToman: 180000,
+    isAvailable: true,
+    currentStock: 20,
+    lowStockThreshold: 5,
+    station: 'KITCHEN',
+    badge: 'غذای گرم',
+    isBean: false,
+  },
+  {
+    id: 'item-food-chicken-panini',
+    tenantId: 'tenant-100hich-01',
+    categoryId: 'cat-warm-food',
+    nameFa: 'پنینی مرغ و سس پستو',
+    nameEn: 'Chicken Pesto Panini',
+    priceToman: 260000,
+    isAvailable: true,
+    currentStock: 16,
+    lowStockThreshold: 4,
+    station: 'KITCHEN',
+    badge: 'غذای گرم',
+    isBean: false,
   },
 ];
 
 // Helper to access LocalStorage safely
 function load<T>(key: string, fallback: T): T {
   try {
+    if (typeof localStorage === 'undefined' || !localStorage) return fallback;
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
     return JSON.parse(raw);
   } catch (err) {
-    console.error(`Error loading key ${key}:`, err);
     return fallback;
   }
 }
 
 function save<T>(key: string, data: T): void {
   try {
+    if (typeof localStorage === 'undefined' || !localStorage) return;
     localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
-    console.error(`Error saving key ${key}:`, err);
+    // ignore in node/test environments
   }
 }
 
 export class SmartOrdersStore {
+  // Active Tenant Management
+  static getActiveTenantId(): string {
+    return load<string>(STORAGE_KEYS.ACTIVE_TENANT_ID, 'tenant-modendo-01');
+  }
+
+  static setActiveTenantId(tenantId: string): void {
+    save(STORAGE_KEYS.ACTIVE_TENANT_ID, tenantId);
+  }
+
+  static getAvailableTenants(): Tenant[] {
+    return [MODENDO_TENANT, DEFAULT_TENANT];
+  }
+
+  static switchTenant(tenantId: string): Tenant {
+    this.setActiveTenantId(tenantId);
+    const users = this.getUsers();
+    if (users.length > 0) {
+      this.setActiveUserId(users[0].id);
+    }
+    return this.getTenant();
+  }
+
   // Tenant
   static getTenant(): Tenant {
-    return load(STORAGE_KEYS.TENANT, DEFAULT_TENANT);
+    const activeTenantId = this.getActiveTenantId();
+    if (activeTenantId === 'tenant-100hich-01') {
+      return load(STORAGE_KEYS.TENANT, DEFAULT_TENANT);
+    }
+    return load(STORAGE_KEYS.TENANT_MODENDO, MODENDO_TENANT);
   }
 
   static updateTenant(updated: Partial<Tenant>): Tenant {
     const current = this.getTenant();
     const merged = { ...current, ...updated };
-    save(STORAGE_KEYS.TENANT, merged);
+    const activeTenantId = this.getActiveTenantId();
+    if (activeTenantId === 'tenant-100hich-01') {
+      save(STORAGE_KEYS.TENANT, merged);
+    } else {
+      save(STORAGE_KEYS.TENANT_MODENDO, merged);
+    }
     return merged;
   }
 
   // Users & Authentication
   static getUsers(): User[] {
-    return load(STORAGE_KEYS.USERS, DEFAULT_USERS);
+    const activeTenantId = this.getActiveTenantId();
+    if (activeTenantId === 'tenant-100hich-01') {
+      return load(STORAGE_KEYS.USERS, DEFAULT_USERS);
+    }
+    return load(STORAGE_KEYS.USERS_MODENDO, MODENDO_USERS);
   }
 
   static getActiveUser(): User {
@@ -1216,22 +1719,55 @@ export class SmartOrdersStore {
 
   // Categories
   static getCategories(): Category[] {
+    const activeTenantId = this.getActiveTenantId();
+    if (activeTenantId === 'tenant-modendo-01') {
+      return load(STORAGE_KEYS.CATEGORIES_MODENDO, MODENDO_CATEGORIES);
+    }
     return load(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
   }
 
   static saveCategories(cats: Category[]): void {
-    save(STORAGE_KEYS.CATEGORIES, cats);
+    const activeTenantId = this.getActiveTenantId();
+    if (activeTenantId === 'tenant-modendo-01') {
+      save(STORAGE_KEYS.CATEGORIES_MODENDO, cats);
+    } else {
+      save(STORAGE_KEYS.CATEGORIES, cats);
+    }
   }
 
   // Menu Items
   static getMenuItems(): MenuItem[] {
+    const activeTenantId = this.getActiveTenantId();
+    if (activeTenantId === 'tenant-modendo-01') {
+      const rawItems = load<MenuItem[]>(STORAGE_KEYS.MENU_ITEMS_MODENDO, MODENDO_MENU_ITEMS);
+      const existingIds = new Set(rawItems.map((i) => i.id));
+      const missingDefaults = MODENDO_MENU_ITEMS.filter((d) => !existingIds.has(d.id));
+      const combined = missingDefaults.length > 0 ? [...rawItems, ...missingDefaults] : rawItems;
+
+      return combined.map((item) => {
+        const def = MODENDO_MENU_ITEMS.find((d) => d.id === item.id);
+        const stock = item.currentStock !== undefined && item.currentStock !== null ? item.currentStock : (def?.currentStock ?? 50);
+        const threshold = item.lowStockThreshold !== undefined && item.lowStockThreshold !== null ? item.lowStockThreshold : (def?.lowStockThreshold ?? 10);
+        const station = item.station || def?.station || (item.categoryId === 'cat-mod-food' ? 'KITCHEN' : 'BAR');
+        return { ...item, currentStock: stock, lowStockThreshold: threshold, station };
+      });
+    }
+
     const rawItems = load<MenuItem[]>(STORAGE_KEYS.MENU_ITEMS, DEFAULT_MENU_ITEMS);
     let modified = false;
-    const items = rawItems.map((item) => {
+
+    // Ensure newly added default items (e.g. bakery/kitchen items) are available
+    const existingIds = new Set(rawItems.map((i) => i.id));
+    const missingDefaults = DEFAULT_MENU_ITEMS.filter((d) => !existingIds.has(d.id));
+    const combined = missingDefaults.length > 0 ? [...rawItems, ...missingDefaults] : rawItems;
+    if (missingDefaults.length > 0) modified = true;
+
+    const items = combined.map((item) => {
       const defaultMatch = DEFAULT_MENU_ITEMS.find((d) => d.id === item.id);
       let updated = false;
       let stock = item.currentStock;
       let threshold = item.lowStockThreshold;
+      let station = item.station;
 
       if (stock === undefined || stock === null) {
         stock = defaultMatch?.currentStock !== undefined ? defaultMatch.currentStock : 15;
@@ -1241,10 +1777,18 @@ export class SmartOrdersStore {
         threshold = defaultMatch?.lowStockThreshold !== undefined ? defaultMatch.lowStockThreshold : 5;
         updated = true;
       }
+      if (!station) {
+        if (item.categoryId === 'cat-bakery' || item.categoryId === 'cat-warm-food') {
+          station = 'KITCHEN';
+        } else {
+          station = defaultMatch?.station || 'BAR';
+        }
+        updated = true;
+      }
 
       if (updated) {
         modified = true;
-        return { ...item, currentStock: stock, lowStockThreshold: threshold };
+        return { ...item, currentStock: stock, lowStockThreshold: threshold, station };
       }
       return item;
     });
@@ -1256,7 +1800,12 @@ export class SmartOrdersStore {
   }
 
   static saveMenuItems(items: MenuItem[]): void {
-    save(STORAGE_KEYS.MENU_ITEMS, items);
+    const activeTenantId = this.getActiveTenantId();
+    if (activeTenantId === 'tenant-modendo-01') {
+      save(STORAGE_KEYS.MENU_ITEMS_MODENDO, items);
+    } else {
+      save(STORAGE_KEYS.MENU_ITEMS, items);
+    }
   }
 
   static updateMenuItem(item: MenuItem): void {
@@ -1621,32 +2170,32 @@ export class SmartOrdersStore {
 
   // Seed sample initial shift and history if fresh install
   static initSeedData(): void {
+    // 1. Modendo Primary Tenant Data Seeding
+    if (!localStorage.getItem(STORAGE_KEYS.ACTIVE_TENANT_ID)) {
+      save(STORAGE_KEYS.ACTIVE_TENANT_ID, 'tenant-modendo-01');
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.TENANT_MODENDO)) {
+      save(STORAGE_KEYS.TENANT_MODENDO, MODENDO_TENANT);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.USERS_MODENDO)) {
+      save(STORAGE_KEYS.USERS_MODENDO, MODENDO_USERS);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.CATEGORIES_MODENDO)) {
+      save(STORAGE_KEYS.CATEGORIES_MODENDO, MODENDO_CATEGORIES);
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.MENU_ITEMS_MODENDO)) {
+      save(STORAGE_KEYS.MENU_ITEMS_MODENDO, MODENDO_MENU_ITEMS);
+    }
+
+    // 2. Secondary Tenant (100 Hich) Data Seeding
     if (!localStorage.getItem(STORAGE_KEYS.CATEGORIES)) {
-      this.saveCategories(DEFAULT_CATEGORIES);
+      save(STORAGE_KEYS.CATEGORIES, DEFAULT_CATEGORIES);
     }
     if (!localStorage.getItem(STORAGE_KEYS.MENU_ITEMS)) {
-      this.saveMenuItems(DEFAULT_MENU_ITEMS);
+      save(STORAGE_KEYS.MENU_ITEMS, DEFAULT_MENU_ITEMS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
       save(STORAGE_KEYS.USERS, DEFAULT_USERS);
-    } else {
-      const users = this.getUsers();
-      let updated = false;
-      const patched = users.map((u) => {
-        const def = DEFAULT_USERS.find((du) => du.id === u.id);
-        if (!u.username || !u.password) {
-          updated = true;
-          return {
-            ...u,
-            username: u.username || def?.username || u.phoneNumber,
-            password: u.password || def?.password || '123',
-          };
-        }
-        return u;
-      });
-      if (updated) {
-        save(STORAGE_KEYS.USERS, patched);
-      }
     }
     if (!localStorage.getItem(STORAGE_KEYS.TENANT)) {
       save(STORAGE_KEYS.TENANT, DEFAULT_TENANT);
@@ -1655,11 +2204,16 @@ export class SmartOrdersStore {
     // If no shift exists, create a sample open shift with 500,000 Toman opening cash
     const shifts = this.getShifts();
     if (shifts.length === 0) {
-      const initialShift = this.openShift(500000, 'شیفت صبح آزمایشی کافه نارنج');
+      const initialShift = this.openShift(500000, 'شیفت صبح آزمایشی');
 
       // Create two sample completed orders
       const user = this.getActiveUser();
       const menu = this.getMenuItems();
+
+      const latteItem = menu.find((m) => m.nameFa.includes('لاته') || m.id.includes('lat')) || menu[0];
+      const bakeryItem = menu.find((m) => m.nameFa.includes('چیزکیک') || m.nameFa.includes('کروسان') || m.nameFa.includes('برگر')) || menu[1];
+      const americanoItem = menu.find((m) => m.nameFa.includes('آمریکانو') || m.nameFa.includes('اسپرسو') || m.id.includes('ame')) || menu[0];
+      const pastryItem = menu.find((m) => m.nameFa.includes('کروسان') || m.id.includes('cro') || m.nameFa.includes('پنینی')) || menu[1];
 
       const order1 = this.createOrder({
         tenantId: initialShift.tenantId,
@@ -1673,24 +2227,24 @@ export class SmartOrdersStore {
         items: [
           {
             id: 'item-snap-1',
-            menuItemId: menu[2].id, // کافه لاته
-            itemNameSnapshot: menu[2].nameFa,
-            unitPriceSnapshotToman: menu[2].priceToman,
+            menuItemId: latteItem.id,
+            itemNameSnapshot: latteItem.nameFa,
+            unitPriceSnapshotToman: latteItem.priceToman,
             quantity: 2,
-            subtotalToman: menu[2].priceToman * 2,
+            subtotalToman: latteItem.priceToman * 2,
           },
           {
             id: 'item-snap-2',
-            menuItemId: menu[13].id, // چیزکیک سن سباستین
-            itemNameSnapshot: menu[13].nameFa,
-            unitPriceSnapshotToman: menu[13].priceToman,
+            menuItemId: bakeryItem.id,
+            itemNameSnapshot: bakeryItem.nameFa,
+            unitPriceSnapshotToman: bakeryItem.priceToman,
             quantity: 1,
-            subtotalToman: menu[13].priceToman,
+            subtotalToman: bakeryItem.priceToman,
           },
         ],
-        grossAmountToman: menu[2].priceToman * 2 + menu[13].priceToman,
+        grossAmountToman: latteItem.priceToman * 2 + bakeryItem.priceToman,
         discountAmountToman: 15000,
-        netTotalToman: menu[2].priceToman * 2 + menu[13].priceToman - 15000,
+        netTotalToman: latteItem.priceToman * 2 + bakeryItem.priceToman - 15000,
       });
 
       this.recordPayment({
@@ -1717,24 +2271,24 @@ export class SmartOrdersStore {
         items: [
           {
             id: 'item-snap-3',
-            menuItemId: menu[1].id, // آمریکانو
-            itemNameSnapshot: menu[1].nameFa,
-            unitPriceSnapshotToman: menu[1].priceToman,
+            menuItemId: americanoItem.id,
+            itemNameSnapshot: americanoItem.nameFa,
+            unitPriceSnapshotToman: americanoItem.priceToman,
             quantity: 1,
-            subtotalToman: menu[1].priceToman,
+            subtotalToman: americanoItem.priceToman,
           },
           {
             id: 'item-snap-4',
-            menuItemId: menu[15].id, // کروسان کره‌ای
-            itemNameSnapshot: menu[15].nameFa,
-            unitPriceSnapshotToman: menu[15].priceToman,
+            menuItemId: pastryItem.id,
+            itemNameSnapshot: pastryItem.nameFa,
+            unitPriceSnapshotToman: pastryItem.priceToman,
             quantity: 1,
-            subtotalToman: menu[15].priceToman,
+            subtotalToman: pastryItem.priceToman,
           },
         ],
-        grossAmountToman: menu[1].priceToman + menu[15].priceToman,
+        grossAmountToman: americanoItem.priceToman + pastryItem.priceToman,
         discountAmountToman: 0,
-        netTotalToman: menu[1].priceToman + menu[15].priceToman,
+        netTotalToman: americanoItem.priceToman + pastryItem.priceToman,
       });
 
       this.recordPayment({

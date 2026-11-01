@@ -25,6 +25,7 @@ export interface MenuItem {
   taxRate?: number;
   recipe: RecipeIngredient[];
   isAvailable: boolean;
+  station?: 'BAR' | 'KITCHEN';
 }
 
 export interface OrderItem {
@@ -34,6 +35,7 @@ export interface OrderItem {
   quantity: number;
   unitPrice: number;
   notes?: string;
+  station?: 'BAR' | 'KITCHEN';
   status: 'pending' | 'preparing' | 'served' | 'cancelled';
 }
 

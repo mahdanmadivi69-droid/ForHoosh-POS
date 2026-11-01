@@ -16,6 +16,7 @@ export interface User {
   phoneNumber: string;
   username: string;
   password?: string;
+  pin?: string;
   role: UserRole;
   isActive: boolean;
 }
@@ -37,6 +38,8 @@ export interface Category {
   isActive: boolean;
 }
 
+export type PrepStation = 'BAR' | 'KITCHEN';
+
 export interface MenuItem {
   id: string;
   tenantId: string;
@@ -45,6 +48,7 @@ export interface MenuItem {
   nameEn?: string;
   priceToman: number; // Stored as integer Toman
   isAvailable: boolean;
+  station?: PrepStation;
   description?: string;
   currentStock?: number; // موجودی فعلی انبار/کافه به عدد
   lowStockThreshold?: number; // آستانه هشدار کسری موجودی اختصاصی آیتم
@@ -90,6 +94,9 @@ export interface OrderItem {
   quantity: number;
   subtotalToman: number; // unitPriceSnapshotToman * quantity
   notes?: string;
+  station?: PrepStation;
+  status?: 'PENDING_DISPATCH' | 'DISPATCHED' | 'PREPARING' | 'SERVED' | 'SETTLED';
+  dispatchedAt?: string;
   modifiers?: Array<{ id: string; nameFa: string; priceDeltaToman: number }>;
 }
 

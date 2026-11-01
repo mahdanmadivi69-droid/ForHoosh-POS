@@ -18,6 +18,8 @@ import {
 import { baristaDispatcher, BaristaOrderTicket } from '../services/baristaDispatcher';
 import { websocketServer } from '../services/websocket-server';
 import { SmartOrdersStore } from '../services/storage';
+import { thermalPrinterDriver } from '../services/ThermalPrinterDriver';
+import { StationRouter } from '../services/StationRouter';
 
 interface BaristaKdsModalProps {
   isOpen: boolean;
@@ -88,6 +90,29 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
 
   const handleTestSound = () => {
     baristaDispatcher.playBaristaChime();
+  };
+
+  const handleReprintTicket = async (ticket: BaristaOrderTicket) => {
+    try {
+      const items = ticket.items.map((it, idx) => ({
+        id: `reprint-${ticket.orderId}-${idx}`,
+        title: it.itemName,
+        quantity: it.quantity,
+        modifiers: it.modifiers,
+        notes: it.notes,
+        station: 'BAR' as const,
+      }));
+
+      const splitResult = StationRouter.splitTicket(items, [], {
+        ticketId: ticket.orderNumber,
+        tableLabel: ticket.tableLabel || 'سالن',
+        cashierName: 'باریستا',
+      });
+
+      await thermalPrinterDriver.printBothStations(splitResult);
+    } catch (e) {
+      console.warn('Reprint ticket failed:', e);
+    }
   };
 
   const handleMarkAsSoldOut = (productId: string, alertId: string) => {
@@ -351,9 +376,19 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1.5 text-xs text-stone-400 font-mono">
-                          <Clock className="w-3.5 h-3.5 text-stone-500" />
-                          <span>{timeFormatted}</span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleReprintTicket(ticket)}
+                            title="چاپ مجدد تیکت حرارتی ایستگاه"
+                            className="p-1 rounded text-stone-400 hover:text-amber-400 hover:bg-stone-800 transition cursor-pointer"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                          <div className="flex items-center gap-1.5 text-xs text-stone-400 font-mono">
+                            <Clock className="w-3.5 h-3.5 text-stone-500" />
+                            <span>{timeFormatted}</span>
+                          </div>
                         </div>
                       </div>
 

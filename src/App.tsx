@@ -33,6 +33,12 @@ import { baristaDispatcher } from './services/baristaDispatcher';
 import { InventoryAlertBanner } from './components/InventoryAlertBanner';
 import { useInventoryAlerts } from './hooks/useInventoryAlerts';
 import { SmartOrdersContainer, FEATURES } from './modules/smart-orders';
+import { InventoryManagerView } from './components/InventoryManagerView';
+import { SettingsView } from './views/settings/SettingsView';
+import { ZReportModal } from './components/modals/ZReportModal';
+import { RBACService } from './services/RBACService';
+import { SettingsService } from './services/settingsService';
+import { FloorPlanView } from './components/floorplan/FloorPlanView';
 
 export default function App() {
   const [tenant, setTenant] = useState<Tenant>(SmartOrdersStore.getTenant());
@@ -49,8 +55,10 @@ export default function App() {
 
   // UI state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
-  const [currentTab, setCurrentTab] = useState<'pos' | 'zero-g' | 'reports' | 'menu' | 'audit'>('pos');
+  const [currentTab, setCurrentTab] = useState<'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings'>('pos');
+  const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [isZReportModalOpen, setIsZReportModalOpen] = useState(false);
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isBaristaKdsOpen, setIsBaristaKdsOpen] = useState(false);
@@ -84,6 +92,8 @@ export default function App() {
   // Initialize seed data on startup
   useEffect(() => {
     SmartOrdersStore.initSeedData();
+    RBACService.initDefaultUsers();
+    SettingsService.initDefaults();
     refreshState();
   }, []);
 
@@ -104,9 +114,9 @@ export default function App() {
 
   // RBAC Tab Protection Guard
   useEffect(() => {
-    if (!isManagerOrOwner(activeUser.role) && (currentTab === 'menu' || currentTab === 'audit')) {
+    if (!isManagerOrOwner(activeUser.role) && (currentTab === 'menu' || currentTab === 'audit' || currentTab === 'inventory')) {
       setCurrentTab('pos');
-      showToast('دسترسی به بخش مدیریت منو و حسابرسی فقط برای مدیر و مالک مجاز است.');
+      showToast('دسترسی به بخش مدیریت منو، انبارداری و حسابرسی فقط برای مدیر و مالک مجاز است.');
     }
   }, [activeUser.role, currentTab]);
 
@@ -284,6 +294,7 @@ export default function App() {
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         onOpenShiftModal={() => setIsShiftModalOpen(true)}
+        onOpenZReportModal={() => setIsZReportModalOpen(true)}
         onOpenExpenseModal={() => setIsExpenseModalOpen(true)}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
         onOpenBaristaKds={() => setIsBaristaKdsOpen(true)}
@@ -308,6 +319,8 @@ export default function App() {
               activeUser={activeUser}
               onOrderCompleted={handleOrderCompleted}
               onOpenShiftRequired={() => setIsShiftModalOpen(true)}
+              onOpenZReport={() => setIsZReportModalOpen(true)}
+              preselectedTableLabel={preselectedTableLabel}
             />
           )
         )}
@@ -321,6 +334,19 @@ export default function App() {
             activeUser={activeUser}
             onOrderCompleted={handleOrderCompleted}
             onOpenShiftRequired={() => setIsShiftModalOpen(true)}
+            onOpenZReport={() => setIsZReportModalOpen(true)}
+            preselectedTableLabel={preselectedTableLabel}
+          />
+        )}
+
+        {currentTab === 'floor-plan' && (
+          <FloorPlanView
+            onBackToPos={() => setCurrentTab('pos')}
+            onSelectTableForOrder={(tableLabel) => {
+              setPreselectedTableLabel(tableLabel);
+              setCurrentTab('pos');
+              showToast(`میز ${tableLabel} انتخاب شد.`);
+            }}
           />
         )}
 
@@ -348,6 +374,31 @@ export default function App() {
         {currentTab === 'audit' && (
           <AuditLogView logs={auditLogs} onRefreshLogs={refreshState} />
         )}
+
+        {currentTab === 'inventory' && (
+          <InventoryManagerView
+            menuItems={menuItems}
+            onBackToPos={() => setCurrentTab('pos')}
+          />
+        )}
+
+        {currentTab === 'settings' && (
+          <SettingsView
+            currentUserRole={activeUser.role as any}
+            currentUserName={activeUser.fullName}
+            onBackToPos={() => setCurrentTab('pos')}
+            onRoleSwitch={(newRole) => {
+              const matched = allUsers.find((u) => u.role === newRole);
+              if (matched) {
+                handleUserChange(matched.id);
+              } else {
+                const updated = { ...activeUser, role: newRole as any };
+                setActiveUser(updated);
+                showToast(`نقش موقت برای آزمایش تغییر یافت: ${newRole}`);
+              }
+            }}
+          />
+        )}
       </main>
 
       {/* Modals */}
@@ -362,6 +413,18 @@ export default function App() {
         expenses={expenses}
         onOpenShift={handleOpenShift}
         onCloseShift={handleCloseShift}
+      />
+
+      {/* Official Z-Report Closeout Modal */}
+      <ZReportModal
+        isOpen={isZReportModalOpen}
+        onClose={() => setIsZReportModalOpen(false)}
+        activeShift={activeShift}
+        activeUser={activeUser}
+        onConfirmCloseShift={(shiftId, countedCash, expectedCash, reason, notes) => {
+          handleCloseShift(shiftId, countedCash, expectedCash, reason, notes);
+          setIsZReportModalOpen(false);
+        }}
       />
 
       <ExpenseModal

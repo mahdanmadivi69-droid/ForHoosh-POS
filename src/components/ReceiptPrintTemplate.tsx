@@ -30,13 +30,23 @@ export interface ReceiptPrintTemplateProps {
   tenantName?: string;
   tenantAddress?: string;
   tenantPhone?: string;
+  brandTagline?: string;
+  website?: string;
 }
 
 export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
   order,
-  tenantAddress = "اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس",
-  tenantPhone = "۰۲۱-۴۴۶۶۸۰۹۰",
+  tenantName = "کافه بردگیم و گیمینگ مودندو",
+  tenantAddress = "تهران، خیابان شریعتی، مجتمع تجاری مودندو، طبقه منفی ۱ و همکف",
+  tenantPhone = "۰۲۱-۸۸۹۹۷۷۶۶",
+  brandTagline,
+  website,
 }) => {
+  const isModendo = !tenantName.includes('۱۰۰') && !tenantName.includes('Hich');
+  const displayTagline = brandTagline || (isModendo ? "«کافه مودندو؛ دنیای بردگیم و هیجان کنسول PS5»" : "«صد هیچ؛ تمرکز محض روی اصالت قهوه»");
+  const displayWebsite = website || (isModendo ? "MODENDO.CAFE" : "100HICH.IR");
+  const subBrand = isModendo ? "MODENDO BOARDGAME & GAMING CAFE" : "COFFEE ROASTERS";
+
   return (
     <div
       id="pos-thermal-receipt"
@@ -54,8 +64,8 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
     >
       {/* Brand Header */}
       <div className="text-center space-y-1 mb-2">
-        <h1 className="text-xl font-black tracking-wider text-black m-0 p-0">100 HICH</h1>
-        <p className="text-xs font-bold tracking-widest text-gray-800 m-0 uppercase">COFFEE ROASTERS</p>
+        <h1 className="text-xl font-black tracking-wider text-black m-0 p-0">{tenantName}</h1>
+        <p className="text-xs font-bold tracking-widest text-gray-800 m-0 uppercase">{subBrand}</p>
         <p className="text-[10px] text-gray-700 m-0 leading-tight">{tenantAddress}</p>
         <p className="text-[10px] text-gray-700 m-0 font-mono">تلفن: {tenantPhone}</p>
       </div>
@@ -176,8 +186,8 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
       {/* Barcode & Footer */}
       <div className="text-center mt-3 space-y-1 pt-2" style={{ borderTop: "1px solid #ddd" }}>
         <div className="text-base tracking-[0.25em] font-mono select-none">||| | ||||| |||| || | |||| ||</div>
-        <p className="text-[10px] font-bold mt-1 text-black">«صد هیچ؛ تمرکز محض روی اصالت قهوه»</p>
-        <p className="text-[9px] text-gray-600">از خرید شما سپاسگزاریم • 100HICH.IR</p>
+        <p className="text-[10px] font-bold mt-1 text-black">{displayTagline}</p>
+        <p className="text-[9px] text-gray-600">از خرید و همراهی شما سپاسگزاریم • {displayWebsite}</p>
       </div>
     </div>
   );
@@ -185,11 +195,16 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
 
 export function renderReceiptTemplateHtml(
   order: ReceiptOrderData,
-  tenantInfo: { address?: string; phone?: string } = {}
+  tenantInfo: { name?: string; address?: string; phone?: string; tagline?: string; website?: string } = {}
 ): string {
-  const address = tenantInfo.address || "اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس";
-  const phone = tenantInfo.phone || "۰۲۱-۴۴۶۶۸۰۹۰";
-  const cashier = order.cashier || "مهدان مددی - مدیر و مالک";
+  const isModendo = !tenantInfo.name || tenantInfo.name.includes('مودندو') || !tenantInfo.name.includes('۱۰۰');
+  const brandName = tenantInfo.name || (isModendo ? "کافه بردگیم و گیمینگ مودندو" : "100 HICH");
+  const subBrand = isModendo ? "MODENDO BOARDGAME & GAMING CAFE" : "COFFEE ROASTERS";
+  const address = tenantInfo.address || (isModendo ? "تهران، خیابان شریعتی، مجتمع تجاری مودندو، منفی ۱" : "اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس");
+  const phone = tenantInfo.phone || (isModendo ? "۰۲۱-۸۸۹۹۷۷۶۶" : "۰۲۱-۴۴۶۶۸۰۹۰");
+  const tagline = tenantInfo.tagline || (isModendo ? "«کافه مودندو؛ دنیای بردگیم و هیجان کنسول PS5»" : "«صد هیچ؛ تمرکز محض روی اصالت قهوه»");
+  const website = tenantInfo.website || (isModendo ? "MODENDO.CAFE" : "100HICH.IR");
+  const cashier = order.cashier || (isModendo ? "مهدان مددی - مدیر کل" : "مهدان مددی - مدیر و مالک");
   const subtotal = (order.subtotalAmount ?? order.totalAmount).toLocaleString("fa-IR");
   const total = order.totalAmount.toLocaleString("fa-IR");
 
@@ -217,8 +232,8 @@ export function renderReceiptTemplateHtml(
       style="width: 80mm; max-width: 80mm; box-sizing: border-box; padding: 4mm 2mm; background: #ffffff; color: #000000; font-family: 'Vazirmatn', -apple-system, BlinkMacSystemFont, Tahoma, Arial, sans-serif; font-size: 11px; line-height: 1.35; margin: 0 auto; text-align: right;"
     >
       <div style="text-align: center; margin-bottom: 8px;">
-        <h1 style="font-size: 20px; font-weight: 900; letter-spacing: 1px; margin: 0 0 2px 0; color: #000;">100 HICH</h1>
-        <p style="font-size: 11px; font-weight: 800; letter-spacing: 2px; margin: 0 0 4px 0; text-transform: uppercase; color: #333;">COFFEE ROASTERS</p>
+        <h1 style="font-size: 18px; font-weight: 900; letter-spacing: 1px; margin: 0 0 2px 0; color: #000;">${brandName}</h1>
+        <p style="font-size: 10px; font-weight: 800; letter-spacing: 2px; margin: 0 0 4px 0; text-transform: uppercase; color: #333;">${subBrand}</p>
         <p style="font-size: 10px; color: #444; margin: 0 0 2px 0;">${address}</p>
         <p style="font-size: 10px; color: #444; margin: 0; font-family: monospace;">تلفن: ${phone}</p>
       </div>
@@ -308,8 +323,8 @@ export function renderReceiptTemplateHtml(
 
       <div style="text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #ddd;">
         <div style="font-size: 15px; letter-spacing: 0.25em; font-family: monospace; user-select: none;">||| | ||||| |||| || | |||| ||</div>
-        <p style="font-size: 10px; font-weight: 700; margin: 4px 0 2px 0; color: #000;">«صد هیچ؛ تمرکز محض روی اصالت قهوه»</p>
-        <p style="font-size: 9px; color: #666; margin: 0;">از خرید شما سپاسگزاریم • 100HICH.IR</p>
+        <p style="font-size: 10px; font-weight: 700; margin: 4px 0 2px 0; color: #000;">${tagline}</p>
+        <p style="font-size: 9px; color: #666; margin: 0;">از همراهی شما سپاسگزاریم • ${website}</p>
       </div>
     </div>
   `;

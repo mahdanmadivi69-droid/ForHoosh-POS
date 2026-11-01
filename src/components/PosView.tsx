@@ -24,7 +24,11 @@ import {
   Layers,
   ArrowRight,
   Lock,
+  FileText,
+  LayoutGrid,
 } from 'lucide-react';
+import { TablePickerModal } from './floorplan/TablePickerModal';
+import { floorPlanService } from '../services/floorPlanService';
 import {
   Category,
   MenuItem,
@@ -58,6 +62,8 @@ import {
 } from '../services/escposThermalPrinter';
 import { playPosBeep } from '../services/soundEffects';
 import { printThermalReceipt } from '../services/receiptPrinter';
+import { inventoryBomService } from '../services/inventoryBomService';
+import { openTabService } from '../services/openTabService';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -82,6 +88,8 @@ interface PosViewProps {
     terminalName?: string
   ) => { order: Order; payment: Payment } | null;
   onOpenShiftRequired: () => void;
+  onOpenZReport?: () => void;
+  preselectedTableLabel?: string | null;
 }
 
 export const PosView: React.FC<PosViewProps> = ({
@@ -92,6 +100,8 @@ export const PosView: React.FC<PosViewProps> = ({
   activeUser,
   onOrderCompleted,
   onOpenShiftRequired,
+  onOpenZReport,
+  preselectedTableLabel,
 }) => {
   const canEditFinancials = isManagerOrOwner(activeUser.role);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
@@ -113,6 +123,14 @@ export const PosView: React.FC<PosViewProps> = ({
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
   const [orderType, setOrderType] = useState<OrderType>('TAKEAWAY');
   const [tableLabel, setTableLabel] = useState<string>('میز ۱');
+  const [isTablePickerOpen, setIsTablePickerOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (preselectedTableLabel) {
+      setTableLabel(preselectedTableLabel);
+      setOrderType('DINE_IN');
+    }
+  }, [preselectedTableLabel]);
   const [customerName, setCustomerName] = useState<string>('');
   const [orderNotes, setOrderNotes] = useState<string>('');
   const [discountToman, setDiscountToman] = useState<number>(0);
@@ -226,7 +244,8 @@ export const PosView: React.FC<PosViewProps> = ({
 
   // Cart operations
   const handleAddItem = (item: MenuItem) => {
-    if (item.currentStock !== undefined && item.currentStock <= 0) {
+    const bomStock = inventoryBomService.evaluateMenuItemStock(item.id);
+    if ((item.currentStock !== undefined && item.currentStock <= 0) || bomStock.isOutOfStock) {
       playPosBeep('delete');
       return;
     }
@@ -271,6 +290,12 @@ export const PosView: React.FC<PosViewProps> = ({
     selectedModifiers: ModifierOption[],
     notes: string
   ) => {
+    const bomStock = inventoryBomService.evaluateMenuItemStock(item.id);
+    if ((item.currentStock !== undefined && item.currentStock <= 0) || bomStock.isOutOfStock) {
+      playPosBeep('delete');
+      return;
+    }
+
     playPosBeep('click');
     const modifiersDelta = selectedModifiers.reduce((sum, m) => sum + m.priceDeltaToman, 0);
     const unitPrice = item.priceToman + modifiersDelta;
@@ -420,6 +445,20 @@ export const PosView: React.FC<PosViewProps> = ({
     );
 
     if (result) {
+      // Automatically deduct raw BOM materials upon order settlement
+      inventoryBomService.deductForItems(
+        cartItems.map((it) => ({
+          id: it.id,
+          menuItemId: it.menuItemId,
+          title: it.itemNameSnapshot,
+          quantity: it.quantity,
+          unitPrice: it.unitPriceSnapshotToman,
+          subtotal: it.subtotalToman,
+          modifiers: it.modifiers?.map((m) => ({ id: m.id, nameFa: m.nameFa, priceDelta: m.priceDeltaToman })),
+          notes: it.notes,
+        }))
+      );
+
       const orderAggregateItems: OrderItemAggregate[] = cartItems.map((item) => {
         const mods = item.modifiers ? item.modifiers.map((m) => ({ ...m })) : [];
         const modsDelta = mods.reduce((sum, m) => sum + m.priceDeltaToman, 0);
@@ -796,8 +835,9 @@ export const PosView: React.FC<PosViewProps> = ({
                 item.lowStockThreshold,
                 globalThreshold
               );
-              const isOutOfStock = stockStatus.isOutOfStock;
-              const isLow = stockStatus.isLowStock && !isOutOfStock;
+              const bomStock = inventoryBomService.evaluateMenuItemStock(item.id);
+              const isOutOfStock = stockStatus.isOutOfStock || bomStock.isOutOfStock;
+              const isLow = (stockStatus.isLowStock || bomStock.hasLowStockIngredients) && !isOutOfStock;
 
               return (
                 <article
@@ -840,12 +880,12 @@ export const PosView: React.FC<PosViewProps> = ({
                     {isOutOfStock ? (
                       <div className="mb-2 bg-rose-950/60 border border-rose-800 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
                         <AlertCircle className="w-3 h-3 text-rose-400" />
-                        <span>ناموجود (اتمام سهمیه بار)</span>
+                        <span>ناموجود (اتمام مواد اولیه انبار)</span>
                       </div>
                     ) : isLow ? (
                       <div className="mb-2 bg-amber-950/60 border border-amber-800 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3 text-amber-400" />
-                        <span>فقط {item.currentStock} عدد باقیمانده</span>
+                        <span>هشدار کسری موجودی / مواد خام</span>
                       </div>
                     ) : null}
 
@@ -1016,19 +1056,28 @@ export const PosView: React.FC<PosViewProps> = ({
             className="bg-transparent text-white placeholder:text-[#9EACB8]/70 text-xs w-full focus:outline-none"
           />
           {orderType === 'DINE_IN' ? (
-            <select
-              value={tableLabel}
-              onChange={(e) => setTableLabel(e.target.value)}
-              className="text-[10px] text-white bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] cursor-pointer focus:outline-none"
-            >
-              {['میز ۱', 'میز ۲', 'میز ۳', 'میز ۴', 'میز ۵', 'میز ۶', 'میز ۷', 'کانتر بار'].map(
-                (tbl) => (
-                  <option key={tbl} value={tbl} className="bg-[#1B222C] text-white">
-                    {tbl}
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setIsTablePickerOpen(true)}
+                className="text-[10px] bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors"
+                title="انتخاب بصری از نقشه سالن"
+              >
+                <LayoutGrid className="w-3 h-3 text-emerald-400" />
+                <span>نقشه</span>
+              </button>
+              <select
+                value={tableLabel}
+                onChange={(e) => setTableLabel(e.target.value)}
+                className="text-[10px] text-white bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] cursor-pointer focus:outline-none"
+              >
+                {floorPlanService.getTables().map((tbl) => (
+                  <option key={tbl.id} value={tbl.display_name} className="bg-[#1B222C] text-white">
+                    {tbl.display_name}
                   </option>
-                )
-              )}
-            </select>
+                ))}
+              </select>
+            </div>
           ) : (
             <span className="text-[10px] text-[#9EACB8] bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] whitespace-nowrap">
               بیرون‌بر
@@ -1364,13 +1413,29 @@ export const PosView: React.FC<PosViewProps> = ({
                   <span className="w-3 h-3 rounded bg-[#D71921]"></span>
                   روش تسویه حساب بار
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => setIsCheckoutOpen(false)}
-                  className="text-[#9EACB8] hover:text-white p-1"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {onOpenZReport && activeShift && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCheckoutOpen(false);
+                        onOpenZReport();
+                      }}
+                      className="px-2.5 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-700/60 text-rose-300 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                      title="بستن شیفت کاری جاری و صدور Z-Report"
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span>بستن شیفت / Z-Report</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsCheckoutOpen(false)}
+                    className="text-[#9EACB8] hover:text-white p-1 cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
               {/* Payment Methods */}
@@ -1619,6 +1684,16 @@ export const PosView: React.FC<PosViewProps> = ({
           />
         </div>
       )}
+
+      {/* Visual Table Picker Modal */}
+      <TablePickerModal
+        isOpen={isTablePickerOpen}
+        onClose={() => setIsTablePickerOpen(false)}
+        onSelectTable={(selectedTbl) => {
+          setTableLabel(selectedTbl);
+          setOrderType('DINE_IN');
+        }}
+      />
     </div>
   );
 };

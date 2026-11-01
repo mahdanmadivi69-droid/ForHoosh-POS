@@ -16,12 +16,16 @@ import { useBilingualHotkeys } from './hooks/useBilingualHotkeys';
 import { RapidInputZone } from './components/RapidInputZone';
 import { LiveOrderBuffer } from './components/LiveOrderBuffer';
 import { FinancialPulseBar } from './components/FinancialPulseBar';
+import { CafeOSTerminalCore } from './components/CafeOSTerminalCore';
 import { playPosBeep } from '../../services/soundEffects';
 
 // Existing KarWand service imports (Bridged seamlessly without breaking core)
 import { SmartOrdersStore } from '../../services/storage';
 import { websocketServer } from '../../services/websocket-server';
 import { baristaDispatcher } from '../../services/baristaDispatcher';
+import { StationRouter } from '../../services/StationRouter';
+import { thermalPrinterDriver } from '../../services/ThermalPrinterDriver';
+import { playDispatchTicketAudio } from '../../components/DispatchActionBar';
 import { Order as KarWandOrder } from '../../types/domain';
 
 export interface SmartOrdersContainerProps {
@@ -31,6 +35,7 @@ export interface SmartOrdersContainerProps {
 export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
   onBackToStandardPos,
 }) => {
+  const [viewMode, setViewMode] = useState<'terminal-core' | 'live-buffer'>('terminal-core');
   const [tickets, setTickets] = useState<SmartTicket[]>([]);
   const [activeTicketId, setActiveTicketId] = useState<string>('');
   const [isRTL] = useState<boolean>(true); // Configured for Persian market
@@ -147,11 +152,14 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
       .map((item, idx) => ({
         id: item.id,
         title: item.nameFa,
+        titleEn: item.nameEn,
         categoryId: item.categoryId,
         categoryNameFa: catMap.get(item.categoryId) || 'عمومی',
+        station: item.station,
         price: item.priceToman,
         hotkeyIndex: idx < 9 ? idx + 1 : undefined,
         isAvailable: item.isAvailable,
+        currentStock: item.currentStock,
         notes: item.notes,
       }));
   }, []);
@@ -239,6 +247,8 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
           modifiersDelta: modsDelta,
           subtotal: itemSubtotal,
           notes: notes || undefined,
+          station: item.station || StationRouter.resolveStation(item),
+          status: 'PENDING_DISPATCH' as const,
         };
 
         const updatedItems = [...currentDraft.items, newItem];
@@ -260,7 +270,7 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
     [activeTicketId]
   );
 
-  // 5. Push Active Order to Execution (Kitchen / Bar Dispatcher)
+  // 5. Push Active Order to Execution (Kitchen / Bar Dispatcher with Dual Thermal Print & Delta Protection)
   const handlePushToExecution = useCallback(() => {
     const activeTicket = tickets.find((t) => t.id === activeTicketId);
     if (!activeTicket || activeTicket.items.length === 0) {
@@ -269,12 +279,50 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
       return;
     }
 
-    playPosBeep('success');
+    // Run StationRouter for automatic BAR / KITCHEN partition & Delta suppression
+    const previousDispatchedIds = activeTicket.dispatchedItemIds || [];
+    const splitResult = StationRouter.splitTicket(
+      activeTicket.items,
+      previousDispatchedIds,
+      {
+        ticketId: activeTicket.ticketCode || activeTicket.orderNumber,
+        orderNumber: activeTicket.orderNumber,
+        tableLabel: activeTicket.tableLabel || 'میز ۱',
+        cashierName: 'صندوقدار',
+        orderNotes: activeTicket.notes,
+      }
+    );
 
-    // Advance draft -> Queued
+    // 1. Play dual-tone acoustic ticket feedback [660, 880] Hz, 120ms
+    playDispatchTicketAudio();
+
+    // 2. Hardware thermal dispatch via prioritized layers
+    thermalPrinterDriver.printBothStations(splitResult).catch((err) => {
+      console.warn('[SmartOrdersContainer] Thermal printer error:', err);
+    });
+
+    const newlyDispatched = new Set(splitResult.newDispatchedIds);
+    const updatedDispatchedIds = [
+      ...previousDispatchedIds,
+      ...splitResult.newDispatchedIds,
+    ];
+
+    // Advance draft -> Queued (preserving table open state)
     setTickets((prev) =>
       prev.map((t) =>
-        t.id === activeTicketId ? { ...t, status: 'Queued' } : t
+        t.id === activeTicketId
+          ? {
+              ...t,
+              status: 'Queued',
+              isTableOpen: true,
+              dispatchedItemIds: updatedDispatchedIds,
+              items: t.items.map((it) =>
+                newlyDispatched.has(it.id)
+                  ? { ...it, status: 'DISPATCHED' as const, dispatchedAt: new Date().toISOString() }
+                  : it
+              ),
+            }
+          : t
       )
     );
 
@@ -588,84 +636,168 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
         background: "radial-gradient(circle at 15% 0%, rgba(15, 34, 61, 0.45) 0%, transparent 45%), radial-gradient(circle at 85% 100%, rgba(215, 25, 33, 0.08) 0%, transparent 40%), #0A0D11",
       }}
     >
-      {/* Top Zero-G Status & Control Ribbon */}
-      <div className="bg-[#081425]/90 border-b border-white/[0.08] px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 z-30 backdrop-blur-md">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
-            <span className="font-extrabold text-white tracking-tight">سامانه مافوق سریع Zero-G</span>
-            <span className="text-[10px] bg-[#D71921] text-white px-1.5 py-0.2 rounded-md font-mono font-bold shadow-[0_0_10px_-2px_rgba(215,25,33,0.7)]">
-              &lt;1ms
-            </span>
+      {viewMode === 'terminal-core' ? (
+        <CafeOSTerminalCore
+          catalog={catalog}
+          tickets={tickets}
+          activeTicketId={activeTicketId}
+          onSelectTicket={setActiveTicketId}
+          onInjectItem={handleInjectItem}
+          onPushToExecution={handlePushToExecution}
+          onAdvanceStatus={handleAdvanceStatus}
+          onParkToggle={(id) => {
+            setTickets((prev) =>
+              prev.map((t) => (t.id === id ? { ...t, isParked: !t.isParked } : t))
+            );
+          }}
+          onSplitOrder={handleSplitOrder}
+          onUpdateItemQuantity={handleUpdateItemQuantity}
+          onRemoveItem={handleRemoveItem}
+          onChangeTableLabel={handleChangeTableLabel}
+          onApplyDiscount={handleApplyDiscount}
+          onSettleOrder={handleSettleOrder}
+          simulateNetworkFailure={simulateNetworkFailure}
+          onToggleNetworkFailure={() => {
+            setSimulateNetworkFailure((prev) => {
+              const next = !prev;
+              showToast(
+                next
+                  ? 'شبیه‌ساز قطعی شبکه فعال شد (تست Rollback در ارتقای سفارش)'
+                  : 'شبکه به حالت برخط (Online) بازگشت.',
+                next ? 'error' : 'info'
+              );
+              return next;
+            });
+          }}
+          onBackToStandardPos={onBackToStandardPos}
+          viewMode={viewMode}
+          onToggleViewMode={() => setViewMode('live-buffer')}
+        />
+      ) : (
+        <>
+          {/* Top Zero-G Status & Control Ribbon */}
+          <div className="bg-[#081425]/90 border-b border-white/[0.08] px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 z-30 backdrop-blur-md">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
+                <span className="font-extrabold text-white tracking-tight">سامانه مافوق سریع Zero-G</span>
+                <span className="text-[10px] bg-[#D71921] text-white px-1.5 py-0.2 rounded-md font-mono font-bold shadow-[0_0_10px_-2px_rgba(215,25,33,0.7)]">
+                  &lt;1ms
+                </span>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-1.5 text-[#9EACB8] bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.08]">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>کیبورد دو زبانه (FA/EN): اعداد ۱ تا ۹ فعال</span>
+              </div>
+            </div>
+
+            {/* Right Controls: View Switcher, Keyboard HUD, Network Simulation Toggle & Back Button */}
+            <div className="flex items-center gap-2">
+              {/* Switch to Terminal Core Button */}
+              <button
+                type="button"
+                onClick={() => setViewMode('terminal-core')}
+                className="px-2.5 py-1 rounded-lg bg-[#D71921]/20 hover:bg-[#D71921]/30 text-rose-200 border border-[#D71921]/40 transition flex items-center gap-1.5 cursor-pointer font-bold text-xs active:scale-95 shadow-[0_0_10px_-2px_rgba(215,25,33,0.4)]"
+                title="تغییر به چیدمان ۳ ستونه ترمینال فوق‌سریع CafeOS"
+              >
+                <Zap className="w-3.5 h-3.5 text-rose-400" />
+                <span>ترمینال سریع CafeOS</span>
+              </button>
+
+              {/* Keyboard Shortcuts HUD Button */}
+              <button
+                type="button"
+                onClick={() => setShowKeyboardHelp(true)}
+                className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] text-[#9EACB8] hover:text-white border border-white/[0.08] transition flex items-center gap-1.5 cursor-pointer font-bold text-xs active:scale-95"
+                title="مشاهده میانبرهای کیبورد (HUD)"
+              >
+                <Keyboard className="w-3.5 h-3.5 text-cyan-400" />
+                <span>راهنمای کلیدها [?]</span>
+              </button>
+
+              {/* Network Disconnect Simulation Toggle (QA Test Button) */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSimulateNetworkFailure((prev) => {
+                    const next = !prev;
+                    showToast(
+                      next
+                        ? 'شبیه‌ساز قطعی شبکه فعال شد (تست Rollback در ارتقای سفارش)'
+                        : 'شبکه به حالت برخط (Online) بازگشت.',
+                      next ? 'error' : 'info'
+                    );
+                    return next;
+                  });
+                }}
+                className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition cursor-pointer text-xs active:scale-95 ${
+                  simulateNetworkFailure
+                    ? 'bg-rose-950 text-rose-300 border border-rose-700 shadow-[0_0_12px_-2px_rgba(244,63,94,0.4)]'
+                    : 'bg-white/[0.04] text-[#9EACB8] hover:text-white border border-white/[0.08]'
+                }`}
+                title="کلیک جهت شبیه‌سازی قطعی ارتباط با سرور برای تست Rollback"
+              >
+                {simulateNetworkFailure ? (
+                  <>
+                    <WifiOff className="w-3.5 h-3.5 text-rose-400" />
+                    <span>شبکه: قطع (شبیه‌ساز QA فعال)</span>
+                  </>
+                ) : (
+                  <>
+                    <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>شبکه: برخط (آنلاین)</span>
+                  </>
+                )}
+              </button>
+
+              {/* Fallback to Standard POS */}
+              {onBackToStandardPos && (
+                <button
+                  type="button"
+                  onClick={onBackToStandardPos}
+                  className="px-3 py-1 rounded-lg bg-[#1B222C] hover:bg-[#222B38] text-white hover:text-white border border-white/[0.08] transition flex items-center gap-1 cursor-pointer font-bold active:scale-95"
+                >
+                  <span>بازگشت به صندوق معمولی</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="hidden sm:flex items-center gap-1.5 text-[#9EACB8] bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.08]">
-            <Sparkles className="w-3 h-3 text-amber-400" />
-            <span>کیبورد دو زبانه (FA/EN): اعداد ۱ تا ۹ فعال</span>
-          </div>
-        </div>
+          {/* Main 3 Viewport Flex Grid */}
+          <div className="flex-1 flex flex-col lg:flex-row overflow-hidden w-full">
+            {/* Viewport A: Rapid Input Grid */}
+            <RapidInputZone catalog={catalog} onInjectItem={handleInjectItem} />
 
-        {/* Right Controls: Keyboard HUD, Network Simulation Toggle & Back Button */}
-        <div className="flex items-center gap-2">
-          {/* Keyboard Shortcuts HUD Button */}
-          <button
-            type="button"
-            onClick={() => setShowKeyboardHelp(true)}
-            className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.1] text-[#9EACB8] hover:text-white border border-white/[0.08] transition flex items-center gap-1.5 cursor-pointer font-bold text-xs active:scale-95"
-            title="مشاهده میانبرهای کیبورد (HUD)"
-          >
-            <Keyboard className="w-3.5 h-3.5 text-cyan-400" />
-            <span>راهنمای کلیدها [?]</span>
-          </button>
-
-          {/* Network Disconnect Simulation Toggle (QA Test Button) */}
-          <button
-            type="button"
-            onClick={() => {
-              setSimulateNetworkFailure((prev) => {
-                const next = !prev;
-                showToast(
-                  next
-                    ? 'شبیه‌ساز قطعی شبکه فعال شد (تست Rollback در ارتقای سفارش)'
-                    : 'شبکه به حالت برخط (Online) بازگشت.',
-                  next ? 'error' : 'info'
+            {/* Viewport B: Live Buffer Feed */}
+            <LiveOrderBuffer
+              tickets={tickets}
+              activeId={activeTicketId}
+              onSelect={setActiveTicketId}
+              onAdvanceStatus={handleAdvanceStatus}
+              onParkToggle={(id) => {
+                setTickets((prev) =>
+                  prev.map((t) => (t.id === id ? { ...t, isParked: !t.isParked } : t))
                 );
-                return next;
-              });
-            }}
-            className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1.5 transition cursor-pointer text-xs active:scale-95 ${
-              simulateNetworkFailure
-                ? 'bg-rose-950 text-rose-300 border border-rose-700 shadow-[0_0_12px_-2px_rgba(244,63,94,0.4)]'
-                : 'bg-white/[0.04] text-[#9EACB8] hover:text-white border border-white/[0.08]'
-            }`}
-            title="کلیک جهت شبیه‌سازی قطعی ارتباط با سرور برای تست Rollback"
-          >
-            {simulateNetworkFailure ? (
-              <>
-                <WifiOff className="w-3.5 h-3.5 text-rose-400" />
-                <span>شبکه: قطع (شبیه‌ساز QA فعال)</span>
-              </>
-            ) : (
-              <>
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                <span>شبکه: برخط (آنلاین)</span>
-              </>
-            )}
-          </button>
+              }}
+              onSplitOrder={handleSplitOrder}
+            />
 
-          {/* Fallback to Standard POS */}
-          {onBackToStandardPos && (
-            <button
-              type="button"
-              onClick={onBackToStandardPos}
-              className="px-3 py-1 rounded-lg bg-[#1B222C] hover:bg-[#222B38] text-white hover:text-white border border-white/[0.08] transition flex items-center gap-1 cursor-pointer font-bold active:scale-95"
-            >
-              <span>بازگشت به صندوق معمولی</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-      </div>
+            {/* Viewport C: Financial Pulse Bar */}
+            <FinancialPulseBar
+              tickets={tickets}
+              activeId={activeTicketId}
+              onPushToExecution={handlePushToExecution}
+              onSettleActiveTicket={handleSettleOrder}
+              onUpdateItemQuantity={handleUpdateItemQuantity}
+              onRemoveItem={handleRemoveItem}
+              onChangeTableLabel={handleChangeTableLabel}
+              onApplyDiscount={handleApplyDiscount}
+            />
+          </div>
+        </>
+      )}
 
       {/* Floating Warning / Success Toast */}
       {toastNotification && (
@@ -766,38 +898,6 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
           </div>
         </div>
       )}
-
-      {/* Main 3 Viewport Flex Grid */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden w-full">
-        {/* Viewport A: Rapid Input Grid */}
-        <RapidInputZone catalog={catalog} onInjectItem={handleInjectItem} />
-
-        {/* Viewport B: Live Buffer Feed */}
-        <LiveOrderBuffer
-          tickets={tickets}
-          activeId={activeTicketId}
-          onSelect={setActiveTicketId}
-          onAdvanceStatus={handleAdvanceStatus}
-          onParkToggle={(id) => {
-            setTickets((prev) =>
-              prev.map((t) => (t.id === id ? { ...t, isParked: !t.isParked } : t))
-            );
-          }}
-          onSplitOrder={handleSplitOrder}
-        />
-
-        {/* Viewport C: Financial Pulse Bar */}
-        <FinancialPulseBar
-          tickets={tickets}
-          activeId={activeTicketId}
-          onPushToExecution={handlePushToExecution}
-          onSettleActiveTicket={handleSettleOrder}
-          onUpdateItemQuantity={handleUpdateItemQuantity}
-          onRemoveItem={handleRemoveItem}
-          onChangeTableLabel={handleChangeTableLabel}
-          onApplyDiscount={handleApplyDiscount}
-        />
-      </div>
     </div>
   );
 };

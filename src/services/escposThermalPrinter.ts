@@ -49,17 +49,28 @@ export function renderReceiptToCanvas(
 
   let y = 45;
 
+  const isModendo = !order.tenantId || order.tenantId.includes('modendo');
+  const brandTitle = isModendo ? 'MODENDO CAFE' : '100 HICH';
+  const brandSub = isModendo ? 'BOARDGAME & GAMING CAFE' : 'COFFEE ROASTERS';
+  const brandContact = isModendo
+    ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱ | ۰۲۱-۸۸۹۹۷۷۶۶'
+    : 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس | ۰۲۱-۴۴۶۶۸۰۹۰';
+  const footerTagline = isModendo
+    ? 'کافه مودندو، دنیای بردگیم و هیجان کنسول PS5'
+    : 'صد هیچ، تمرکز محض روی اصالت قهوه';
+  const footerWeb = isModendo ? 'MODENDO.CAFE' : '100HICH.IR';
+
   // Header
   ctx.font = 'bold 28px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText('100 HICH', width / 2, y);
+  ctx.fillText(brandTitle, width / 2, y);
   y += 32;
 
   ctx.font = 'bold 16px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText('COFFEE ROASTERS', width / 2, y);
+  ctx.fillText(brandSub, width / 2, y);
   y += 28;
 
   ctx.font = '14px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText('اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس | ۰۲۱-۴۴۶۶۸۰۹۰', width / 2, y);
+  ctx.fillText(brandContact, width / 2, y);
   y += 24;
 
   // Separator line
@@ -212,10 +223,10 @@ export function renderReceiptToCanvas(
   y += 15;
   ctx.font = 'bold 16px Vazirmatn, Tahoma, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText('صد هیچ، تمرکز محض روی اصالت قهوه', width / 2, y);
+  ctx.fillText(footerTagline, width / 2, y);
   y += 24;
   ctx.font = '14px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText('100HICH.IR', width / 2, y);
+  ctx.fillText(footerWeb, width / 2, y);
 
   return canvas;
 }

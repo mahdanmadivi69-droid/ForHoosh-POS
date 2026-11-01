@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "project": "CafeOS-Core-Extension",
+  "version": "2.1.0",
+  "target_agent": "@autoclaw-antigravity-uiux",
+  "meta": {
+    "engine": "AntiGravity-Obsidian-Cognitive",
+    "prompt_architect": "@prompt-master-vx-adaptive",
+    "design_system": "Dark Industrial Cafe Terminal",
+    "created_at": "2026-11-01T07:55:00Z"
+  },
+  "objectives": [
+    "Decouple order placement from immediate settlement: enable persistent open tabs attached to tables with dynamic incremental ordering and late checkout.",
+    "Implement real-time Bill of Materials (BOM) inventory tracking: define raw ingredient stocks, configure recipe unit consumptions, and automatically deduct upon status = 'delivered' or 'settled'.",
+    "Integrate inventory and floor status state models into the active 3-column UI architecture without disrupting operator ergonomics."
+  ],
+  "system_architecture": {
+    "state_machine": {
+      "table_order_lifecycle": {
+        "initial_state": "idle_empty",
+        "transitions": [
+          {
+            "from": "idle_empty",
+            "trigger": "OPEN_TAB",
+            "to": "active_open_tab",
+            "actions": ["create_ticket", "assign_guest_or_table", "set_timer"]
+          },
+          {
+            "from": "active_open_tab",
+            "trigger": "ADD_ROUND",
+            "to": "active_open_tab",
+            "actions": ["append_items", "dispatch_kds_notification"]
+          },
+          {
+            "from": "active_open_tab",
+            "trigger": "MARK_DELIVERED",
+            "to": "active_open_tab",
+            "actions": ["trigger_inventory_deduction", "update_service_status"]
+          },
+          {
+            "from": "active_open_tab",
+            "trigger": "REQUEST_BILL",
+            "to": "awaiting_checkout",
+            "actions": ["lock_ticket_edits", "print_proforma_bill"]
+          },
+          {
+            "from": "awaiting_checkout",
+            "trigger": "COMPLETE_SETTLEMENT",
+            "to": "idle_empty",
+            "actions": ["process_payment", "print_receipt", "close_tab", "reset_table"]
+          }
+        ]
+      },
+      "inventory_deduction_engine": {
+        "execution_point": "ON_ITEM_DELIVERED_OR_ORDER_COMMITTED",
+        "precision_unit": "FLOAT_DECIMAL_3",
+        "low_stock_threshold_rule": "current_quantity <= min_safety_stock",
+        "out_of_stock_gate": "if available_quantity < required_units -> block_addition OR alert_override"
+      }
+    },
+    "data_contracts": {
+      "raw_ingredient_schema": {
+        "id": "string (e.g. 'ing_colombian_beans')",
+        "title_en": "string",
+        "title_fa": "string",
+        "unit": "string ('g' | 'ml' | 'piece' | 'shot')",
+        "initial_stock": "number",
+        "current_stock": "number",
+        "min_safety_stock": "number",
+        "cost_per_unit": "number",
+        "last_restocked_at": "ISO_8601_TIMESTAMP"
+      },
+      "product_recipe_bom_schema": {
+        "menu_item_id": "string (e.g. 'm1_flat_white')",
+        "ingredients": [
+          { "ingredient_id": "ing_espresso_blend", "amount": 18.0, "unit": "g" },
+          { "ingredient_id": "ing_whole_milk", "amount": 160.0, "unit": "ml" }
+        ],
+        "modifier_overrides": [
+          {
+            "modifier_key": "Oat Milk (+0.70)",
+            "replaces": "ing_whole_milk",
+            "with": { "ingredient_id": "ing_oat_milk", "amount": 160.0, "unit": "ml" }
+          },
+          {
+            "modifier_key": "Triple Shot (+0.90)",
+            "adds": { "ingredient_id": "ing_espresso_blend", "amount": 9.0, "unit": "g" }
+          }
+        ]
+      },
+      "table_session_tab_schema": {
+        "tab_id": "UUID",
+        "table_id": "string (e.g. 'T2')",
+        "server_name": "string",
+        "guest_count": "number",
+        "status": "'open' | 'printed' | 'settled'",
+        "opened_at": "ISO_8601_TIMESTAMP",
+        "rounds": [
+          {
+            "round_number": 1,
+            "dispatched_at": "ISO_8601_TIMESTAMP",
+            "items": "Array<CartItem>",
+            "inventory_deducted": "boolean"
+          }
+        ],
+        "subtotal": "number",
+        "vat": "number",
+        "total_due": "number"
+      }
+    }
+  },
+  "ui_ux_implementation_requirements": {
+    "theme_alignment": {
+      "base_bg": "#0D1015",
+      "surface_elevated": "#151B25",
+      "borders": "1px solid #232D3E",
+      "accent_color": "#D71921",
+      "status_colors": {
+        "occupied_eating": "#10B981",
+        "awaiting_bill": "#F59E0B",
+        "low_stock_warning": "#EF4444",
+        "reserved": "#3B82F6"
+      }
+    },
+    "view_additions": [
+      {
+        "view_id": "inventory_manager",
+        "nav_label": "Warehouse & Stock",
+        "nav_label_fa": "انبارداری و مصرف",
+        "components": [
+          "Raw Ingredient Intake Form (Initial Stock & Restock modal)",
+          "BOM Recipe Configurator (Link Coffee/Drinks to gram/ml consumption)",
+          "Real-time Depletion Gauge with Low Stock Alerts on POS cards"
+        ]
+      },
+      {
+        "view_id": "floor_plan_tab_bar",
+        "action_flow": [
+          "1. Barista taps table (e.g. T2) -> opens existing active tab without charging.",
+          "2. Can append Round 2 or 3 items at any time during guest stay.",
+          "3. 'Settle & Close Tab' button remains dormant until guest requests checkout at the register.",
+          "4. Settlement modal allows Split Check, Print Final Receipt, and frees the table immediately."
+        ]
+      }
+    ]
+  },
+  "execution_prompt_for_antigravity": "Adopt this architectural schema into the CaféOS repository. Preserve the tactile micro-interactions (AudioContext feedback), the dark industrial palette, and the 3-column POS layout. Implement: 1) A persistent In-Memory / LocalStorage State Store for Table Tabs so orders remain open while guests are seated; 2) A dedicated 'Inventory & Recipe BOM' view that tracks initial stock inputs and consumes precise amounts (grams of beans, ml of milk, bakery pieces) upon order dispatch; 3) A clear visual indicator on POS item cards when an ingredient is below safety stock or depleted. Ensure all copy is bilingual (EN/FA)."
+}

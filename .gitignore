@@ -11,3 +11,5 @@ coverage
 .env*.local
 *.local
 !.env.example
+backups/
+*.zip

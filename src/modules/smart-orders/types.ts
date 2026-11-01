@@ -1,4 +1,6 @@
 export type OrderStatus = 'Draft' | 'Queued' | 'In-Prep' | 'Ready' | 'Dispatched';
+export type PrepStation = 'BAR' | 'KITCHEN';
+export type ItemState = 'PENDING_DISPATCH' | 'DISPATCHED' | 'PREPARING' | 'SERVED' | 'SETTLED';
 
 export interface ModifierOption {
   id: string;
@@ -9,12 +11,16 @@ export interface ModifierOption {
 export interface MenuItem {
   id: string;
   title: string;
+  titleEn?: string;
   categoryId: string;
   categoryNameFa?: string;
+  categoryNameEn?: string;
   price: number;
+  station?: PrepStation;
   hotkeyIndex?: number; // 1..9 for rapid hotkey injection
   modifiers?: ModifierOption[];
   isAvailable: boolean;
+  currentStock?: number;
   notes?: string[];
   imageUrl?: string;
 }
@@ -29,6 +35,9 @@ export interface SmartTicketItem {
   modifiersDelta?: number;
   subtotal: number;
   notes?: string;
+  station?: PrepStation;
+  status?: ItemState;
+  dispatchedAt?: string;
 }
 
 export interface SmartTicket {
@@ -49,6 +58,8 @@ export interface SmartTicket {
   paymentMethod?: string;
   terminalName?: string;
   notes?: string;
+  dispatchedItemIds?: string[];
+  isTableOpen?: boolean;
 }
 
 export interface TelemetryStats {

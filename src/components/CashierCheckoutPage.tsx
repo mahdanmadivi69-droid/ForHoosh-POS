@@ -38,8 +38,8 @@ interface CashierCheckoutPageProps {
 }
 
 export function CashierCheckoutPage({
-  tenantId = 'tenant_100hich',
-  tenantName = 'قهوه‌فروشی ۱۰۰هیچ',
+  tenantId = 'tenant-modendo-01',
+  tenantName = 'کافه بردگیم و گیمینگ مودندو',
   onOrderProcessed,
 }: CashierCheckoutPageProps) {
   const [queueCount, setQueueCount] = useState({ total: 0, pending: 0, failed: 0 });

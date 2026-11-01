@@ -233,8 +233,46 @@
   --color-surface-border: #293444;
   --color-surface-muted: #9EACB8;
 
+  /* DESIGN.md Engine Protocol Surface Hierarchy */
+  --color-bg-base: #0B0D11;
+  --color-bg-surface-1: #12161D;
+  --color-bg-surface-2: #1A222F;
+  --color-bg-surface-3: #242E3E;
+
+  /* DESIGN.md Hairline & Grid Borders */
+  --color-border-subtle: rgba(255, 255, 255, 0.08);
+  --color-border-grid: #27313F;
+
+  /* DESIGN.md Spatial Accents */
+  --color-accent-ps5: #3B82F6;
+  --color-accent-lounge: #059669;
+  --color-accent-boardgame: #B45309;
+  --color-accent-terrace: #78350F;
+  --color-accent-bar: #E11D48;
+
+  /* DESIGN.md State Colors */
+  --color-status-available: #10B981;
+  --color-status-occupied: #EF4444;
+  --color-status-gaming: #3B82F6;
+  --color-status-awaiting: #F59E0B;
+
+  /* DESIGN.md Text Tones */
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #E2E8F0;
+  --color-text-muted: #9EACB8;
+  --color-text-dim: #64748B;
+
   --shadow-crimson-glow: 0 0 20px -3px rgba(215, 25, 33, 0.45);
   --shadow-navy-glow: 0 0 20px -3px rgba(15, 34, 61, 0.6);
+  --shadow-ps5-glow: 0 0 20px -3px rgba(59, 130, 246, 0.5);
+}
+
+/* DESIGN.md Tracking Discipline Utilities */
+.tracking-heading {
+  letter-spacing: -0.025em;
+}
+.tracking-mono {
+  letter-spacing: +0.035em;
 }
 
 /* Custom Scrollbar for Sleek Industrial Look */

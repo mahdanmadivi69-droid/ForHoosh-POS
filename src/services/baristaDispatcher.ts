@@ -4,6 +4,7 @@
  */
 
 import { OrderAggregate } from '../types/order-domain';
+import { SmartOrdersStore } from './storage';
 
 export interface BaristaOrderItem {
   itemName: string;
@@ -141,20 +142,20 @@ class BaristaDispatcher {
   /**
    * Dispatches an order to the barista bar and sends external webhook payload
    */
-  public async dispatchPaidOrder(order: OrderAggregate): Promise<BaristaOrderTicket> {
-    const baristaItems: BaristaOrderItem[] = order.items.map((item) => ({
-      itemName: item.itemNameSnapshot,
-      quantity: item.quantity,
-      modifiers: item.modifiers ? item.modifiers.map((m) => m.nameFa) : [],
+  public async dispatchOrder(order: any): Promise<BaristaOrderTicket> {
+    const baristaItems: BaristaOrderItem[] = (order.items || []).map((item: any) => ({
+      itemName: item.itemNameSnapshot || item.title || 'آیتم',
+      quantity: item.quantity || 1,
+      modifiers: item.modifiers ? item.modifiers.map((m: any) => (typeof m === 'string' ? m : m.nameFa || m.id || '')) : [],
       notes: item.notes,
     }));
 
     const ticket: BaristaOrderTicket = {
       orderId: order.id,
-      orderNumber: order.orderNumber,
-      clientGeneratedId: order.clientGeneratedId,
-      tenantId: order.tenantId,
-      orderType: order.orderType,
+      orderNumber: order.orderNumber || (Date.now() % 10000),
+      clientGeneratedId: order.clientGeneratedId || order.id,
+      tenantId: order.tenantId || SmartOrdersStore.getActiveTenantId(),
+      orderType: order.orderType || 'DINE_IN',
       tableLabel: order.tableLabel,
       customerName: order.customerName,
       items: baristaItems,
@@ -185,11 +186,15 @@ class BaristaDispatcher {
     }
 
     // Send Webhook to Barista endpoint
-    this.sendWebhookPayload(order.tenantId, ticket).catch((err) => {
+    this.sendWebhookPayload(order.tenantId || SmartOrdersStore.getActiveTenantId(), ticket).catch((err) => {
       console.warn('Barista webhook dispatch non-fatal error:', err);
     });
 
     return ticket;
+  }
+
+  public async dispatchPaidOrder(order: OrderAggregate): Promise<BaristaOrderTicket> {
+    return this.dispatchOrder(order);
   }
 
   private async sendWebhookPayload(tenantId: string, ticket: BaristaOrderTicket): Promise<void> {

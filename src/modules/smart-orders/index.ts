@@ -32,6 +32,8 @@ export const SmartOrdersGate: React.FC<SmartOrdersGateProps> = ({
 
 export { SmartOrdersContainer } from './SmartOrdersContainer';
 export type { SmartOrdersContainerProps } from './SmartOrdersContainer';
+export { CafeOSTerminalCore } from './components/CafeOSTerminalCore';
+export type { CafeOSTerminalCoreProps } from './components/CafeOSTerminalCore';
 export * from './types';
 export * from './utils/farsiFormatting';
 export * from './utils/zeroGMotionTokens';

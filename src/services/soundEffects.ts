@@ -58,3 +58,32 @@ export function playPosBeep(type: 'click' | 'success' | 'delete' = 'click'): voi
     // Ignore audio permission errors until initial user gesture
   }
 }
+
+/**
+ * Synthetic short-pulse 800Hz / 400Hz frequency burst on cart modification
+ * (AntiGravity / AutoClaw Audio Feedback Specification)
+ */
+export function playCartBurst(freq: 800 | 400 = 800): void {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    const now = ctx.currentTime;
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    gain.gain.setValueAtTime(0.14, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+    osc.start(now);
+    osc.stop(now + 0.045);
+  } catch {
+    // Ignore audio errors
+  }
+}
