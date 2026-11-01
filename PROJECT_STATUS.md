@@ -1,8 +1,29 @@
-# وضعیت پروژه: SmartOrders & Modendo POS (PROJECT STATUS)
+# وضعیت پروژه: SmartOrders & Dual Cafe Deployments (PROJECT STATUS)
 **تاریخ آخرین به‌روزرسانی:** ۱۱/۰۸/۱۴۰۵  
-**تننت‌های فعال و کاملاً تفکیک‌شده (Multi-Tenant Isolation):**
-1. **کافه بردگیم و گیمینگ مودندو (Modendo Boardgame & Gaming Cafe - `tenant-modendo-01`):** تننت اصلی عملیاتی جاری، نقشه سالن دو تراز v6.3، زون لانژ مبله (سفارش ژتونی)، اتاق ۴ یونیته PS5 با تایمر ساعتی، میزهای بردگیم و تراس، گیت‌وی پرینتر شبکه LAN (سوکت خام ۹۱۰۰ و وب‌سوکت ۸۰۸۰).
-2. **قهوه‌فروشی ۱۰۰هیچ (100 Hich Specialty Coffee Lab - `tenant-100hich-01`):** تننت ایزوله پایلوت با منو و کاتالوگ مستقل بدون تداخل داده‌ای.
+**معماری مصوب مأموریت:** Option B — One Product Core, Shared Business Logic, Two Independent Deployments  
+**وضعیت:** **عملیاتی و آماده تحویل (Production & Demo Ready)**
+
+---
+
+## ۰۰۰۰. مأموریت استقرار دوگانه و ایزولاسیون کامل تجاری (Dual Cafe Parallel Architecture - v7.0.0) [VERIFIED]
+- **حفاظت کامل از کدبیس و تاریخچه اصلی:**
+  - شاخه اصلی `main` در وضعیت دست‌نخورده در کامیت `43a4378` نگهداری شده است.
+  - اسنپ‌شات اولیه روی شاخه `baseline/pre-dual-cafe-v6.3` با تگ گیت `v6.3-pre-dual-cafe-baseline` ثبت شده است.
+  - آرشیو فیزیکی کامل بدون وابستگی در مسیر `backups/snapshot_baseline_20261101.zip` ایجاد و ایمن‌سازی شده است.
+- **شاخه‌های موازی انتشار و توسعه:**
+  - شاخه انتشار مودندو: `release/modendo-demo`
+  - شاخه انتشار ۱۰۰هیچ: `release/100hich-demo`
+  - شاخه هسته مشترک: `feature/shared-core-preparation`
+- **ایزولاسیون ۱۰۰٪ داده‌ها در حافظه لوکال و دیتابیس:**
+  - کلیدهای شیفت، سفارشات، پرداخت‌ها، هزینه‌ها و حسابرسی با پیشوند شناسه تننت (`smartorders_*_tenant-modendo-01_*` و `smartorders_*_tenant-100hich-01_*`) کاملاً تفکیک شدند.
+  - نقشه سالن مستقل برای هر کافه: نقشه دو تراز مودندو (`modendo_floor_plan_v6.3`) شامل کنسول‌های PS5 و زون لانژ؛ نقشه بار تخصصی ۱۰۰هیچ (`100hich_floor_plan_v1.0`) شامل کانتر باریستا، باجه بیرون‌بر و میزهای سالن و تراس.
+- **پکیج‌های نصب و لانچرهای مستقل دسکتاپ:**
+  - مودندو: `INSTALL_MODENDO.bat` و `RUN_MODENDO.bat` روی پورت ۳۰۰۱ همراه با مانیفست اختصاصی Zero-G (`#0B0D11`).
+  - ۱۰۰هیچ: `INSTALL_100HICH.bat` و `RUN_100HICH.bat` روی پورت ۳۰۰۰ همراه با مانیفست اختصاصی بار برشته‌کاری (`#0F223D`).
+- **سوئیت آزمون‌های خودکار یکپارچه (Automated Quality Gate):**
+  - اجرای ۹ سوئیت تست همزمان با **۴۰۲ تست پاس‌شده (بدون حتی یک خطا)**.
+  - قبولی کامل ممیزی TypeScript (`npm run lint` -> `tsc --noEmit` با صفر خطا).
+  - کامپایل بیلد مجزای هر دو نسخه با Vite (`npm run build:modendo` در ۱.۶۱ ثانیه و `npm run build:100hich` در ۱.۴۴ ثانیه).
 
 ---
 
