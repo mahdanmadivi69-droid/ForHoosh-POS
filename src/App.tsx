@@ -294,10 +294,22 @@ export default function App() {
 
       {/* Main View Area */}
       <main className="flex-1 pb-10">
-        {currentTab === 'zero-g' && FEATURES.ENABLE_ZERO_G_SMART_ORDERS && (
-          <SmartOrdersContainer
-            onBackToStandardPos={() => setCurrentTab('pos')}
-          />
+        {currentTab === 'zero-g' && (
+          FEATURES.ENABLE_ZERO_G_SMART_ORDERS ? (
+            <SmartOrdersContainer
+              onBackToStandardPos={() => setCurrentTab('pos')}
+            />
+          ) : (
+            <PosView
+              tenant={tenant}
+              categories={categories}
+              menuItems={menuItems}
+              activeShift={activeShift}
+              activeUser={activeUser}
+              onOrderCompleted={handleOrderCompleted}
+              onOpenShiftRequired={() => setIsShiftModalOpen(true)}
+            />
+          )
         )}
 
         {currentTab === 'pos' && (

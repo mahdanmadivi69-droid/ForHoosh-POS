@@ -23,7 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const isProduction = process.env.NODE_ENV === 'production';
-const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
 async function startServer() {
   const app = express();
@@ -185,6 +185,7 @@ async function startServer() {
       server: {
         middlewareMode: true,
         hmr: false,
+        ws: false,
       },
       appType: 'spa',
     });
@@ -195,6 +196,18 @@ async function startServer() {
       res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
     });
   }
+
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      const altPort = PORT + 1;
+      console.log(`Port ${PORT} is in use, falling back to port ${altPort}...`);
+      server.listen(altPort, '0.0.0.0', () => {
+        console.log(`☕ CAFE OS Server running on port ${altPort} [Mode: ${isProduction ? 'Production' : 'Dev'}]`);
+      });
+    } else {
+      console.error('Server error:', err);
+    }
+  });
 
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`☕ CAFE OS Server running on port ${PORT} [Mode: ${isProduction ? 'Production' : 'Dev'}]`);

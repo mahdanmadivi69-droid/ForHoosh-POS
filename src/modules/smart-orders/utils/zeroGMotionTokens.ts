@@ -1,22 +1,51 @@
 /**
- * Zero-G Ultra-Low Latency UI Motion Tokens
- * Includes spring curves and safe fallback for prefers-reduced-motion
+ * AntiGravity Physics Profiles for CafeOS & Zero-G Ultra-Low Latency UI
+ * Includes exact spring curves, decelerated drawers, and prefers-reduced-motion fallback
  */
 
+export const MotionConfig = {
+  // Micro-interactions (Card click, Counter adjust, Category switch)
+  tactileTap: {
+    scale: 0.97,
+    transition: { type: 'spring' as const, stiffness: 500, damping: 30, mass: 0.6 }
+  },
+
+  // Modifier Drawer / Modals (Decelerated Enter, Instant Exit)
+  drawerEnter: {
+    x: 0,
+    opacity: 1,
+    transition: { ease: [0.16, 1, 0.3, 1] as [number, number, number, number], duration: 0.24 }
+  },
+  drawerExit: {
+    x: '100%',
+    opacity: 0,
+    transition: { ease: [0.7, 0, 0.84, 0] as [number, number, number, number], duration: 0.18 }
+  },
+
+  // Staggered Item Ledger Additions
+  ticketItemSpring: {
+    type: 'spring' as const,
+    stiffness: 420,
+    damping: 32,
+    mass: 0.7
+  }
+};
+
 export const ZERO_G_MOTION = {
-  // Ultra-crisp tactile spring for cards and injectors
+  // Ultra-crisp tactile spring for cards and injectors mapped to MotionConfig.tactileTap
   springSnap: {
     type: 'spring' as const,
-    stiffness: 550,
-    damping: 35,
-    mass: 0.8,
+    stiffness: MotionConfig.tactileTap.transition.stiffness,
+    damping: MotionConfig.tactileTap.transition.damping,
+    mass: MotionConfig.tactileTap.transition.mass,
   },
   
-  // Smooth slide curve for drawer & flyouts
+  // Smooth slide curve for drawer & flyouts mapped to MotionConfig.drawerEnter
   springDrawer: {
     type: 'spring' as const,
-    stiffness: 400,
-    damping: 38,
+    stiffness: MotionConfig.ticketItemSpring.stiffness,
+    damping: MotionConfig.ticketItemSpring.damping,
+    mass: MotionConfig.ticketItemSpring.mass,
   },
 
   // Instant transitions (<120ms) for reduced-motion users

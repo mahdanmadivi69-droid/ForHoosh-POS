@@ -12,7 +12,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/financialMath.test.ts"
+    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts"
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.3",

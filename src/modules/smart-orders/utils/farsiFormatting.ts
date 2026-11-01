@@ -19,7 +19,7 @@ export function formatToman(
   amount: number,
   digits: 'persian' | 'latin' = 'persian'
 ): string {
-  const safeInt = Math.round(Number.isFinite(amount) ? amount : 0);
+  const safeInt = Math.max(0, Math.round(Number.isFinite(amount) ? amount : 0));
   
   if (digits === 'latin') {
     // Tabular ASCII numerals for cashier receipts/monospace telemetry

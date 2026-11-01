@@ -1,13 +1,223 @@
 @import "tailwindcss";
 
+/* Farsi Typography Hierarchy */
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Vazirmatn';
+  src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* System Typography Tokens & Motion Physics Variables */
 :root {
   --font-fa-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono-numbers: 'Fira Code', 'JetBrains Mono', monospace;
+
+  /* AntiGravity Physics Tokens (Matching MotionConfig) */
+  --motion-tactile-scale: 0.97;
+  --motion-drawer-enter-duration: 0.24s;
+  --motion-drawer-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --motion-drawer-exit-duration: 0.18s;
+  --motion-drawer-exit-ease: cubic-bezier(0.7, 0, 0.84, 0);
+  --motion-ticket-stiffness: 420;
+  --motion-ticket-damping: 32;
+  --motion-ticket-mass: 0.7;
 }
 
 [dir="rtl"] {
   font-family: var(--font-fa-sans);
-  letter-spacing: 0 !important;
+  letter-spacing: 0 !important; /* Never use negative tracking in Persian script */
+}
+
+/* Zero-G UI Animations & AntiGravity Physics Profiles */
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes socketFlash {
+  0% {
+    border-color: #D71921;
+    box-shadow: 0 0 25px rgba(215, 25, 33, 0.75);
+  }
+  50% {
+    border-color: rgba(215, 25, 33, 0.4);
+    box-shadow: 0 0 10px rgba(215, 25, 33, 0.3);
+  }
+  100% {
+    border-color: #293444;
+    box-shadow: 0 0 0px rgba(0, 0, 0, 0);
+  }
+}
+
+/* AntiGravity Drawer Enter: Decelerated Enter (0.24s, [0.16, 1, 0.3, 1]) */
+.animate-drawer-enter,
+.animate-slideInRight {
+  animation: slideInRight 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* AntiGravity Drawer Exit: Instant Accelerated Exit (0.18s, [0.7, 0, 0.84, 0]) */
+.animate-drawer-exit {
+  animation: slideOutRight 0.18s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+/* AntiGravity Micro-Interactions: Tactile Tap (scale 0.97, spring 500/30/0.6) */
+.tactile-tap {
+  transition: transform 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+.tactile-tap:active {
+  transform: scale(0.97);
+}
+
+/* AntiGravity Ticket Item Spring (stiffness 420, damping 32, mass 0.7) */
+@keyframes ticketItemSpring {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  70% {
+    transform: translateY(-0.8px) scale(1.004);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-ticket-item-spring {
+  animation: ticketItemSpring 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.18s ease-out forwards;
+}
+
+.flash-socket-pulse {
+  animation: socketFlash 1.2s ease-out forwards;
+}
+
+@keyframes zeroGCardEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card-enter {
+  animation: zeroGCardEnter 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes zeroGPulseRing {
+  0%, 100% {
+    box-shadow: 0 0 20px -3px rgba(215, 25, 33, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 32px 0px rgba(215, 25, 33, 0.7);
+  }
+}
+
+.glow-crimson-pulse {
+  animation: zeroGPulseRing 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Zero-G Glass Layers */
+.glass-panel {
+  background: rgba(18, 20, 23, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(27, 34, 44, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Mechanical Keycap Badge */
+.keycap-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono-numbers);
+  font-weight: 800;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #1f2733 0%, #121820 100%);
+  border: 1px solid #354254;
+  box-shadow: 0 2px 0 0 #0d1218, inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  color: #f3e9dd;
+}
+
+/* Reduced Motion Mode (<120ms linear opacity fades) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.1s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.1s !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-slideInRight,
+  .animate-drawer-enter,
+  .animate-drawer-exit,
+  .animate-ticket-item-spring,
+  .tactile-tap,
+  .animate-fadeIn,
+  .animate-pulse,
+  .animate-bounce,
+  .flash-socket-pulse,
+  .animate-card-enter,
+  .glow-crimson-pulse {
+    animation: reducedLinearFade 0.1s linear !important;
+    transform: none !important;
+  }
+}
+
+@keyframes reducedLinearFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @theme {
