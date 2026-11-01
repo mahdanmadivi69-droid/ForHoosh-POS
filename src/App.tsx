@@ -39,6 +39,7 @@ import { ZReportModal } from './components/modals/ZReportModal';
 import { RBACService } from './services/RBACService';
 import { SettingsService } from './services/settingsService';
 import { FloorPlanView } from './components/floorplan/FloorPlanView';
+import { dailyBackupScheduler } from './services/dailyBackupScheduler';
 
 export default function App() {
   const [tenant, setTenant] = useState<Tenant>(SmartOrdersStore.getTenant());
@@ -94,6 +95,7 @@ export default function App() {
     SmartOrdersStore.initSeedData();
     RBACService.initDefaultUsers();
     SettingsService.initDefaults();
+    dailyBackupScheduler.init();
     refreshState();
   }, []);
 

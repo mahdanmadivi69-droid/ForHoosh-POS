@@ -16,12 +16,13 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoIsolationAndGateway.test.ts && tsx tests/dualCafeIsolation.test.ts"
+    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoIsolationAndGateway.test.ts && tsx tests/dualCafeIsolation.test.ts && tsx tests/cloudBackupSync.test.ts"
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.3",
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
+    "@types/pg": "^8.23.1",
     "@vitejs/plugin-react": "^6.1.1",
     "clsx": "^2.1.1",
     "dexie": "^4.4.7",
@@ -30,6 +31,7 @@
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
+    "pg": "^8.23.1",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-is": "^19.0.0",
