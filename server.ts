@@ -12,6 +12,7 @@ import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { insertOrderAggregateAtomic } from './src/services/dbOrderService';
+import { cloudBackupDb } from './src/services/cloudBackupDb';
 import { OrderAggregate } from './src/types/order-domain';
 import {
   processOfflineOrderSync,
@@ -82,7 +83,7 @@ export function createServerApp() {
       order.tenantId = tenantId;
 
       // Atomic persistence with PostgreSQL RLS & integer Toman invariants
-      const result = await insertOrderAggregateAtomic(tenantId, order);
+      const result = await cloudBackupDb.syncOrderAggregate(tenantId, order);
 
       // If state is PAID, record for Barista display
       if (order.state === 'PAID') {
@@ -176,6 +177,53 @@ export function createServerApp() {
 
   // Dedicated Sync Controller Endpoint
   app.post('/api/v1/sync/orders', handleOrderSync);
+
+  // -------------------------------------------------------------
+  // API Routes: Cloud PostgreSQL Periodic Backup & Status Endpoints
+  // -------------------------------------------------------------
+  app.get('/api/v1/cloud-backup/status', async (_req: Request, res: Response) => {
+    try {
+      const status = await cloudBackupDb.testConnection();
+      res.status(200).json(status);
+    } catch (err: any) {
+      res.status(500).json({ connected: false, error: err?.message });
+    }
+  });
+
+  app.post('/api/v1/cloud-backup/daily', async (req: Request, res: Response): Promise<void> => {
+    try {
+      const tenantId = (req.headers['x-tenant-id'] as string) || req.body?.tenantId;
+      if (!tenantId) {
+        res.status(400).json({ error: 'Missing X-Tenant-Id header or tenantId in body' });
+        return;
+      }
+
+      const payload = req.body;
+      payload.tenantId = tenantId;
+
+      const record = await cloudBackupDb.saveDailyBackup(payload);
+      res.status(200).json({ success: true, record });
+    } catch (err: any) {
+      console.error('Error in /api/v1/cloud-backup/daily:', err);
+      res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
+  app.get('/api/v1/cloud-backup/history', async (req: Request, res: Response): Promise<void> => {
+    try {
+      const tenantId = req.headers['x-tenant-id'] as string;
+      if (!tenantId) {
+        res.status(400).json({ error: 'Missing X-Tenant-Id header' });
+        return;
+      }
+
+      const backups = await cloudBackupDb.getDailyBackups(tenantId);
+      res.status(200).json({ success: true, backups });
+    } catch (err: any) {
+      console.error('Error in /api/v1/cloud-backup/history:', err);
+      res.status(500).json({ success: false, error: err?.message });
+    }
+  });
 
   // -------------------------------------------------------------
   // API Route: Barista Webhook Incoming Receiver
