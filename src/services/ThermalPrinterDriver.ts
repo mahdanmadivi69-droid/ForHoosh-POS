@@ -12,7 +12,7 @@
  *  The table remains completely open for late checkout and multi-round ordering.
  */
 
-import { StationDispatchTicket, SplitTicketResult } from './StationRouter';
+import { StationDispatchTicket, SplitTicketResult, PrepStation } from './StationRouter';
 import { TicketLayoutEngine, ESC_POS_COMMANDS } from '../templates/KitchenTicketTemplate';
 
 export type PrinterStatus = 'ready' | 'busy' | 'offline' | 'out_of_paper';
@@ -21,7 +21,7 @@ export type HardwareLayerType = 'WebSerial' | 'NetworkSocket' | 'HeadlessIframeP
 
 export interface PrintDispatchResult {
   success: boolean;
-  station: 'BAR' | 'KITCHEN';
+  station: PrepStation;
   layerUsed: HardwareLayerType;
   bytesSent?: number;
   message: string;

@@ -16,7 +16,11 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoIsolationAndGateway.test.ts && tsx tests/dualCafeIsolation.test.ts"
+    "test:phase1": "tsx tests/phase1InventoryBomIsolation.test.ts && tsx tests/phase1OpenTabIsolation.test.ts && tsx tests/phase1BaristaKdsIsolation.test.ts && tsx tests/phase1IndexedDbIsolation.test.ts",
+    "test:p2": "tsx tests/stationRouterPolicy.test.ts && tsx tests/kdsPersistentBackend.test.ts && tsx tests/kdsRestartRecovery.test.ts && tsx tests/authSecurity.test.ts && tsx tests/serverIntegration.test.ts",
+    "test:p3": "tsx tests/posOfflineSync.test.ts && tsx tests/shiftCloseoutAccounting.test.ts && tsx tests/stockProcurement.test.ts",
+    "test:p4": "tsx tests/e2eOperationalSmoke.test.ts",
+    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoIsolationAndGateway.test.ts && tsx tests/dualCafeIsolation.test.ts && npm run test:phase1 && npm run test:p2 && npm run test:p3 && npm run test:p4"
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.3",

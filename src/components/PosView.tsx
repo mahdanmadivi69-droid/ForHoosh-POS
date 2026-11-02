@@ -142,7 +142,7 @@ export const PosView: React.FC<PosViewProps> = ({
   const [isModifierOpen, setIsModifierOpen] = useState<boolean>(false);
 
   // Offline Sync Queue state
-  const [queueStats, setQueueStats] = useState<QueueStats>({ total: 0, pending: 0, failed: 0 });
+  const [queueStats, setQueueStats] = useState<QueueStats>({ total: 0, pending: 0, failed: 0, paused: 0, quarantined: 0 });
   const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
 
   // Checkout Modal State

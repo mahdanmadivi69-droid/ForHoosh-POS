@@ -11,7 +11,8 @@
 
 import { SmartOrdersStore } from './storage';
 import { inventoryBomService } from './inventoryBomService';
-import { db } from '../db/cafeDb';
+import { db, getCafeDatabase } from '../db/cafeDb';
+import { Shift } from '../types/domain';
 import {
   ZReportData,
   MaterialDepletionItem,
@@ -31,8 +32,10 @@ export class ShiftCloseoutService {
       closedBy?: string;
       discrepancyReason?: string;
       notes?: string;
+      tenantId?: string;
     }
   ): Promise<ZReportData> {
+    const tId = options?.tenantId || SmartOrdersStore.getActiveTenantId();
     const shifts = SmartOrdersStore.getShifts();
     const shift = shifts.find((s) => s.id === shiftId) || SmartOrdersStore.getActiveShift();
 
@@ -100,7 +103,8 @@ export class ShiftCloseoutService {
           item.menuItemId,
           item.quantity,
           (item.modifiers || []).map((m) => ({ nameFa: m.nameFa, title: m.nameFa })),
-          item.itemNameSnapshot
+          item.itemNameSnapshot,
+          tId
         );
 
         consumed.forEach((qty, ingId) => {
@@ -112,7 +116,7 @@ export class ShiftCloseoutService {
 
     const materialDepletions: MaterialDepletionItem[] = [];
     depletionMap.forEach((qty, ingId) => {
-      const ing = inventoryBomService.getIngredientById(ingId);
+      const ing = inventoryBomService.getIngredientById(ingId, tId);
       const roundedQty = inventoryBomService.roundTo3Decimals(qty);
       const unitCost = ing?.cost_per_unit || 0;
 
@@ -168,7 +172,8 @@ export class ShiftCloseoutService {
 
     // Persist to IndexedDB
     try {
-      await db.zReports.put(zReport);
+      const targetDb = tId ? getCafeDatabase(tId) : db;
+      await targetDb.zReports.put(zReport);
     } catch (err) {
       console.warn('[ShiftCloseoutService] Failed to persist Z-Report in IndexedDB:', err);
     }
@@ -371,5 +376,167 @@ export class ShiftCloseoutService {
       const code = str.charCodeAt(i);
       target.push(code < 128 ? code : 0x3f);
     }
+  }
+
+  /**
+   * Idempotently close a shift.
+   * If the shift is already CLOSED:
+   *   - Returns existing closed shift and existing ZReport if found.
+   *   - Guarantees isAlreadyClosed: true without altering historical records or duplicating logs.
+   * If the shift is OPEN:
+   *   - Calculates ZReport, marks shift CLOSED in SmartOrdersStore, persists ZReport, and returns isAlreadyClosed: false.
+   */
+  public static async closeShiftIdempotent(
+    shiftId: string,
+    countedCashFloat: number,
+    options?: {
+      closedBy?: string;
+      discrepancyReason?: string;
+      notes?: string;
+      tenantId?: string;
+    }
+  ): Promise<{
+    shift: Shift;
+    zReport: ZReportData;
+    isAlreadyClosed: boolean;
+  }> {
+    const shifts = SmartOrdersStore.getShifts();
+    const shift = shifts.find((s) => s.id === shiftId);
+
+    if (!shift) {
+      throw new Error(`شیفت کاری با شناسه ${shiftId} یافت نشد.`);
+    }
+
+    const tId = options?.tenantId || shift.tenantId;
+    const targetDb = tId ? getCafeDatabase(tId) : db;
+
+    if (shift.status === 'CLOSED') {
+      let existingZReport: ZReportData | undefined;
+      try {
+        existingZReport = await targetDb.zReports.where('shift_id').equals(shift.id).first();
+      } catch {
+        // Fallback if IndexedDB search fails
+      }
+
+      if (!existingZReport) {
+        existingZReport = await this.calculateZReport(shift.id, shift.actualCountedCashToman || countedCashFloat, {
+          ...options,
+          tenantId: tId,
+        });
+      }
+
+      return {
+        shift,
+        zReport: existingZReport,
+        isAlreadyClosed: true,
+      };
+    }
+
+    // Shift is OPEN -> calculate report and close shift
+    const zReport = await this.calculateZReport(shift.id, countedCashFloat, {
+      ...options,
+      tenantId: tId,
+    });
+
+    const updatedShift = SmartOrdersStore.closeShift(
+      shift.id,
+      countedCashFloat,
+      zReport.expected_cash,
+      options?.discrepancyReason,
+      options?.notes
+    );
+
+    return {
+      shift: updatedShift,
+      zReport,
+      isAlreadyClosed: false,
+    };
+  }
+
+  /**
+   * Aggregate daily financial summary for a given tenant and date
+   * Strictly respects tenant isolation and integer Toman calculations
+   * Preserves frozen VAT calculation Math.round((netSales * 9) / 109)
+   */
+  public static async getDailyFinancialSummary(
+    tenantId?: string,
+    dateStr?: string
+  ): Promise<{
+    date: string;
+    tenantId: string;
+    totalGrossSales: number;
+    totalNetSales: number;
+    totalVat: number;
+    totalDiscounts: number;
+    totalExpenses: number;
+    cashTotal: number;
+    posCardTotal: number;
+    shiftCount: number;
+    orderCount: number;
+  }> {
+    const tId = tenantId || SmartOrdersStore.getActiveTenantId();
+    const targetDate = dateStr ? dateStr.slice(0, 10) : new Date().toISOString().slice(0, 10);
+
+    const allOrders = SmartOrdersStore.getOrders();
+    const allShifts = SmartOrdersStore.getShifts();
+    const allPayments = SmartOrdersStore.getPayments();
+    const allExpenses = SmartOrdersStore.getExpenses();
+
+    // Filter by tenant and date
+    const dayOrders = allOrders.filter((o) => {
+      const matchTenant = !o.tenantId || o.tenantId === tId;
+      const matchDate = (o.createdAt || '').slice(0, 10) === targetDate;
+      const isCompleted = o.status === 'COMPLETED';
+      return matchTenant && matchDate && isCompleted;
+    });
+
+    const dayShifts = allShifts.filter((s) => {
+      const matchTenant = !s.tenantId || s.tenantId === tId;
+      const matchDate = (s.openedAt || '').slice(0, 10) === targetDate;
+      return matchTenant && matchDate;
+    });
+
+    const dayPayments = allPayments.filter((p) => {
+      const matchDate = (p.createdAt || '').slice(0, 10) === targetDate;
+      const isSuccess = p.status === 'SUCCESSFUL';
+      return matchDate && isSuccess;
+    });
+
+    const dayExpenses = allExpenses.filter((e) => {
+      const matchDate = (e.createdAt || '').slice(0, 10) === targetDate;
+      return matchDate;
+    });
+
+    const totalGrossSales = dayOrders.reduce((sum, o) => sum + (o.grossAmountToman || o.netTotalToman || 0), 0);
+    const totalDiscounts = dayOrders.reduce((sum, o) => sum + (o.discountAmountToman || 0), 0);
+    const totalNetSales = dayOrders.reduce((sum, o) => sum + (o.netTotalToman || 0), 0);
+    const totalVat = Math.round((totalNetSales * 9) / 109);
+    const totalExpenses = dayExpenses.reduce((sum, e) => sum + e.amountToman, 0);
+
+    let posCardTotal = 0;
+    let cashTotal = 0;
+    for (const p of dayPayments) {
+      if (p.paymentMethod === 'CARD_MANUAL') {
+        posCardTotal += p.amountToman;
+      } else if (p.paymentMethod === 'CASH') {
+        cashTotal += p.amountToman;
+      } else {
+        posCardTotal += p.amountToman;
+      }
+    }
+
+    return {
+      date: targetDate,
+      tenantId: tId,
+      totalGrossSales: Math.round(totalGrossSales),
+      totalNetSales: Math.round(totalNetSales),
+      totalVat,
+      totalDiscounts: Math.round(totalDiscounts),
+      totalExpenses: Math.round(totalExpenses),
+      cashTotal: Math.round(cashTotal),
+      posCardTotal: Math.round(posCardTotal),
+      shiftCount: dayShifts.length,
+      orderCount: dayOrders.length,
+    };
   }
 }
