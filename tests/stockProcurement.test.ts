@@ -93,8 +93,9 @@ async function runSuite() {
       id: 'cart-mod-1',
       menuItemId: 'item-mod-burger-classic',
       title: 'برگر کلاسیک مودندو',
-      price: 185000,
+      unitPrice: 185000,
       quantity: 2,
+      subtotal: 370000,
       station: 'KITCHEN',
     },
   ];
@@ -122,8 +123,9 @@ async function runSuite() {
       id: 'cart-hich-1',
       menuItemId: 'm1_flat_white',
       title: 'فلت وایت',
-      price: 65000,
+      unitPrice: 65000,
       quantity: 2,
+      subtotal: 130000,
       station: 'BAR',
     },
   ];
@@ -152,8 +154,9 @@ async function runSuite() {
       id: 'item-deduct-1',
       menuItemId: 'm1_flat_white',
       title: 'فلت وایت',
-      price: 65000,
+      unitPrice: 65000,
       quantity: 1,
+      subtotal: 65000,
       station: 'BAR',
     },
   ];
@@ -192,8 +195,9 @@ async function runSuite() {
     id: 'cart-beans-1',
     menuItemId: 'm_retail_ethiopia_250g',
     title: 'بسته ۲۵۰ گرمی دانه قهوه اتیوپی یرگاچف',
-    price: 450000,
-    quantity: 3,
+    unitPrice: 450000,
+      quantity: 3,
+      subtotal: 1350000,
     station: 'NO_PREP',
   };
 
@@ -201,8 +205,9 @@ async function runSuite() {
     id: 'cart-game-1',
     menuItemId: 'm_ps5_gaming_pass_1hr',
     title: 'ووچر ۱ ساعت بازی پلی‌استیشن ۵',
-    price: 120000,
-    quantity: 2,
+    unitPrice: 120000,
+      quantity: 2,
+      subtotal: 240000,
     station: 'NO_PREP',
   };
 
@@ -210,12 +215,10 @@ async function runSuite() {
   const beansStation = StationRouter.resolveStation({
     title: retailBeansItem.title,
     categoryId: 'cat-retail-beans',
-    categoryName: 'دانه‌های بسته‌بندی برشته‌کاری',
   });
   const gamingStation = StationRouter.resolveStation({
     title: gamingPassItem.title,
     categoryId: 'cat-mod-gaming',
-    categoryName: 'گیمینگ و کنسول',
   });
 
   assertEqual(beansStation, 'NO_PREP', 'StationRouter routes retail beans to NO_PREP');

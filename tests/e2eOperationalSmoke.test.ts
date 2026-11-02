@@ -117,24 +117,27 @@ async function runSuite() {
       id: 'hich-cart-item-1',
       menuItemId: 'm1_flat_white',
       title: 'فلت وایت',
-      price: 65000,
+      unitPrice: 65000,
       quantity: 2,
+      subtotal: 130000,
       station: 'BAR',
     },
     {
       id: 'hich-cart-item-2',
       menuItemId: 'm3_croissant',
       title: 'کرواسان کره‌ای فرانسوی',
-      price: 85000,
+      unitPrice: 85000,
       quantity: 1,
+      subtotal: 85000,
       station: 'KITCHEN',
     },
     {
       id: 'hich-cart-item-3',
       menuItemId: 'm_retail_ethiopia_250g',
       title: 'بسته ۲۵۰ گرمی دانه قهوه اتیوپی',
-      price: 450000,
+      unitPrice: 450000,
       quantity: 1,
+      subtotal: 450000,
       station: 'NO_PREP',
     },
   ];
@@ -144,9 +147,9 @@ async function runSuite() {
     hichCart,
     [],
     {
-      orderId: 'ord-hich-e2e-1',
-      tableNumber: 'میز ۲',
-      serverName: 'محمد سرپرست باریستا',
+      id: 'ord-hich-e2e-1',
+      tableLabel: 'میز ۲',
+      cashierName: 'محمد سرپرست باریستا',
     }
   );
 
@@ -159,7 +162,7 @@ async function runSuite() {
   const kdsDispatch = kdsService.dispatchOrder('tenant-100hich-01', {
     orderId: 'ord-hich-e2e-1',
     tableLabel: 'میز ۲',
-    serverName: 'محمد',
+    cashierName: 'محمد',
     items: hichCart,
   });
 
@@ -171,11 +174,11 @@ async function runSuite() {
   const barTicketId = kdsDispatch.barTicket!.id;
   const kitchenTicketId = kdsDispatch.kitchenTicket!.id;
 
-  const barTicketUpdated = kdsService.updateTicketStatus('tenant-100hich-01', barTicketId, 'READY', 'BAR');
-  assertEqual(barTicketUpdated.status, 'READY', 'BAR ticket marked READY');
+  const barTicketUpdated = kdsService.updateTicketStatus('tenant-100hich-01', barTicketId, 'IN_PREP', 'BAR');
+  assertEqual(barTicketUpdated.status, 'IN_PREP', 'BAR ticket marked IN_PREP');
 
-  const kitchenTicketUpdated = kdsService.updateTicketStatus('tenant-100hich-01', kitchenTicketId, 'SERVED', 'KITCHEN');
-  assertEqual(kitchenTicketUpdated.status, 'SERVED', 'KITCHEN ticket marked SERVED');
+  const kitchenTicketUpdated = kdsService.updateTicketStatus('tenant-100hich-01', kitchenTicketId, 'COMPLETED', 'KITCHEN');
+  assertEqual(kitchenTicketUpdated.status, 'COMPLETED', 'KITCHEN ticket marked COMPLETED');
 
   // 5. Idempotent Inventory Consumption
   const stockBefore = inventoryBomService.getIngredientById('ing_espresso_blend', 'tenant-100hich-01')?.current_stock || 0;
@@ -193,28 +196,27 @@ async function runSuite() {
       id: 'ord-hich-e2e-1',
       tenantId: 'tenant-100hich-01',
       shiftId: hichShift.id,
-      dailyOrderNumber: 1,
+      orderNumber: 1,
+      orderType: 'DINE_IN',
+      createdByUserId: 'usr-1',
+      createdByUserName: 'صندوق‌دار',
       items: [
         {
           id: 'i1',
           menuItemId: 'm1_flat_white',
           itemNameSnapshot: 'فلت وایت',
-          unitPriceToman: 65000,
+          unitPriceSnapshotToman: 65000,
           quantity: 2,
-          totalPriceToman: 130000,
-          vatPercentage: 9,
-          vatAmountToman: Math.round((130000 * 9) / 109),
+          subtotalToman: 130000,
           station: 'BAR',
         },
         {
           id: 'i2',
           menuItemId: 'm3_croissant',
           itemNameSnapshot: 'کرواسان کره‌ای فرانسوی',
-          unitPriceToman: 85000,
+          unitPriceSnapshotToman: 85000,
           quantity: 1,
-          totalPriceToman: 85000,
-          vatPercentage: 9,
-          vatAmountToman: Math.round((85000 * 9) / 109),
+          subtotalToman: 85000,
           station: 'KITCHEN',
         },
       ],
@@ -222,7 +224,6 @@ async function runSuite() {
       discountAmountToman: 15000,
       netTotalToman: 200000,
       status: 'COMPLETED',
-      paymentStatus: 'PAID',
       createdAt: nowIso,
       updatedAt: nowIso,
     },
@@ -275,16 +276,18 @@ async function runSuite() {
       id: 'mod-cart-item-1',
       menuItemId: 'item-mod-burger-classic',
       title: 'برگر کلاسیک مودندو',
-      price: 185000,
+      unitPrice: 185000,
       quantity: 1,
+      subtotal: 185000,
       station: 'KITCHEN',
     },
     {
       id: 'mod-cart-item-2',
       menuItemId: 'm_ps5_gaming_pass_1hr',
       title: 'ووچر ۱ ساعت بازی پلی‌استیشن ۵',
-      price: 120000,
+      unitPrice: 120000,
       quantity: 2,
+      subtotal: 240000,
       station: 'NO_PREP',
     },
   ];
@@ -293,9 +296,9 @@ async function runSuite() {
     modCart,
     [],
     {
-      orderId: 'ord-mod-e2e-1',
-      tableNumber: 'کنسول ۳ (PS5 VIP)',
-      serverName: 'سارا اپراتور بازی',
+      id: 'ord-mod-e2e-1',
+      tableLabel: 'کنسول ۳ (PS5 VIP)',
+      cashierName: 'سارا اپراتور بازی',
     }
   );
 
@@ -308,7 +311,7 @@ async function runSuite() {
   const modKdsDispatch = kdsService.dispatchOrder('tenant-modendo-01', {
     orderId: 'ord-mod-e2e-1',
     tableLabel: 'کنسول ۳',
-    serverName: 'سارا',
+    cashierName: 'سارا',
     items: modCart,
   });
 
@@ -319,10 +322,10 @@ async function runSuite() {
   const modKitchenUpdated = kdsService.updateTicketStatus(
     'tenant-modendo-01',
     modKdsDispatch.kitchenTicket!.id,
-    'READY',
+    'COMPLETED',
     'KITCHEN'
   );
-  assertEqual(modKitchenUpdated.status, 'READY', 'Modendo kitchen ticket completed');
+  assertEqual(modKitchenUpdated.status, 'COMPLETED', 'Modendo kitchen ticket completed');
 
   // 5. BOM Deduction in Modendo
   const initialModPatty = inventoryBomService.getIngredientById('mod_ing_burger_patty', 'tenant-modendo-01')?.current_stock || 0;
@@ -338,17 +341,18 @@ async function runSuite() {
       id: 'ord-mod-e2e-1',
       tenantId: 'tenant-modendo-01',
       shiftId: modShift.id,
-      dailyOrderNumber: 1,
+      orderNumber: 1,
+      orderType: 'DINE_IN',
+      createdByUserId: 'usr-1',
+      createdByUserName: 'صندوق‌دار',
       items: [
         {
           id: 'mi1',
           menuItemId: 'item-mod-burger-classic',
           itemNameSnapshot: 'برگر کلاسیک مودندو',
-          unitPriceToman: 185000,
+          unitPriceSnapshotToman: 185000,
+          subtotalToman: 185000,
           quantity: 1,
-          totalPriceToman: 185000,
-          vatPercentage: 9,
-          vatAmountToman: Math.round((185000 * 9) / 109),
           station: 'KITCHEN',
         },
       ],
@@ -356,7 +360,6 @@ async function runSuite() {
       discountAmountToman: 0,
       netTotalToman: 185000,
       status: 'COMPLETED',
-      paymentStatus: 'PAID',
       createdAt: nowIso,
       updatedAt: nowIso,
     },

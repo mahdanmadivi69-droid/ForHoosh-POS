@@ -66,7 +66,6 @@ export function createAuthRouter(authService: AuthService = getAuthService()): R
         success: true,
         user: result.user,
         csrfToken: result.csrfToken,
-        token: result.token, // Also returned for headless API test clients
       });
     } catch (err: any) {
       console.error('[AuthRouter] Login error:', err);

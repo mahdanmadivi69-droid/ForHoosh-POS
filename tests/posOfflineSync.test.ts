@@ -188,7 +188,7 @@ function assertEqual<T>(actual: T, expected: T, testName: string) {
   );
 }
 
-function createDummyOrder(id: string, tenantId: string, grossAmount: number): OrderAggregate {
+function createDummyOrder(id: string, tenantId: string, grossAmount: number): any {
   return {
     id,
     clientGeneratedId: id,

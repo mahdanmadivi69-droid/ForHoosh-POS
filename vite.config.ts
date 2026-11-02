@@ -31,6 +31,10 @@ export default defineConfig(({ mode }) => {
     define: {
       'import.meta.env.VITE_TENANT_ID': JSON.stringify(tenantId),
     },
+    build: {
+      outDir: isModendo ? 'dist/modendo' : 'dist/100hich',
+      emptyOutDir: true,
+    },
     plugins: [
       react(),
       tailwindcss(),

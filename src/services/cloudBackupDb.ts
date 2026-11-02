@@ -115,6 +115,7 @@ class CloudBackupDbService {
 
         CREATE INDEX IF NOT EXISTS idx_daily_backups_tenant_date ON daily_backups(tenant_id, backup_date);
         ALTER TABLE daily_backups ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE daily_backups FORCE ROW LEVEL SECURITY;
 
         DROP POLICY IF EXISTS daily_backups_tenant_isolation ON daily_backups;
         CREATE POLICY daily_backups_tenant_isolation ON daily_backups
@@ -289,7 +290,8 @@ class CloudBackupDbService {
       try {
         await this.ensureSchema();
         client = await this.pool.connect();
-        await client.query('SET LOCAL app.current_tenant_id = $1', [tenantId]);
+        await client.query('BEGIN');
+        await client.query("SELECT set_config('app.current_tenant_id', $1, true)", [tenantId]);
 
         const res = await client.query(
           `SELECT id, tenant_id as "tenantId", backup_date as "backupDate",
@@ -301,12 +303,19 @@ class CloudBackupDbService {
            LIMIT $2`,
           [tenantId, limit]
         );
+        await client.query('COMMIT');
 
         return res.rows;
       } catch (err: any) {
+        if (client) {
+          try { await client.query('ROLLBACK'); } catch (_) {}
+        }
         console.warn(`[CloudBackupDb] Query failed, falling back to in-memory: ${err.message}`);
       } finally {
-        if (client) client.release();
+        if (client) {
+          try { await client.query('DISCARD ALL'); } catch (_) {}
+          client.release();
+        }
       }
     }
 
@@ -322,18 +331,26 @@ class CloudBackupDbService {
     if (this.pool) {
       try {
         client = await this.pool.connect();
-        await client.query('SET LOCAL app.current_tenant_id = $1', [tenantId]);
+        await client.query('BEGIN');
+        await client.query("SELECT set_config('app.current_tenant_id', $1, true)", [tenantId]);
         const res = await client.query(
           'SELECT snapshot_payload FROM daily_backups WHERE id = $1 AND tenant_id = $2',
           [backupId, tenantId]
         );
+        await client.query('COMMIT');
         if (res.rows.length > 0) {
           return res.rows[0].snapshot_payload;
         }
       } catch (err: any) {
+        if (client) {
+          try { await client.query('ROLLBACK'); } catch (_) {}
+        }
         console.warn(`[CloudBackupDb] Query by id failed: ${err.message}`);
       } finally {
-        if (client) client.release();
+        if (client) {
+          try { await client.query('DISCARD ALL'); } catch (_) {}
+          client.release();
+        }
       }
     }
 
