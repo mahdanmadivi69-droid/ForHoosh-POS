@@ -320,7 +320,7 @@ async function runSuite() {
     const headlessZReport = { ...zReportBalanced };
     delete (headlessZReport as any).tenantId;
     delete (headlessZReport as any).tenant_id;
-    ShiftCloseoutService.generateZReportText(headlessZReport as any, undefined);
+    ShiftCloseoutService.generateZReportText(headlessZReport as any);
   } catch (err: any) {
     if (err instanceof TypeError && err.message.includes('Mandatory tenantId is missing')) {
       missingTenantThrew = true;
@@ -421,6 +421,187 @@ async function runSuite() {
     }
     assert(accepted, `ACCEPT: generateZReportText accepts allowlisted tenant "${goodTenant}"`);
   }
+
+
+  // ============================================================================
+  // Suite 8: Explicit Argument Semantics: Omitted vs Explicit (R01_NULL_FALLBACK)
+  // ============================================================================
+  console.log('\n[Suite 8: Explicit Argument Semantics: Omitted vs Explicit (R01_NULL_FALLBACK)]');
+
+  // Case A: Omitted parameter MUST trigger fallback to zReport.tenantId
+  let omittedTextSuccess = false;
+  try {
+    const textOmitted = ShiftCloseoutService.generateZReportText(zReportBalanced);
+    omittedTextSuccess = textOmitted.includes('*** 100 HICH SPECIALTY COFFEE ***');
+  } catch (e) {
+    omittedTextSuccess = false;
+  }
+  assert(omittedTextSuccess, 'OMITTED: generateZReportText(zReport) successfully falls back to zReport.tenantId');
+
+  let omittedBytesSuccess = false;
+  try {
+    const bytesOmitted = ShiftCloseoutService.generateEscPosBytes(zReportBalanced);
+    const ascii = String.fromCharCode(...bytesOmitted);
+    omittedBytesSuccess = ascii.includes('*** 100 HICH ***');
+  } catch (e) {
+    omittedBytesSuccess = false;
+  }
+  assert(omittedBytesSuccess, 'OMITTED: generateEscPosBytes(zReport) successfully falls back to zReport.tenantId');
+
+  let omittedPrintSuccess = false;
+  try {
+    const printOmitted = await ShiftCloseoutService.printZReportTicket(zReportBalanced);
+    omittedPrintSuccess = printOmitted.textPreview.includes('*** 100 HICH SPECIALTY COFFEE ***');
+  } catch (e) {
+    omittedPrintSuccess = false;
+  }
+  assert(omittedPrintSuccess, 'OMITTED: printZReportTicket(zReport) successfully falls back to zReport.tenantId');
+
+  // Case B: Explicit undefined MUST NOT trigger fallback, MUST throw TypeError
+  let explicitUndefinedThrewText = false;
+  try {
+    ShiftCloseoutService.generateZReportText(zReportBalanced, undefined);
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('cannot be null or undefined')) {
+      explicitUndefinedThrewText = true;
+    }
+  }
+  assert(explicitUndefinedThrewText, 'EXPLICIT UNDEFINED: generateZReportText(zReport, undefined) throws TypeError and does not fall back');
+
+  let explicitUndefinedThrewBytes = false;
+  try {
+    ShiftCloseoutService.generateEscPosBytes(zReportBalanced, undefined);
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('cannot be null or undefined')) {
+      explicitUndefinedThrewBytes = true;
+    }
+  }
+  assert(explicitUndefinedThrewBytes, 'EXPLICIT UNDEFINED: generateEscPosBytes(zReport, undefined) throws TypeError and does not fall back');
+
+  let explicitUndefinedThrewPrint = false;
+  try {
+    await ShiftCloseoutService.printZReportTicket(zReportBalanced, 'CASHIER_RECEIPT', undefined);
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('cannot be null or undefined')) {
+      explicitUndefinedThrewPrint = true;
+    }
+  }
+  assert(explicitUndefinedThrewPrint, 'EXPLICIT UNDEFINED: printZReportTicket(zReport, target, undefined) throws TypeError');
+
+  // Case C: Explicit null MUST NOT trigger fallback, MUST throw TypeError
+  let explicitNullThrewText = false;
+  try {
+    ShiftCloseoutService.generateZReportText(zReportBalanced, null as any);
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('cannot be null or undefined')) {
+      explicitNullThrewText = true;
+    }
+  }
+  assert(explicitNullThrewText, 'EXPLICIT NULL: generateZReportText(zReport, null) throws TypeError and does not fall back');
+
+  let explicitNullThrewBytes = false;
+  try {
+    ShiftCloseoutService.generateEscPosBytes(zReportBalanced, null as any);
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('cannot be null or undefined')) {
+      explicitNullThrewBytes = true;
+    }
+  }
+  assert(explicitNullThrewBytes, 'EXPLICIT NULL: generateEscPosBytes(zReport, null) throws TypeError and does not fall back');
+
+  let explicitNullThrewPrint = false;
+  try {
+    await ShiftCloseoutService.printZReportTicket(zReportBalanced, 'CASHIER_RECEIPT', null as any);
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('cannot be null or undefined')) {
+      explicitNullThrewPrint = true;
+    }
+  }
+  assert(explicitNullThrewPrint, 'EXPLICIT NULL: printZReportTicket(zReport, target, null) throws TypeError');
+
+  // Case D: Explicit empty string MUST throw TypeError
+  let explicitEmptyThrew = false;
+  try {
+    ShiftCloseoutService.generateZReportText(zReportBalanced, '');
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('Empty or whitespace-only')) {
+      explicitEmptyThrew = true;
+    }
+  }
+  assert(explicitEmptyThrew, 'EXPLICIT EMPTY: generateZReportText(zReport, "") throws TypeError');
+
+  // Case E: Explicit whitespace MUST throw TypeError
+  let explicitWhitespaceThrew = false;
+  try {
+    ShiftCloseoutService.generateZReportText(zReportBalanced, '    \t\n  ');
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('Empty or whitespace-only')) {
+      explicitWhitespaceThrew = true;
+    }
+  }
+  assert(explicitWhitespaceThrew, 'EXPLICIT WHITESPACE: generateZReportText(zReport, "   ") throws TypeError');
+
+  // Case F: Explicit invalid value MUST throw TypeError
+  let explicitInvalidThrew = false;
+  try {
+    ShiftCloseoutService.generateZReportText(zReportBalanced, 'unauthorized_tenant_xyz');
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('Unknown or unauthorized tenantId')) {
+      explicitInvalidThrew = true;
+    }
+  }
+  assert(explicitInvalidThrew, 'EXPLICIT INVALID: generateZReportText(zReport, "unauthorized_tenant_xyz") throws TypeError');
+
+  // ============================================================================
+  // Suite 9: Full Deterministic Golden Output Verification (R04_GOLDEN_OUTPUT)
+  // ============================================================================
+  console.log('\n[Suite 9: Full Deterministic Golden Output Verification (R04_GOLDEN_OUTPUT)]');
+
+  // 100 HICH Golden Text Preview
+  const text100 = ShiftCloseoutService.generateZReportText(zReportBalanced, 'tenant-100hich-01');
+  const textLines100 = text100.split('\n');
+  assertEqual(textLines100[0], '*** 100 HICH SPECIALTY COFFEE ***', 'Golden 100 HICH: Header matches exact brand string');
+  assertEqual(textLines100[1], '*** OFFICIAL SHIFT Z-REPORT ***', 'Golden 100 HICH: Subheader line 1 matches');
+  assertEqual(textLines100[2], 'صورت‌جلسه تسویه حساب و پایان شیفت کاری', 'Golden 100 HICH: Persian subheader matches');
+  assert(text100.includes('تراز کامل (BALANCED) ✓'), 'Golden 100 HICH: Balance indicator matches');
+  assert(!text100.toLowerCase().includes('modendo'), 'Golden 100 HICH: Zero Modendo brand leak');
+
+  // Modendo Golden Text Preview
+  const textMod = ShiftCloseoutService.generateZReportText(zReportBalanced, 'tenant-modendo-01');
+  const textLinesMod = textMod.split('\n');
+  assertEqual(textLinesMod[0], '*** MODENDO CAFE & GAMING ***', 'Golden Modendo: Header matches exact brand string');
+  assertEqual(textLinesMod[1], '*** OFFICIAL SHIFT Z-REPORT ***', 'Golden Modendo: Subheader line 1 matches');
+  assertEqual(textLinesMod[2], 'صورت‌جلسه تسویه حساب و پایان شیفت کاری', 'Golden Modendo: Persian subheader matches');
+  assert(textMod.includes('تراز کامل (BALANCED) ✓'), 'Golden Modendo: Balance indicator matches');
+  assert(!textMod.toLowerCase().includes('100hich'), 'Golden Modendo: Zero 100 HICH brand leak (100hich)');
+  assert(!textMod.toLowerCase().includes('100 hich'), 'Golden Modendo: Zero 100 HICH brand leak (100 hich)');
+
+  // 100 HICH Golden ESC/POS Bytes Deterministic Structure
+  const bytes100 = ShiftCloseoutService.generateEscPosBytes(zReportBalanced, 'tenant-100hich-01');
+  assertEqual(bytes100[0], 0x1B, 'ESC/POS 100 HICH: Byte 0 is ESC (0x1B)');
+  assertEqual(bytes100[1], 0x40, 'ESC/POS 100 HICH: Byte 1 is @ (Initialize 0x40)');
+  assertEqual(bytes100[2], 0x1B, 'ESC/POS 100 HICH: Byte 2 is ESC (0x1B)');
+  assertEqual(bytes100[3], 0x47, 'ESC/POS 100 HICH: Byte 3 is G (Double Strike)');
+  assertEqual(bytes100[4], 0x01, 'ESC/POS 100 HICH: Byte 4 is 1 (ON)');
+  assertEqual(bytes100[bytes100.length - 3], 0x1D, 'ESC/POS 100 HICH: Final command is GS (0x1D)');
+  assertEqual(bytes100[bytes100.length - 2], 0x56, 'ESC/POS 100 HICH: Final command is V (Cut Paper)');
+  assertEqual(bytes100[bytes100.length - 1], 0x00, 'ESC/POS 100 HICH: Final command is 0x00');
+  const rawAscii100 = String.fromCharCode(...bytes100);
+  assert(rawAscii100.includes('*** 100 HICH ***\n'), 'ESC/POS 100 HICH: Contains double-size title');
+  assert(rawAscii100.includes('COFFEE ROASTERS - SHIFT AUDIT\n'), 'ESC/POS 100 HICH: Contains audit subtitle');
+  assert(!rawAscii100.toLowerCase().includes('modendo'), 'ESC/POS 100 HICH: Zero Modendo bytes leak');
+
+  // Modendo Golden ESC/POS Bytes Deterministic Structure
+  const bytesMod = ShiftCloseoutService.generateEscPosBytes(zReportBalanced, 'tenant-modendo-01');
+  assertEqual(bytesMod[0], 0x1B, 'ESC/POS Modendo: Byte 0 is ESC (0x1B)');
+  assertEqual(bytesMod[1], 0x40, 'ESC/POS Modendo: Byte 1 is @ (Initialize 0x40)');
+  assertEqual(bytesMod[bytesMod.length - 3], 0x1D, 'ESC/POS Modendo: Final command is GS (0x1D)');
+  assertEqual(bytesMod[bytesMod.length - 2], 0x56, 'ESC/POS Modendo: Final command is V (Cut Paper)');
+  assertEqual(bytesMod[bytesMod.length - 1], 0x00, 'ESC/POS Modendo: Final command is 0x00');
+  const rawAsciiMod = String.fromCharCode(...bytesMod);
+  assert(rawAsciiMod.includes('*** MODENDO CAFE ***\n'), 'ESC/POS Modendo: Contains double-size title');
+  assert(rawAsciiMod.includes('BOARDGAME & GAMING CAFE - SHIFT AUDIT\n'), 'ESC/POS Modendo: Contains audit subtitle');
+  assert(!rawAsciiMod.toLowerCase().includes('100hich'), 'ESC/POS Modendo: Zero 100 HICH bytes leak');
 
   console.log(`\n========================================`);
   console.log(`Shift Closeout & Accounting Summary: ${passed} Passed, ${failed} Failed`);
