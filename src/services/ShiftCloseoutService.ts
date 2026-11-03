@@ -187,20 +187,23 @@ export class ShiftCloseoutService {
    * Generates text preview for Thermal Z-Report Receipt with strict mandatory tenant isolation.
    */
   public static generateZReportText(zReport: ZReportData, tenantId?: string): string {
-    const tId = tenantId || (zReport as any).tenantId || (zReport as any).tenant_id;
+    const tId = (tenantId !== undefined && tenantId !== null) ? tenantId : ((zReport as any).tenantId || (zReport as any).tenant_id);
     if (!tId || typeof tId !== 'string') {
       throw new TypeError('ShiftCloseoutService: Mandatory tenantId is missing for Z-Report generation');
     }
 
+    const TENANT_ALLOWLIST_TEXT: ReadonlySet<string> = new Set([
+      '100hich', 'tenant_100hich', 'tenant-100hich-01',
+      'modendo', 'tenant_modendo', 'tenant-modendo-01',
+    ]);
     const cleanTenant = tId.trim().toLowerCase();
-    let brandHeader = '';
-    if (cleanTenant.includes('100hich') || cleanTenant === 'tenant_100hich' || cleanTenant === '100hich') {
-      brandHeader = '*** 100 HICH SPECIALTY COFFEE ***';
-    } else if (cleanTenant.includes('modendo') || cleanTenant === 'tenant_modendo' || cleanTenant === 'modendo') {
-      brandHeader = '*** MODENDO CAFE & GAMING ***';
-    } else {
+    if (!TENANT_ALLOWLIST_TEXT.has(cleanTenant)) {
       throw new TypeError(`ShiftCloseoutService: Unknown or unauthorized tenantId "${tId}"`);
     }
+    const is100HichText = cleanTenant === '100hich' || cleanTenant === 'tenant_100hich' || cleanTenant === 'tenant-100hich-01';
+    const brandHeader = is100HichText
+      ? '*** 100 HICH SPECIALTY COFFEE ***'
+      : '*** MODENDO CAFE & GAMING ***';
 
     const charWidth = 42;
     const ruleLine = '-'.repeat(charWidth);
@@ -290,23 +293,22 @@ export class ShiftCloseoutService {
    * Generates ESC/POS Binary Stream for Thermal Z-Report Receipt with strict mandatory tenant isolation.
    */
   public static generateEscPosBytes(zReport: ZReportData, tenantId?: string): Uint8Array {
-    const tId = tenantId || (zReport as any).tenantId || (zReport as any).tenant_id;
+    const tId = (tenantId !== undefined && tenantId !== null) ? tenantId : ((zReport as any).tenantId || (zReport as any).tenant_id);
     if (!tId || typeof tId !== 'string') {
       throw new TypeError('ShiftCloseoutService: Mandatory tenantId is missing for ESC/POS generation');
     }
 
+    const TENANT_ALLOWLIST_ESCPOS: ReadonlySet<string> = new Set([
+      '100hich', 'tenant_100hich', 'tenant-100hich-01',
+      'modendo', 'tenant_modendo', 'tenant-modendo-01',
+    ]);
     const cleanTenant = tId.trim().toLowerCase();
-    let doubleSizeTitle = '';
-    let auditSubTitle = '';
-    if (cleanTenant.includes('100hich') || cleanTenant === 'tenant_100hich' || cleanTenant === '100hich') {
-      doubleSizeTitle = '*** 100 HICH ***\n';
-      auditSubTitle = 'COFFEE ROASTERS - SHIFT AUDIT\n';
-    } else if (cleanTenant.includes('modendo') || cleanTenant === 'tenant_modendo' || cleanTenant === 'modendo') {
-      doubleSizeTitle = '*** MODENDO CAFE ***\n';
-      auditSubTitle = 'BOARDGAME & GAMING CAFE - SHIFT AUDIT\n';
-    } else {
+    if (!TENANT_ALLOWLIST_ESCPOS.has(cleanTenant)) {
       throw new TypeError(`ShiftCloseoutService: Unknown or unauthorized tenantId "${tId}"`);
     }
+    const is100HichEscPos = cleanTenant === '100hich' || cleanTenant === 'tenant_100hich' || cleanTenant === 'tenant-100hich-01';
+    const doubleSizeTitle = is100HichEscPos ? '*** 100 HICH ***\n' : '*** MODENDO CAFE ***\n';
+    const auditSubTitle = is100HichEscPos ? 'COFFEE ROASTERS - SHIFT AUDIT\n' : 'BOARDGAME & GAMING CAFE - SHIFT AUDIT\n';
 
     const charWidth = 42;
     const ruleLine = '-'.repeat(charWidth);
@@ -419,7 +421,7 @@ export class ShiftCloseoutService {
   }> {
     audioFeedback.playPrinterChirp();
 
-    const tId = tenantId || (zReport as any).tenantId || (zReport as any).tenant_id;
+    const tId = (tenantId !== undefined && tenantId !== null) ? tenantId : ((zReport as any).tenantId || (zReport as any).tenant_id);
     if (!tId || typeof tId !== 'string') {
       throw new TypeError('ShiftCloseoutService: Mandatory tenantId is missing for receipt printing');
     }

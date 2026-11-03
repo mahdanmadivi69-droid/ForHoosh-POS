@@ -343,6 +343,85 @@ async function runSuite() {
   const printTicketModendo = await ShiftCloseoutService.printZReportTicket(zReportBalanced, 'CASHIER_RECEIPT', 'tenant-modendo-01');
   assert(printTicketModendo.textPreview.includes('*** MODENDO CAFE & GAMING ***'), 'printZReportTicket renders Modendo header correctly');
 
+
+  // ============================================================================
+  // Suite 7: Tenant Allowlist Negative Tests (P01-R02 / Substring Rejection)
+  // ============================================================================
+  console.log('\n[Suite 7: Tenant Allowlist Negative Tests (P01-R02)]');
+
+  const MUST_REJECT_TENANTS = [
+    'not-100hich',
+    '100hich-unauthorized',
+    'modendo-test',
+    'tenant_modendo_backup',
+    'evil-100hich-spoof',
+    'MODENDO-FAKE',
+    '',
+    '   ',
+    'null',
+    'undefined',
+    'tenant_',
+    '100',
+    'hich',
+    'mod',
+    'endo',
+  ];
+
+  for (const badTenant of MUST_REJECT_TENANTS) {
+    let rejected = false;
+    try {
+      ShiftCloseoutService.generateZReportText(zReportBalanced, badTenant as any);
+    } catch (err: any) {
+      if (err instanceof TypeError) {
+        rejected = true;
+      }
+    }
+    assert(rejected, `REJECT: generateZReportText rejects tenant "${badTenant}"`);
+  }
+
+  // Also test ESC/POS with the same list
+  for (const badTenant of MUST_REJECT_TENANTS) {
+    let rejected = false;
+    try {
+      ShiftCloseoutService.generateEscPosBytes(zReportBalanced, badTenant as any);
+    } catch (err: any) {
+      if (err instanceof TypeError) {
+        rejected = true;
+      }
+    }
+    assert(rejected, `REJECT: generateEscPosBytes rejects tenant "${badTenant}"`);
+  }
+
+  // Non-string types
+  const NON_STRING_INPUTS: any[] = [123, true, null, undefined, {}, [], 0, NaN];
+  for (const badInput of NON_STRING_INPUTS) {
+    let rejected = false;
+    try {
+      const headless = { ...zReportBalanced };
+      delete (headless as any).tenantId;
+      delete (headless as any).tenant_id;
+      ShiftCloseoutService.generateZReportText(headless as any, badInput);
+    } catch (err: any) {
+      if (err instanceof TypeError) {
+        rejected = true;
+      }
+    }
+    assert(rejected, `REJECT: generateZReportText rejects non-string input (${String(badInput)})`);
+  }
+
+  // Confirm the exact allowlist values still work
+  const MUST_ACCEPT_TENANTS = ['100hich', 'tenant_100hich', 'tenant-100hich-01', 'modendo', 'tenant_modendo', 'tenant-modendo-01'];
+  for (const goodTenant of MUST_ACCEPT_TENANTS) {
+    let accepted = false;
+    try {
+      const text = ShiftCloseoutService.generateZReportText(zReportBalanced, goodTenant);
+      accepted = text.length > 0;
+    } catch {
+      accepted = false;
+    }
+    assert(accepted, `ACCEPT: generateZReportText accepts allowlisted tenant "${goodTenant}"`);
+  }
+
   console.log(`\n========================================`);
   console.log(`Shift Closeout & Accounting Summary: ${passed} Passed, ${failed} Failed`);
   console.log(`========================================\n`);
