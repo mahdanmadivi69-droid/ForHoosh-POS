@@ -289,6 +289,60 @@ async function runSuite() {
   assertEqual(summaryModendo.orderCount, 0, 'Modendo order count is 0');
   assertEqual(summaryModendo.shiftCount, 0, 'Modendo shift count is 0');
 
+  // ============================================================================
+  // Suite 6: Tenant Receipt Branding Isolation (PATCH-01 / CANON-ROOT-05)
+  // ============================================================================
+  console.log('\n[Suite 6: Tenant Receipt Branding Isolation (PATCH-01 / CANON-ROOT-05)]');
+
+  // Test 1: 100 Hich Golden Output
+  const text100Hich = ShiftCloseoutService.generateZReportText(zReportBalanced, 'tenant-100hich-01');
+  assert(text100Hich.includes('*** 100 HICH SPECIALTY COFFEE ***'), '100 Hich text preview contains brand header');
+  assert(!text100Hich.includes('MODENDO'), '100 Hich text preview has zero leak of MODENDO');
+
+  const bytes100Hich = ShiftCloseoutService.generateEscPosBytes(zReportBalanced, 'tenant-100hich-01');
+  const ascii100Hich = String.fromCharCode(...bytes100Hich);
+  assert(ascii100Hich.includes('*** 100 HICH ***'), '100 Hich ESC/POS bytes contain double-size title');
+  assert(ascii100Hich.includes('COFFEE ROASTERS - SHIFT AUDIT'), '100 Hich ESC/POS bytes contain sub-brand');
+
+  // Test 2: Modendo Golden Output
+  const textModendo = ShiftCloseoutService.generateZReportText(zReportBalanced, 'tenant-modendo-01');
+  assert(textModendo.includes('*** MODENDO CAFE & GAMING ***'), 'Modendo text preview contains brand header');
+  assert(!textModendo.includes('100 HICH'), 'Modendo text preview has zero leak of 100 HICH');
+
+  const bytesModendo = ShiftCloseoutService.generateEscPosBytes(zReportBalanced, 'tenant-modendo-01');
+  const asciiModendo = String.fromCharCode(...bytesModendo);
+  assert(asciiModendo.includes('*** MODENDO CAFE ***'), 'Modendo ESC/POS bytes contain double-size title');
+  assert(asciiModendo.includes('BOARDGAME & GAMING CAFE - SHIFT AUDIT'), 'Modendo ESC/POS bytes contain sub-brand');
+
+  // Test 3: Missing tenantId throws TypeError
+  let missingTenantThrew = false;
+  try {
+    const headlessZReport = { ...zReportBalanced };
+    delete (headlessZReport as any).tenantId;
+    delete (headlessZReport as any).tenant_id;
+    ShiftCloseoutService.generateZReportText(headlessZReport as any, undefined);
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('Mandatory tenantId is missing')) {
+      missingTenantThrew = true;
+    }
+  }
+  assert(missingTenantThrew, 'FAIL-CLOSED: generateZReportText throws TypeError when tenantId is missing');
+
+  // Test 4: Unknown / spoofed tenantId throws TypeError
+  let unknownTenantThrew = false;
+  try {
+    ShiftCloseoutService.generateZReportText(zReportBalanced, 'evil-tenant-attacker');
+  } catch (err: any) {
+    if (err instanceof TypeError && err.message.includes('Unknown or unauthorized tenantId')) {
+      unknownTenantThrew = true;
+    }
+  }
+  assert(unknownTenantThrew, 'FAIL-CLOSED: generateZReportText throws TypeError for unknown tenant');
+
+  // Test 5: printZReportTicket integration with tenant parameter
+  const printTicketModendo = await ShiftCloseoutService.printZReportTicket(zReportBalanced, 'CASHIER_RECEIPT', 'tenant-modendo-01');
+  assert(printTicketModendo.textPreview.includes('*** MODENDO CAFE & GAMING ***'), 'printZReportTicket renders Modendo header correctly');
+
   console.log(`\n========================================`);
   console.log(`Shift Closeout & Accounting Summary: ${passed} Passed, ${failed} Failed`);
   console.log(`========================================\n`);

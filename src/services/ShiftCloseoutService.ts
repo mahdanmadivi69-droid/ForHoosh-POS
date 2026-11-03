@@ -168,6 +168,8 @@ export class ShiftCloseoutService {
       },
       material_depletions: materialDepletions,
       timestamp: nowIso,
+      tenantId: tId,
+      tenant_id: tId,
     };
 
     // Persist to IndexedDB
@@ -181,20 +183,24 @@ export class ShiftCloseoutService {
     return zReport;
   }
 
-  /**
-   * Generates ESC/POS Binary Stream + Double Strike for Thermal Z-Report Receipt
+    /**
+   * Generates text preview for Thermal Z-Report Receipt with strict mandatory tenant isolation.
    */
-  public static async printZReportTicket(
-    zReport: ZReportData,
-    printerTarget: 'CASHIER_RECEIPT' | 'BAR_KDS' = 'CASHIER_RECEIPT'
-  ): Promise<{
-    success: boolean;
-    bytes: Uint8Array;
-    hexDump: string;
-    textPreview: string;
-    message: string;
-  }> {
-    audioFeedback.playPrinterChirp();
+  public static generateZReportText(zReport: ZReportData, tenantId?: string): string {
+    const tId = tenantId || (zReport as any).tenantId || (zReport as any).tenant_id;
+    if (!tId || typeof tId !== 'string') {
+      throw new TypeError('ShiftCloseoutService: Mandatory tenantId is missing for Z-Report generation');
+    }
+
+    const cleanTenant = tId.trim().toLowerCase();
+    let brandHeader = '';
+    if (cleanTenant.includes('100hich') || cleanTenant === 'tenant_100hich' || cleanTenant === '100hich') {
+      brandHeader = '*** 100 HICH SPECIALTY COFFEE ***';
+    } else if (cleanTenant.includes('modendo') || cleanTenant === 'tenant_modendo' || cleanTenant === 'modendo') {
+      brandHeader = '*** MODENDO CAFE & GAMING ***';
+    } else {
+      throw new TypeError(`ShiftCloseoutService: Unknown or unauthorized tenantId "${tId}"`);
+    }
 
     const charWidth = 42;
     const ruleLine = '-'.repeat(charWidth);
@@ -217,7 +223,7 @@ export class ShiftCloseoutService {
     };
 
     const textLines: string[] = [
-      '*** 100 HICH SPECIALTY COFFEE ***',
+      brandHeader,
       '*** OFFICIAL SHIFT Z-REPORT ***',
       'صورت‌جلسه تسویه حساب و پایان شیفت کاری',
       doubleRule,
@@ -277,9 +283,46 @@ export class ShiftCloseoutService {
     textLines.push('امضای سرپرست / مدیر:   _________________');
     textLines.push('Zero-Cloud Latency Thermal Node - CafeOS');
 
-    const textPreview = textLines.join('\n');
+    return textLines.join('\n');
+  }
 
-    // Build ESC/POS Byte Chunks
+  /**
+   * Generates ESC/POS Binary Stream for Thermal Z-Report Receipt with strict mandatory tenant isolation.
+   */
+  public static generateEscPosBytes(zReport: ZReportData, tenantId?: string): Uint8Array {
+    const tId = tenantId || (zReport as any).tenantId || (zReport as any).tenant_id;
+    if (!tId || typeof tId !== 'string') {
+      throw new TypeError('ShiftCloseoutService: Mandatory tenantId is missing for ESC/POS generation');
+    }
+
+    const cleanTenant = tId.trim().toLowerCase();
+    let doubleSizeTitle = '';
+    let auditSubTitle = '';
+    if (cleanTenant.includes('100hich') || cleanTenant === 'tenant_100hich' || cleanTenant === '100hich') {
+      doubleSizeTitle = '*** 100 HICH ***\n';
+      auditSubTitle = 'COFFEE ROASTERS - SHIFT AUDIT\n';
+    } else if (cleanTenant.includes('modendo') || cleanTenant === 'tenant_modendo' || cleanTenant === 'modendo') {
+      doubleSizeTitle = '*** MODENDO CAFE ***\n';
+      auditSubTitle = 'BOARDGAME & GAMING CAFE - SHIFT AUDIT\n';
+    } else {
+      throw new TypeError(`ShiftCloseoutService: Unknown or unauthorized tenantId "${tId}"`);
+    }
+
+    const charWidth = 42;
+    const ruleLine = '-'.repeat(charWidth);
+    const doubleRule = '='.repeat(charWidth);
+
+    const openDate = new Date(zReport.opened_at).toLocaleDateString('fa-IR');
+    const openTime = new Date(zReport.opened_at).toLocaleTimeString('fa-IR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const closeDate = new Date(zReport.closed_at).toLocaleDateString('fa-IR');
+    const closeTime = new Date(zReport.closed_at).toLocaleTimeString('fa-IR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
     const byteChunks: number[] = [];
 
     // 1. ESC @ (Initialize) -> [0x1B, 0x40]
@@ -296,12 +339,12 @@ export class ShiftCloseoutService {
 
     // Double Size Title Header -> [0x1D, 0x21, 0x11]
     byteChunks.push(0x1d, 0x21, 0x11);
-    this.appendAscii(byteChunks, '*** 100 HICH ***\n');
+    this.appendAscii(byteChunks, doubleSizeTitle);
     this.appendAscii(byteChunks, 'Z-REPORT CLOSEOUT\n\n');
 
     // Normal text size -> [0x1D, 0x21, 0x00]
     byteChunks.push(0x1d, 0x21, 0x00);
-    this.appendAscii(byteChunks, 'COFFEE ROASTERS - SHIFT AUDIT\n');
+    this.appendAscii(byteChunks, auditSubTitle);
 
     // 5. Left Align -> [0x1B, 0x61, 0x00]
     byteChunks.push(0x1b, 0x61, 0x00);
@@ -357,7 +400,32 @@ export class ShiftCloseoutService {
     // 6. Cut Paper -> [0x1D, 0x56, 0x00]
     byteChunks.push(0x1d, 0x56, 0x00);
 
-    const uint8Bytes = new Uint8Array(byteChunks);
+    return new Uint8Array(byteChunks);
+  }
+
+  /**
+   * Generates ESC/POS Binary Stream + Double Strike for Thermal Z-Report Receipt
+   */
+  public static async printZReportTicket(
+    zReport: ZReportData,
+    printerTarget: 'CASHIER_RECEIPT' | 'BAR_KDS' = 'CASHIER_RECEIPT',
+    tenantId?: string
+  ): Promise<{
+    success: boolean;
+    bytes: Uint8Array;
+    hexDump: string;
+    textPreview: string;
+    message: string;
+  }> {
+    audioFeedback.playPrinterChirp();
+
+    const tId = tenantId || (zReport as any).tenantId || (zReport as any).tenant_id;
+    if (!tId || typeof tId !== 'string') {
+      throw new TypeError('ShiftCloseoutService: Mandatory tenantId is missing for receipt printing');
+    }
+
+    const textPreview = this.generateZReportText(zReport, tId);
+    const uint8Bytes = this.generateEscPosBytes(zReport, tId);
     const hexDump = Array.from(uint8Bytes)
       .map((b) => b.toString(16).padStart(2, '0').toUpperCase())
       .join(' ');

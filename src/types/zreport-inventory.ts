@@ -14,6 +14,8 @@ export interface MaterialDepletionItem {
 export interface ZReportData {
   id: string;
   shift_id: string;
+  tenant_id?: string;
+  tenantId?: string;
   opened_at: string;
   closed_at: string;
   opened_by: string;
