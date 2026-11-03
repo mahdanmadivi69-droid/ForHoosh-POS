@@ -1,5 +1,5 @@
-# وضعیت پروژه: SmartOrders & Dual Cafe Deployments (PROJECT STATUS)
-**تاریخ آخرین به‌روزرسانی:** ۱۱/۰۸/۱۴۰۵  
+﻿# وضعیت پروژه: SmartOrders & Dual Cafe Deployments (PROJECT STATUS)
+**تاریخ آخرین به‌روزرسانی:** ۱۳/۰۸/۱۴۰۵  
 **معماری مصوب مأموریت:** Option B — One Product Core, Shared Business Logic, Two Independent Deployments  
 **وضعیت:** **عملیاتی و آماده تحویل (Production & Demo Ready)**
 
@@ -21,7 +21,7 @@
   - مودندو: `INSTALL_MODENDO.bat` و `RUN_MODENDO.bat` روی پورت ۳۰۰۱ همراه با مانیفست اختصاصی Zero-G (`#0B0D11`).
   - ۱۰۰هیچ: `INSTALL_100HICH.bat` و `RUN_100HICH.bat` روی پورت ۳۰۰۰ همراه با مانیفست اختصاصی بار برشته‌کاری (`#0F223D`).
 - **سوئیت آزمون‌های خودکار یکپارچه (Automated Quality Gate):**
-  - اجرای ۹ سوئیت تست همزمان با **۴۰۲ تست پاس‌شده (بدون حتی یک خطا)**.
+  - اجرای ۱۰ سوئیت تست همزمان با **۶۱۲ تست پاس‌شده (بدون حتی یک خطا)** — شامل سوئیت پشتیبان‌گیری ابری و همگام‌سازی `cloudBackupSync.test.ts` (۲۵ تست: تفکیک تننت، ایدمپوتنسی و زمان‌بند بکاپ روزانه).
   - قبولی کامل ممیزی TypeScript (`npm run lint` -> `tsc --noEmit` با صفر خطا).
   - کامپایل بیلد مجزای هر دو نسخه با Vite (`npm run build:modendo` در ۱.۶۱ ثانیه و `npm run build:100hich` در ۱.۴۴ ثانیه).
 

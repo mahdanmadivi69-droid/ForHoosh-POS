@@ -152,9 +152,13 @@ async function runTests() {
     state: 'PAID',
     orderType: 'DINE_IN',
     grossAmountToman: 110000,
+    grossAmount: 110000,
     discountAmountToman: 0,
+    discountAmount: 0,
     netTotalToman: 110000,
+    totalNet: 110000,
     paidAmountToman: 110000,
+    paidAmount: 110000,
     shiftId: 'shift-1',
     createdByUserId: 'usr-1',
     createdByUserName: 'صندوق‌دار',
@@ -163,8 +167,6 @@ async function runTests() {
     items: [
       {
         id: 'item-ag-1',
-        orderId: 'cloud-test-ord-1',
-        tenantId: MODENDO_TENANT,
         menuItemId: 'item-1',
         itemNameSnapshot: 'لاته کلاسیک',
         quantity: 2,
