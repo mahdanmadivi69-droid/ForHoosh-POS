@@ -22,6 +22,9 @@ export interface DecomposedOrderRecord {
   shiftId: string;
   orderNumber: number;
   tableLabel?: string;
+  tableNumber?: string | number;
+  tableSessionId?: string;
+  flowType?: 'COUNTER_QUICK_PAY' | 'TAB_PAY_LATER' | 'DINE_IN_PAY_BY_ORDER';
   orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
   status: 'DRAFT' | 'PLACED' | 'PAID' | 'FULFILLED' | 'VOIDED';
   grossAmountToman: number;
@@ -204,6 +207,12 @@ export class DexiePOSDatabase extends Dexie {
       syncQueue: 'id, clientGeneratedId, tenantId, syncStatus, createdAt, [tenantId+id], [tenantId+syncStatus], [tenantId+createdAt]',
       auditLogs: 'id, tenantId, userId, timestamp, [tenantId+id], [tenantId+timestamp], [tenantId+userId]',
     });
+
+    // Version 3: Multi-Mode Operational Order Fields & Compound Session Indices
+    this.version(3).stores({
+      orders:
+        'id, clientGeneratedId, tenantId, shiftId, status, createdAt, synced, tableSessionId, flowType, [tenantId+id], [tenantId+status], [tenantId+createdAt], [tenantId+shiftId], [tenantId+synced], [tenantId+tableSessionId], [tenantId+flowType]',
+    });
   }
 
   // ===========================================================================
@@ -212,6 +221,14 @@ export class DexiePOSDatabase extends Dexie {
 
   public getOrdersByTenant(tenantId: string) {
     return this.orders.where('[tenantId+status]').between([tenantId, Dexie.minKey], [tenantId, Dexie.maxKey]);
+  }
+
+  public getOrdersByTableSession(tenantId: string, tableSessionId: string) {
+    return this.orders.where('[tenantId+tableSessionId]').equals([tenantId, tableSessionId]);
+  }
+
+  public getOrdersByFlowType(tenantId: string, flowType: NonNullable<DecomposedOrderRecord['flowType']>) {
+    return this.orders.where('[tenantId+flowType]').equals([tenantId, flowType]);
   }
 
   public getActiveOrdersByTenant(tenantId: string, status: DecomposedOrderRecord['status']) {

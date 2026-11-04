@@ -25,23 +25,31 @@ import {
   convertCanvasToEscPosRaster,
   printDirectWebUSB,
 } from '../services/escposThermalPrinter';
+import {
+  getTenantOperationalConfig,
+  TenantOperationalConfig,
+  OperationalMode,
+} from '../types/tenant-config';
 
 const syncQueue = new OfflineSyncQueue({
   apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000',
   maxRetries: 3,
 });
 
-interface CashierCheckoutPageProps {
+export interface CashierCheckoutPageProps {
   tenantId?: string;
   tenantName?: string;
+  config?: TenantOperationalConfig;
   onOrderProcessed?: (order: OrderAggregate) => void;
 }
 
 export function CashierCheckoutPage({
   tenantId = 'tenant-modendo-01',
   tenantName = 'کافه بردگیم و گیمینگ مودندو',
+  config,
   onOrderProcessed,
 }: CashierCheckoutPageProps) {
+  const tenantConfig = config || getTenantOperationalConfig(tenantId);
   const [queueCount, setQueueCount] = useState({ total: 0, pending: 0, failed: 0 });
   const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -49,6 +57,14 @@ export function CashierCheckoutPage({
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'POS_TERMINAL' | 'CASH' | 'CARD_MANUAL'>('POS_TERMINAL');
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+
+  // Multi-Mode Operational State
+  const [selectedTable, setSelectedTable] = useState<string>(
+    tenantConfig.primaryMode === 'COUNTER_QUICK_PAY' ? 'پیشخوان / کانتر' : 'میز ۴ (سالن)'
+  );
+  const [orderRound, setOrderRound] = useState<number>(1);
+  const [tableSessionId, setTableSessionId] = useState<string>(() => `sess-${Date.now().toString(36)}`);
+  const [tabAction, setTabAction] = useState<'ADD_TO_TAB' | 'SETTLE_TAB'>('SETTLE_TAB');
 
   useEffect(() => {
     syncQueue.init().then(updateCount);
@@ -97,14 +113,18 @@ export function CashierCheckoutPage({
   async function handleFastCheckout(activeCart?: any) {
     // ۱. تولید UUID کلاینت برای عدم تکرار
     const clientGeneratedId = crypto.randomUUID();
+    const tableLabelToUse = activeCart?.tableLabel || selectedTable;
+    const tableNum = tableLabelToUse.replace(/[^0-9]/g, '') || '1';
 
     // ۲. پردازش دامین با OrderDomainService
     let order = OrderDomainService.createDraft({
       id: clientGeneratedId,
       tenantId: tenantId,
       clientGeneratedId,
-      tableLabel: activeCart?.tableLabel || 'میز پیشخوان (تند)',
-      customerName: activeCart?.customerName || 'مشتری ۱۰۰هیچ',
+      tableLabel: tableLabelToUse,
+      customerName:
+        activeCart?.customerName ||
+        (tenantConfig.primaryMode === 'TAB_PAY_LATER' ? 'مشتری گیمینگ مودندو' : 'مشتری ۱۰۰هیچ'),
       createdByUserId: 'cashier-fast',
       createdByUserName: 'صندوق‌دار شیفت',
       items: activeCart?.items || [
@@ -135,8 +155,26 @@ export function CashierCheckoutPage({
       ],
     });
 
+    // ثبت متادیتای حالت عملیاتی (Multi-Mode Metadata)
+    (order as any).flowType = tenantConfig.primaryMode;
+    (order as any).tableSessionId = tableSessionId;
+    (order as any).tableNumber = tableNum;
+    (order as any).roundNumber = orderRound;
+
     // افزودن آیتمها و قفل کردن فاکتور (DRAFT -> PLACED)
     order = OrderDomainService.placeOrder(order);
+
+    // در حالت تب باز گیمینگ اگر ثبت در تب انتخاب شده باشد، بدون تسویه به صف ارسال میشود
+    if (tenantConfig.primaryMode === 'TAB_PAY_LATER' && tabAction === 'ADD_TO_TAB') {
+      await syncQueue.enqueue(order);
+      await updateCount();
+      baristaDispatcher.dispatchPaidOrder(order).catch(() => {});
+      setLastProcessedOrder(order);
+      setActionNotice(`سفارش راند ${orderRound} با موفقیت در تب باز ${tableLabelToUse} ثبت شد.`);
+      setTimeout(() => setActionNotice(null), 4000);
+      if (onOrderProcessed) onOrderProcessed(order);
+      return;
+    }
 
     // تسویه حساب کامل (PLACED -> PAID)
     const refCode =
@@ -162,7 +200,18 @@ export function CashierCheckoutPage({
     baristaDispatcher.dispatchPaidOrder(order).catch(() => {});
 
     setLastProcessedOrder(order);
-    setActionNotice(`سفارش با شناسه ${order.clientGeneratedId.slice(0, 8)} با موفقیت تسویه و در صف ذخیره شد.`);
+
+    if (tenantConfig.primaryMode === 'DINE_IN_PAY_BY_ORDER') {
+      setActionNotice(`راند ${orderRound} میز ${tableLabelToUse} با موفقیت تسویه شد. سشن میز فعال است.`);
+      setOrderRound((prev) => prev + 1);
+    } else if (tenantConfig.primaryMode === 'TAB_PAY_LATER') {
+      setActionNotice(`تب باز ${tableLabelToUse} با موفقیت تسویه و بسته شد.`);
+      setTableSessionId(`sess-${Date.now().toString(36)}`);
+      setOrderRound(1);
+    } else {
+      setActionNotice(`سفارش پیشخوان با شناسه ${order.clientGeneratedId.slice(0, 8)} با موفقیت تسویه و در صف ذخیره شد.`);
+    }
+
     setTimeout(() => setActionNotice(null), 4000);
 
     if (onOrderProcessed) {
@@ -178,18 +227,31 @@ export function CashierCheckoutPage({
       data-tenant={tenantId}
       className="bg-[var(--color-surface-panel,#1c1917)] border border-[var(--color-surface-border,#292524)] rounded-2xl p-5 shadow-xl flex flex-col gap-4 text-[var(--color-text-primary,#f5f5f4)]"
     >
-      {/* هدر صفحه تسویه سریع و نشانگر وضعیت شبکه */}
+      {/* هدر صفحه تسویه بر اساس حالت عملیاتی تننت */}
       <div className="flex flex-wrap items-center justify-between pb-3 border-b border-stone-800 gap-3">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-[var(--color-brand-primary-light,rgba(215,25,33,0.15))] text-[var(--color-brand-primary,#D71921)] border border-[var(--color-brand-primary-border,rgba(215,25,33,0.3))]">
             <Zap className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-stone-100">
-              تسویه حساب فوق‌سریع صندوق (Fast Cashier Checkout)
-            </h3>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-stone-100">
+                {tenantConfig.primaryMode === 'COUNTER_QUICK_PAY'
+                  ? 'تسویه حساب فوری پیشخوان (Counter Quick-Pay)'
+                  : tenantConfig.primaryMode === 'TAB_PAY_LATER'
+                  ? 'مدیریت و تسویه تب باز (Open Tab / Pay Later)'
+                  : 'سفارش به سفارش سالن (Dine-In Pay-by-Order)'}
+              </h3>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full font-bold bg-[var(--color-brand-primary-light,rgba(215,25,33,0.12))] text-[var(--color-brand-primary,#D71921)] border border-[var(--color-brand-primary-border,rgba(215,25,33,0.3))]">
+                {tenantConfig.primaryMode}
+              </span>
+            </div>
             <p className="text-xs text-stone-400">
-              مبتنی بر دامین اختصاصی فاز ۴ و صف آفلاین محلی IndexedDB با تضمین عدم تکرار
+              {tenantConfig.primaryMode === 'COUNTER_QUICK_PAY'
+                ? 'جریان بهینه‌سازی‌شده برای بار تخصصی قهوه ۱۰۰هیچ — تسویه آنی، صدور مستقیم فیش حرارتی'
+                : tenantConfig.primaryMode === 'TAB_PAY_LATER'
+                ? 'جریان گیمینگ مودندو — تب باز میز و پادهای PS5، محاسبه زمان و تسویه یکجا در پایان'
+                : 'جریان بیسترو و داین-این — ثبت و تسویه راند به راند سفارشات با حفظ سشن میز تا پایان حضور مهمان'}
             </p>
           </div>
         </div>
@@ -233,6 +295,63 @@ export function CashierCheckoutPage({
               <span className="font-bold text-stone-300">اقلام آماده تسویه فوق سریع:</span>
               <span className="text-amber-400 font-mono">۲ قلم کالا</span>
             </div>
+
+            {/* Table & Session Controls for DINE_IN_PAY_BY_ORDER and TAB_PAY_LATER */}
+            {(tenantConfig.primaryMode === 'DINE_IN_PAY_BY_ORDER' ||
+              tenantConfig.primaryMode === 'TAB_PAY_LATER') && (
+              <div className="mb-3 p-2.5 rounded-xl bg-stone-900 border border-stone-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-stone-400">میز / سالن:</span>
+                  <select
+                    value={selectedTable}
+                    onChange={(e) => setSelectedTable(e.target.value)}
+                    className="bg-stone-950 border border-stone-700 text-stone-200 rounded-lg px-2 py-1 font-bold text-xs"
+                  >
+                    <option value="میز ۱ (سالن)">میز ۱ (سالن)</option>
+                    <option value="میز ۲ (سالن)">میز ۲ (سالن)</option>
+                    <option value="میز ۳ (سالن)">میز ۳ (سالن)</option>
+                    <option value="میز ۴ (سالن)">میز ۴ (سالن)</option>
+                    <option value="پاد PS5 شماره ۱">پاد PS5 شماره ۱</option>
+                    <option value="پاد PS5 شماره ۲">پاد PS5 شماره ۲</option>
+                    <option value="میز VIP بردگیم">میز VIP بردگیم</option>
+                  </select>
+                </div>
+
+                {tenantConfig.primaryMode === 'DINE_IN_PAY_BY_ORDER' && (
+                  <div className="flex items-center gap-1.5 font-bold text-amber-400 bg-amber-950/40 border border-amber-600/40 px-2.5 py-1 rounded-lg">
+                    <span>راند سفارش:</span>
+                    <span className="font-mono font-black text-sm">{orderRound}</span>
+                  </div>
+                )}
+
+                {tenantConfig.primaryMode === 'TAB_PAY_LATER' && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setTabAction('ADD_TO_TAB')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
+                        tabAction === 'ADD_TO_TAB'
+                          ? 'bg-[var(--color-brand-primary,#059669)] text-white shadow-xs'
+                          : 'bg-stone-800 text-stone-400 hover:text-stone-200'
+                      }`}
+                    >
+                      افزودن به تب
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTabAction('SETTLE_TAB')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition ${
+                        tabAction === 'SETTLE_TAB'
+                          ? 'bg-[var(--color-brand-primary,#059669)] text-white shadow-xs'
+                          : 'bg-stone-800 text-stone-400 hover:text-stone-200'
+                      }`}
+                    >
+                      تسویه نهایی
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between items-center p-2 rounded-lg bg-stone-900 border border-stone-800/80">
@@ -323,7 +442,14 @@ export function CashierCheckoutPage({
             >
               <Zap className="w-4 h-4" />
               <span>
-                تسویه حساب با {paymentMethod === 'POS_TERMINAL' ? 'کارتخوان پوز' : paymentMethod === 'CASH' ? 'وجه نقد' : 'کارت به کارت'} ({formatToman(265000)} ت)
+                {tenantConfig.primaryMode === 'COUNTER_QUICK_PAY' &&
+                  `تسویه فوری پیشخوان با ${paymentMethod === 'POS_TERMINAL' ? 'کارتخوان پوز' : paymentMethod === 'CASH' ? 'وجه نقد' : 'کارت'} (${formatToman(265000)} ت)`}
+                {tenantConfig.primaryMode === 'TAB_PAY_LATER' &&
+                  (tabAction === 'ADD_TO_TAB'
+                    ? `ثبت سفارش در تب باز ${selectedTable} (بدون تسویه فعلی)`
+                    : `تسویه نهایی تب باز ${selectedTable} (${formatToman(265000)} ت)`)}
+                {tenantConfig.primaryMode === 'DINE_IN_PAY_BY_ORDER' &&
+                  `تسویه راند ${orderRound} میز ${selectedTable} با ${paymentMethod === 'POS_TERMINAL' ? 'پوز' : 'نقد'} (${formatToman(265000)} ت)`}
               </span>
             </button>
           </div>
