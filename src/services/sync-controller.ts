@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import {
   processOfflineOrderSync,
+  processOfflineOrderBatchSync,
   defaultDatabaseClient,
   DatabaseClient,
 } from './sync-order-handler';
@@ -49,6 +50,55 @@ export async function handleOrderSync(req: Request | AuthenticatedRequest, res: 
   const payload = req.body;
 
   try {
+    // Handle batch mutations from DecomposedOfflineSyncQueue
+    if (Array.isArray(payload) || payload.batch || payload.mutations) {
+      const rawBatch = Array.isArray(payload) ? payload : (payload.batch || payload.mutations || []);
+      const normalizedBatch = rawBatch.map((p: any) => {
+        const rawOrder = p.order || {};
+        return {
+          tenantId,
+          clientGeneratedId:
+            p.clientGeneratedId ||
+            rawOrder.clientGeneratedId ||
+            crypto.randomUUID(),
+          source: (p.source as 'POS' | 'SMART_ORDERS') || 'POS',
+          order: {
+            items: (rawOrder.items || []).map((i: any) => ({
+              productId: i.productId || i.menuItemId || 'prod-unknown',
+              quantity: i.quantity || 1,
+              name: i.name || i.itemNameSnapshot || 'کالا',
+            })),
+            totalNet: rawOrder.totalNet ?? rawOrder.netTotalToman ?? 0,
+            payments: (rawOrder.payments || []).map((pay: any) => ({
+              method: pay.method || pay.paymentMethod || 'POS_TERMINAL',
+              amount: pay.amount || pay.amountToman || 0,
+              referenceNumber: pay.referenceNumber || pay.referenceCode,
+            })),
+            createdAt: rawOrder.createdAt || new Date().toISOString(),
+          },
+        };
+      });
+
+      const batchResult = await processOfflineOrderBatchSync(db, {
+        tenantId,
+        mutations: normalizedBatch,
+      });
+
+      if (batchResult.hasInventoryConflicts && batchResult.conflicts.length > 0) {
+        websocketServer.broadcastToTenant(tenantId, 'INVENTORY_STOCKOUT_ALERT', {
+          type: 'STOCKOUT_BATCH',
+          conflicts: batchResult.conflicts,
+          timestamp: new Date().toISOString(),
+        });
+      }
+
+      return res.status(200).json({
+        batch: true,
+        ...batchResult,
+      });
+    }
+
+    // Single order mutation
     const rawOrder = payload.order || {};
     const normalizedItems = (rawOrder.items || []).map((i: any) => ({
       productId: i.productId || i.menuItemId || 'prod-unknown',
@@ -104,6 +154,7 @@ export async function handleOrderSync(req: Request | AuthenticatedRequest, res: 
     return res.status(200).json({
       success: true,
       orderId: result.orderId,
+      isIdempotentReplay: result.isIdempotentReplay || false,
       warnings: result.conflicts || [],
     });
   } catch (error: any) {
