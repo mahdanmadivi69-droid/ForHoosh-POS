@@ -77,7 +77,7 @@ export interface TabCartItem {
   modifiers?: TabCartItemModifier[];
   subtotal: number;
   notes?: string;
-  station?: 'BAR' | 'KITCHEN';
+  station?: 'BAR' | 'KITCHEN' | 'NO_PREP';
   status?: 'PENDING_DISPATCH' | 'DISPATCHED' | 'PREPARING' | 'SERVED' | 'SETTLED';
   dispatchedAt?: string;
   delivered?: boolean;
@@ -93,6 +93,7 @@ export interface TabRound {
 
 export interface TableSessionTab {
   tab_id: string; // UUID
+  tenantId?: string; // Tenant Context Scoping (e.g. 'tenant-100hich-01', 'tenant-modendo-01')
   table_id: string; // e.g. 'T1', 'T2', 'BAR-1'
   table_label: string; // e.g. 'میز ۲'
   server_name: string;

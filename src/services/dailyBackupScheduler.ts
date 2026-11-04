@@ -27,7 +27,7 @@ class DailyBackupSchedulerClass {
     isCloudConnected: false,
     provider: 'Checking...',
     lastBackupAt: null,
-    queueStats: { total: 0, pending: 0, failed: 0 },
+    queueStats: { total: 0, pending: 0, failed: 0, paused: 0, quarantined: 0 },
     isSyncing: false,
   };
 

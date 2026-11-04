@@ -31,14 +31,22 @@ export const LiveReceiptPreview: React.FC<LiveReceiptPreviewProps> = ({
   const vatAmount = Math.round((subtotal * fiscalRules.vat_tax_percentage) / 100);
   const total = subtotal + vatAmount;
 
+  const tenantId = storeProfile.name_en?.toUpperCase().includes('MODENDO')
+    ? 'tenant-modendo-01'
+    : 'tenant-100hich-01';
+
   return (
-    <div className="flex flex-col items-center select-none" dir="rtl">
+    <div
+      data-tenant={tenantId}
+      className="flex flex-col items-center select-none"
+      dir="rtl"
+    >
       {/* Paper Width Badge */}
       <div className="mb-2 flex items-center gap-2">
-        <span className="text-[10px] font-mono font-bold bg-[#1F242C] text-[#9EACB8] border border-white/10 px-2 py-0.5 rounded">
+        <span className="text-[10px] font-mono font-bold bg-[var(--color-surface-panel,#1F242C)] text-[var(--color-text-secondary,#9EACB8)] border border-[var(--color-surface-border,rgba(255,255,255,0.1))] px-2 py-0.5 rounded">
           رول کاغذ: {rollWidthMm}mm ({is80mm ? '۴۲ کاراکتر' : '۳۲ کاراکتر'})
         </span>
-        <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded">
+        <span className="text-[10px] font-bold text-[var(--color-badge-text,#34D399)] bg-[var(--color-badge-bg,rgba(5,150,105,0.15))] border border-[var(--color-badge-border,rgba(5,150,105,0.3))] px-2 py-0.5 rounded">
           ESC/POS LIVE
         </span>
       </div>

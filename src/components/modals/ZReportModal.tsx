@@ -137,19 +137,20 @@ export const ZReportModal: React.FC<ZReportModalProps> = ({
           initial={{ scale: 0.94, opacity: 0, y: 10 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.94, opacity: 0, y: 10 }}
-          className="relative w-full max-w-3xl bg-[#1F242C] rounded-2xl border border-white/10 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col my-auto max-h-[92vh]"
+          data-tenant={zReport?.tenant_id || activeShift.tenantId || 'tenant-100hich-01'}
+          className="relative w-full max-w-3xl bg-[var(--color-surface-card,#1F242C)] rounded-2xl border border-[var(--color-surface-border,rgba(255,255,255,0.1))] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] overflow-hidden flex flex-col my-auto max-h-[92vh]"
           dir="rtl"
         >
           {/* Header Bar */}
           <div className="bg-[#161A1F] border-b border-white/5 p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#D71921]/15 border border-[#D71921]/30 flex items-center justify-center text-[#D71921]">
+              <div className="w-10 h-10 rounded-xl bg-[var(--color-brand-primary-light,rgba(215,25,33,0.15))] border border-[var(--color-brand-primary-border,rgba(215,25,33,0.3))] flex items-center justify-center text-[var(--color-brand-primary,#D71921)]">
                 <FileText className="w-5 h-5" />
               </div>
               <div>
                 <h3 className="text-base font-black text-white flex items-center gap-2">
                   <span>گزارش رسمی Z-Report و تسویه پایان شیفت</span>
-                  <span className="text-[10px] bg-[#D71921] text-white px-1.5 py-0.5 rounded font-mono font-bold">
+                  <span className="text-[10px] bg-[var(--color-brand-primary,#D71921)] text-white px-1.5 py-0.5 rounded font-mono font-bold">
                     ESC/POS V2.5
                   </span>
                 </h3>
@@ -176,7 +177,7 @@ export const ZReportModal: React.FC<ZReportModalProps> = ({
               }}
               className={`pb-2.5 px-3 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'financial'
-                  ? 'border-[#D71921] text-white'
+                  ? 'border-[var(--color-brand-primary,#D71921)] text-white'
                   : 'border-transparent text-[#9EACB8] hover:text-white'
               }`}
             >
@@ -191,7 +192,7 @@ export const ZReportModal: React.FC<ZReportModalProps> = ({
               }}
               className={`pb-2.5 px-3 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'materials'
-                  ? 'border-[#D71921] text-white'
+                  ? 'border-[var(--color-brand-primary,#D71921)] text-white'
                   : 'border-transparent text-[#9EACB8] hover:text-white'
               }`}
             >
@@ -211,7 +212,7 @@ export const ZReportModal: React.FC<ZReportModalProps> = ({
               }}
               className={`pb-2.5 px-3 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'ticket_preview'
-                  ? 'border-[#D71921] text-white'
+                  ? 'border-[var(--color-brand-primary,#D71921)] text-white'
                   : 'border-transparent text-[#9EACB8] hover:text-white'
               }`}
             >
@@ -496,7 +497,7 @@ Full Cut Paper:        [0x1D, 0x56, 0x00]`}</pre>
               <button
                 type="button"
                 onClick={handleFinalClose}
-                className="px-5 py-2.5 rounded-xl bg-[#D71921] hover:bg-[#B3141B] text-xs font-black text-white flex items-center gap-2 shadow-[0_0_15px_-2px_rgba(215,25,33,0.5)] transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-xl bg-[var(--color-brand-primary,#D71921)] hover:bg-[var(--color-brand-primary-hover,#B3141B)] text-xs font-black text-white flex items-center gap-2 shadow-[0_0_15px_-2px_var(--color-brand-primary-light,rgba(215,25,33,0.5))] transition-all cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>تأیید صورت‌جلسه و بستن نهایی شیفت</span>

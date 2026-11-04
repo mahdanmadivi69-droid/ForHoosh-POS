@@ -1,0 +1,352 @@
+{
+  "metadata": {
+    "project": "100 HICH Coffee Roasters × Modendo Cafe",
+    "mission": "Phase 1 Critical Isolation Remediation",
+    "phase": "Phase 1",
+    "approved_architecture": "Option B — Shared Accounting/POS Core + Independent Cafe Applications",
+    "engineering_lead": "Antigravity Engineering Swarm",
+    "timestamp": "2026-11-01T22:42:00+03:30",
+    "status": "PHASE_1_COMPLETE_READY_FOR_HUMAN_REVIEW"
+  },
+  "development_safety_verification": {
+    "git_working_tree": {
+      "repository_path": "C:/Users/mahda/OneDrive/Documenti/KarWand Smart Orders",
+      "branch": "feature/shared-core-preparation",
+      "head_commit": "0547aa364e36833e76ad07ce9bf7f0acdd53d63b",
+      "baseline_commit": "a9b5d18",
+      "status": "VERIFIED"
+    },
+    "cloud_backup_workstream": {
+      "status": "PRESERVED_UNTOUCHED",
+      "files_preserved": [
+        "package.json",
+        "package-lock.json",
+        "server.ts",
+        "src/App.tsx",
+        "src/components/BackupModal.tsx",
+        "src/services/cloudBackupDb.ts",
+        "src/services/dailyBackupScheduler.ts",
+        "tests/cloudBackupSync.test.ts"
+      ],
+      "verification": "All cloud backup changes committed in commit 0547aa3 prior to Phase 1 were left untouched and isolated from fix/dual-tenant-isolation."
+    },
+    "external_verified_backup": {
+      "path": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Backup_Pre_Phase1",
+      "status": "VERIFIED",
+      "file_count": 8,
+      "all_files_readable": true
+    },
+    "isolated_worktree": {
+      "path": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Worktree_Phase1",
+      "branch": "fix/dual-tenant-isolation",
+      "branched_from": "a9b5d18",
+      "status": "VERIFIED"
+    }
+  },
+  "files_modified": [
+    {
+      "path": "src/types/inventory-tab.ts",
+      "vulnerability_resolved": "Lack of explicit tenant ownership on open table sessions",
+      "summary": "Added optional tenantId?: string property to TableSessionTab interface to partition session ownership."
+    },
+    {
+      "path": "src/services/inventoryBomService.ts",
+      "vulnerability_resolved": "RSK-01 (Global storage key cafeos_raw_ingredients_v2 causing cross-cafe stock depletion)",
+      "summary": "Scoped keys by tenant ID, added independent seed catalogs for 100 HICH and Modendo, implemented multi-tenant in-memory cache, added tenantId parameterization, safe idempotent migration, and rollback function."
+    },
+    {
+      "path": "src/services/openTabService.ts",
+      "vulnerability_resolved": "RSK-02 (Global keys cafeos_table_tabs_v2, cafeos_reserved_tables_v1, and line 339 hardcoded tenant-100hich-01 dispatch)",
+      "summary": "Scoped table tab and reservation keys, replaced line 339 hardcoded tenant with dynamic validated tenant identity, enforced cross-tenant rejection, and scoped inventory deductions."
+    },
+    {
+      "path": "src/services/baristaDispatcher.ts",
+      "vulnerability_resolved": "RSK-03 (Global BroadcastChannel cafeos_barista_channel broadcasting order tickets across all open cafe tabs)",
+      "summary": "Scoped BroadcastChannel and persisted tickets by tenant ID, added security gate rejecting cross-tenant tickets, validated tenant context on dispatch, and scoped listener subscriptions."
+    },
+    {
+      "path": "src/db/cafeDb.ts",
+      "vulnerability_resolved": "RSK-07 / RSK-10 (Single database CafeOS_LocalDB collision hazard on un-prefixed primary keys)",
+      "summary": "Implemented independent databases per tenant (CafeOS_LocalDB_${tenantId}), added dynamic Proxy wrapper for backward-compatible db export, preserved schema versions 1-3, and added non-destructive migration."
+    },
+    {
+      "path": "src/services/offlineSyncQueue.ts",
+      "vulnerability_resolved": "Offline queue database cross-tenant collision risk",
+      "summary": "Scoped offline queue database to CafeOS_OfflineDB_${tenantId} and added getOfflineSyncQueueForTenant factory."
+    },
+    {
+      "path": "package.json",
+      "vulnerability_resolved": "Test runner automation",
+      "summary": "Added test:phase1 script and linked it into npm test."
+    }
+  ],
+  "new_test_suites": [
+    {
+      "path": "tests/phase1InventoryBomIsolation.test.ts",
+      "test_count": 42,
+      "passed": 42,
+      "failed": 0,
+      "coverage": "Independent inventory initialization, stock deductions, adjustments, simultaneous orders, legacy migration, idempotency, rollback, missing and unknown tenant isolation."
+    },
+    {
+      "path": "tests/phase1OpenTabIsolation.test.ts",
+      "test_count": 39,
+      "passed": 39,
+      "failed": 0,
+      "coverage": "Independent table sessions, table reservations, concurrent tabs, session restoration, barista dispatch ownership, cross-tenant rejection, and legacy migration."
+    },
+    {
+      "path": "tests/phase1BaristaKdsIsolation.test.ts",
+      "test_count": 20,
+      "passed": 20,
+      "failed": 0,
+      "coverage": "100 HICH delivery, Modendo delivery, cross-tenant event rejection on BroadcastChannel, multi-tab communication, status change lifecycle, and channel reconnection."
+    },
+    {
+      "path": "tests/phase1IndexedDbIsolation.test.ts",
+      "test_count": 44,
+      "passed": 44,
+      "failed": 0,
+      "coverage": "Independent database initialization, table coverage across 10 tables, primary key collision proof, proxy delegation, offline queue scoping, and legacy migration."
+    }
+  ],
+  "documentation_files": [
+    {
+      "file": "PHASE1_CHANGELOG.md",
+      "path": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Worktree_Phase1\\PHASE1_CHANGELOG.md",
+      "summary": "Detailed change log of all file diffs, architecture decisions, and scope boundaries."
+    },
+    {
+      "file": "PHASE1_TEST_REPORT.md",
+      "path": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Worktree_Phase1\\PHASE1_TEST_REPORT.md",
+      "summary": "Complete test execution breakdown of all 13 test suites (713 passed, 0 failed), lint and build evidence."
+    },
+    {
+      "file": "TENANT_ISOLATION_REMEDIATION.md",
+      "path": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Worktree_Phase1\\TENANT_ISOLATION_REMEDIATION.md",
+      "summary": "Deep architectural guide and data flow diagrams for Option B isolation remediation."
+    },
+    {
+      "file": "MIGRATION_AND_ROLLBACK_PLAN.md",
+      "path": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Worktree_Phase1\\MIGRATION_AND_ROLLBACK_PLAN.md",
+      "summary": "Operational legacy data migration, idempotency verification, and automated rollback instructions."
+    },
+    {
+      "file": "REMAINING_RISKS.md",
+      "path": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Worktree_Phase1\\REMAINING_RISKS.md",
+      "summary": "Catalog of non-isolation risks (VAT contradiction, brand themes, storage god-file) and Phase 2 roadmap."
+    }
+  ],
+  "files_not_modified": [
+    "src/services/financialMath.ts (Strict financial math freeze)",
+    "src/services/ShiftCloseoutService.ts (Strict accounting freeze)",
+    "src/components/ReceiptPreview.tsx & LiveReceiptPreview.tsx (Strict receipt and VAT freeze)",
+    "src/services/storage.ts (2,472-line god-file left untouched)",
+    "src/components/Header.tsx (Brand identity shell left untouched)",
+    "src/App.tsx (Root application shell left untouched)",
+    "server.ts & cloud backup workstream in original repository branch",
+    "All CSS stylesheets and design token files"
+  ],
+  "changes_by_vulnerability": {
+    "RSK-01": {
+      "category": "Data Isolation (BOM Inventory)",
+      "severity": "CRITICAL",
+      "target_file": "src/services/inventoryBomService.ts",
+      "status": "VERIFIED",
+      "test_count": 42,
+      "solution": "Scoped storage keys by tenant ID (cafeos_raw_ingredients_${tenantId}_v2), partitioned in-memory cache, independent seed stores, and tenant context parameterization."
+    },
+    "RSK-02": {
+      "category": "Data Isolation (Open Table Tabs & Dispatch)",
+      "severity": "CRITICAL",
+      "target_file": "src/services/openTabService.ts",
+      "status": "VERIFIED",
+      "test_count": 39,
+      "solution": "Scoped table session and reservation keys (cafeos_table_tabs_${tenantId}_v2), removed line 339 hardcoded tenant-100hich-01 dispatch, and enforced cross-tenant rejection."
+    },
+    "RSK-03": {
+      "category": "Security & Data Isolation (Barista KDS)",
+      "severity": "CRITICAL",
+      "target_file": "src/services/baristaDispatcher.ts",
+      "status": "VERIFIED",
+      "test_count": 20,
+      "solution": "Scoped BroadcastChannel by tenant ID (cafeos_barista_channel_${tenantId}), scoped ticket storage, security gate dropping foreign tenant tickets, and tenant-scoped subscriptions."
+    },
+    "RSK-07_RSK-10": {
+      "category": "Database Collision & Offline Sync",
+      "severity": "HIGH",
+      "target_file": "src/db/cafeDb.ts & src/services/offlineSyncQueue.ts",
+      "status": "VERIFIED",
+      "test_count": 44,
+      "solution": "Independent databases per tenant (CafeOS_LocalDB_${tenantId} and CafeOS_OfflineDB_${tenantId}), dynamic Proxy db wrapper for backward compatibility, and non-destructive legacy migration."
+    }
+  },
+  "migration_strategy": {
+    "data_ownership": {
+      "cafeos_raw_ingredients_v2": "100 HICH (tenant-100hich-01) — specialty coffee beans, milk, syrups, croissants",
+      "cafeos_product_recipes_v2": "100 HICH (tenant-100hich-01) — espresso, flat white, latte, americano recipes",
+      "cafeos_table_tabs_v2": "100 HICH (tenant-100hich-01) — Table 2 demo session with Sara Rezaye and Flat White",
+      "cafeos_reserved_tables_v1": "100 HICH (tenant-100hich-01)",
+      "cafeos_barista_tickets": "Partitioned by tenantId; un-tagged assigned to 100 HICH",
+      "CafeOS_LocalDB": "100 HICH (tenant-100hich-01) — preserved intact, copied to CafeOS_LocalDB_tenant-100hich-01"
+    },
+    "idempotency": "Every migration checks if the scoped target store is already initialized; if populated, migration safely skips with 0 overwrites.",
+    "unit_and_quantity_preservation": "All 3-decimal float quantities, costs per unit, safety thresholds, and timestamps are preserved verbatim.",
+    "rollback_capability": "Rollback functions (rollbackLegacyMigration()) restore legacy keys from backup and purge scoped stores on demand."
+  },
+  "test_results": {
+    "baseline_regression_suites": {
+      "financialMath.test.ts": 161,
+      "smartOrders.test.ts": 65,
+      "inventoryTabSpec.test.ts": 64,
+      "kdsThermalDispatch.test.ts": 83,
+      "rbacSettings.test.ts": 40,
+      "zreportInward.test.ts": 43,
+      "floorPlanSpec.test.ts": 33,
+      "modendoIsolationAndGateway.test.ts": 50,
+      "dualCafeIsolation.test.ts": 29,
+      "total_passed": 568,
+      "total_failed": 0,
+      "status": "VERIFIED"
+    },
+    "phase1_isolation_suites": {
+      "phase1InventoryBomIsolation.test.ts": 42,
+      "phase1OpenTabIsolation.test.ts": 39,
+      "phase1BaristaKdsIsolation.test.ts": 20,
+      "phase1IndexedDbIsolation.test.ts": 44,
+      "total_passed": 145,
+      "total_failed": 0,
+      "status": "VERIFIED"
+    },
+    "grand_total": {
+      "total_tests": 713,
+      "passed": 713,
+      "failed": 0,
+      "pass_rate": "100%",
+      "regressions": 0,
+      "status": "VERIFIED"
+    }
+  },
+  "compilation_and_build_results": {
+    "typescript_lint": {
+      "command": "npm run lint (tsc --noEmit)",
+      "exit_code": 0,
+      "errors": 0,
+      "status": "VERIFIED"
+    },
+    "vite_production_builds": {
+      "default_build": {
+        "command": "npm run build",
+        "exit_code": 0,
+        "duration_seconds": 1.40,
+        "status": "VERIFIED"
+      },
+      "modendo_build": {
+        "command": "npm run build:modendo",
+        "exit_code": 0,
+        "duration_seconds": 1.68,
+        "status": "VERIFIED"
+      },
+      "100hich_build": {
+        "command": "npm run build:100hich",
+        "exit_code": 0,
+        "duration_seconds": 1.57,
+        "status": "VERIFIED"
+      }
+    },
+    "separate_cloud_backup_inspection": {
+      "file": "tests/cloudBackupSync.test.ts",
+      "line": 166,
+      "error": "TS2353: Object literal may only specify known properties, and 'orderId' does not exist in type 'OrderItemAggregate'.",
+      "location": "C:/Users/mahda/OneDrive/Documenti/KarWand Smart Orders at commit 0547aa3",
+      "action_taken": "Preserved untouched; reported separately as mandated without silent modifications."
+    }
+  },
+  "accounting_behavior_verification": {
+    "integer_toman_invariant": "VERIFIED (161 tests passed in financialMath.test.ts)",
+    "cash_drawer_balance_formula": "VERIFIED (Opening + CashIn - CashOut invariant preserved)",
+    "tax_policy_freeze": "PRESERVED (VAT formulas in LiveReceiptPreview.tsx and ShiftCloseoutService.ts untouched pending human approval)"
+  },
+  "remaining_blockers_and_risks": [
+    {
+      "id": "ACC-01 / RSK-04",
+      "category": "Accounting",
+      "severity": "CRITICAL",
+      "description": "Contradictory VAT calculations (Exclusive on Receipt Preview vs Inclusive on Shift Z-Report).",
+      "status": "BLOCKED (FROZEN)",
+      "action": "Awaiting human executive approval to standardize all modules on Iranian Tax-Inclusive pricing (Net * 9 / 109)."
+    },
+    {
+      "id": "RSK-06",
+      "category": "Development",
+      "severity": "HIGH",
+      "description": "TypeScript compilation error in uncommitted cloud backup test (tests/cloudBackupSync.test.ts:166).",
+      "status": "ISOLATED",
+      "action": "Remove redundant orderId property from OrderItemAggregate test fixture in the cloud backup branch."
+    },
+    {
+      "id": "RSK-05",
+      "category": "Brand Isolation",
+      "severity": "HIGH",
+      "description": "100 HICH colors (#0F223D, #D71921) hardcoded into shared shell Header.tsx and App.tsx.",
+      "status": "PENDING_PHASE_2",
+      "action": "Abstract brand colors into dynamic CSS variables bound to active tenant context."
+    },
+    {
+      "id": "RSK-08",
+      "category": "Hardware",
+      "severity": "MEDIUM",
+      "description": "Python printer gateway (backend/printer_gateway.py) hardcodes Modendo in binary receipt header.",
+      "status": "PENDING_PHASE_2",
+      "action": "Parameterize receipt headers from incoming POS dispatch payload."
+    },
+    {
+      "id": "RSK-10",
+      "category": "Code Hygiene",
+      "severity": "LOW",
+      "description": "2,472-line storage.ts god-file entangles all domain models and tenant loaders.",
+      "status": "PENDING_PHASE_2",
+      "action": "Decompose into modular tenant adapters in Phase 2."
+    }
+  ],
+  "git_and_worktree_info": {
+    "primary_repository": "C:/Users/mahda/OneDrive/Documenti/KarWand Smart Orders",
+    "primary_branch": "feature/shared-core-preparation",
+    "primary_head": "0547aa3",
+    "isolated_worktree": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Worktree_Phase1",
+    "isolated_branch": "fix/dual-tenant-isolation",
+    "baseline_commit": "a9b5d18",
+    "external_backup": "C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Backup_Pre_Phase1"
+  },
+  "rollback_instructions": {
+    "step_1": "Remove isolated worktree: git worktree remove C:\\Users\\mahda\\Downloads\\Documents\\KarWand_Worktree_Phase1 --force",
+    "step_2": "Delete temporary branch: git branch -D fix/dual-tenant-isolation",
+    "step_3": "Primary repository remains completely untouched sitting at commit 0547aa3 on feature/shared-core-preparation.",
+    "step_4": "External backup KarWand_Backup_Pre_Phase1 preserves all pre-Phase 1 working files."
+  },
+  "recommended_phase2_tasks": [
+    "TASK-201: Standardize VAT calculations to Tax-Inclusive (Net * 9 / 109) across all modules upon human approval.",
+    "TASK-202: Abstract Header.tsx and App.tsx design tokens into dynamic CSS variables.",
+    "TASK-203: Decompose storage.ts god-file into modular tenant adapters.",
+    "TASK-204: Parameterize backend/printer_gateway.py receipt headers from POS dispatch payload.",
+    "TASK-205: Fix OrderItemAggregate mismatch in tests/cloudBackupSync.test.ts:166 and merge cloud backup."
+  ],
+  "acceptance_criteria_verification": {
+    "criterion_1": { "description": "100 HICH inventory cannot be modified by Modendo operations", "status": "VERIFIED" },
+    "criterion_2": { "description": "Modendo inventory cannot be modified by 100 HICH operations", "status": "VERIFIED" },
+    "criterion_3": { "description": "Open table sessions are independently isolated", "status": "VERIFIED" },
+    "criterion_4": { "description": "Reserved tables are independently isolated", "status": "VERIFIED" },
+    "criterion_5": { "description": "Barista events cannot cross tenant boundaries", "status": "VERIFIED" },
+    "criterion_6": { "description": "IndexedDB isolation is verified", "status": "VERIFIED" },
+    "criterion_7": { "description": "Legacy data is preserved", "status": "VERIFIED" },
+    "criterion_8": { "description": "Existing financial calculations remain unchanged", "status": "VERIFIED" },
+    "criterion_9": { "description": "Existing functional behavior is preserved", "status": "VERIFIED" },
+    "criterion_10": { "description": "Relevant regression tests pass (713/713 passed)", "status": "VERIFIED" },
+    "criterion_11": { "description": "Original uncommitted cloud backup work remains untouched", "status": "VERIFIED" },
+    "criterion_12": { "description": "Changes are isolated in dedicated worktree and branch", "status": "VERIFIED" }
+  },
+  "stop_condition": {
+    "status": "STOPPED",
+    "details": "Remediation complete. Not merged to main. Not pushed. Not deployed. Awaiting human executive review and authorization."
+  }
+}

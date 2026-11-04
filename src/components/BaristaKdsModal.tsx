@@ -15,7 +15,7 @@ import {
   AlertTriangle,
   Ban,
 } from 'lucide-react';
-import { baristaDispatcher, BaristaOrderTicket } from '../services/baristaDispatcher';
+import { baristaDispatcher, BaristaOrderTicket, isValidTenantId } from '../services/baristaDispatcher';
 import { websocketServer } from '../services/websocket-server';
 import { SmartOrdersStore } from '../services/storage';
 import { thermalPrinterDriver } from '../services/ThermalPrinterDriver';
@@ -25,6 +25,7 @@ interface BaristaKdsModalProps {
   isOpen: boolean;
   onClose: () => void;
   tenantName: string;
+  tenantId?: string;
 }
 
 interface StockoutAlertItem {
@@ -42,20 +43,37 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
   isOpen,
   onClose,
   tenantName,
+  tenantId,
 }) => {
   const [tickets, setTickets] = useState<BaristaOrderTicket[]>([]);
   const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'IN_PREP' | 'READY'>('ALL');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [stockoutAlerts, setStockoutAlerts] = useState<StockoutAlertItem[]>([]);
 
+  // Explicit tenant context: prop takes precedence over canonical store
+  const activeTenantId = tenantId || SmartOrdersStore.getActiveTenantId();
+  const isTenantValid = isValidTenantId(activeTenantId);
+
   useEffect(() => {
+    if (!isOpen) return;
+
+    if (!isTenantValid) {
+      console.warn('[BaristaKdsModal] Missing or invalid tenant context:', activeTenantId);
+      setTickets([]);
+      return;
+    }
+
     const unsubscribeTickets = baristaDispatcher.subscribe((updatedTickets) => {
       setTickets(updatedTickets);
-    });
+    }, activeTenantId);
 
     // Subscribe to real-time inventory stockout alerts from reconnected POS sync
     const unsubscribeStockout = websocketServer.subscribeToEvent('INVENTORY_STOCKOUT_ALERT', (payload) => {
       if (payload && payload.items && payload.items.length > 0) {
+        // Enforce tenant scoping on inventory stockout alerts
+        if (payload.tenantId && payload.tenantId !== activeTenantId) {
+          return;
+        }
         const newAlert: StockoutAlertItem = {
           id: `alert-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
           orderId: payload.orderId || 'offline-sync',
@@ -74,7 +92,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
       unsubscribeTickets();
       unsubscribeStockout();
     };
-  }, [soundEnabled]);
+  }, [isOpen, activeTenantId, isTenantValid, soundEnabled]);
 
   if (!isOpen) return null;
 
@@ -82,7 +100,11 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
     orderId: string,
     newStatus: 'PENDING' | 'IN_PREP' | 'READY'
   ) => {
-    baristaDispatcher.updatePrepStatus(orderId, newStatus);
+    if (!isTenantValid) {
+      console.error('[BaristaKdsModal] Cannot update status without valid tenant context');
+      return;
+    }
+    baristaDispatcher.updatePrepStatus(orderId, newStatus, activeTenantId);
     if (newStatus === 'READY' && soundEnabled) {
       baristaDispatcher.playBaristaChime();
     }
@@ -323,7 +345,19 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
 
         {/* Tickets Grid */}
         <div className="flex-1 overflow-y-auto p-6 bg-stone-900/40">
-          {filteredTickets.length === 0 ? (
+          {!isTenantValid ? (
+            <div className="py-20 text-center flex flex-col items-center justify-center">
+              <div className="p-4 rounded-full bg-rose-950/60 text-rose-400 mb-3 border border-rose-800/80">
+                <Ban className="w-10 h-10" />
+              </div>
+              <h3 className="text-base font-semibold text-rose-300">
+                خطای احراز هویت شعبه (Tenant Context Error)
+              </h3>
+              <p className="text-xs text-stone-400 max-w-md mt-1">
+                هویت شعبه نامعتبر یا نامشخص است. صف سفارشات جهت ممانعت از تداخل بین شعب غیرفعال گردید.
+              </p>
+            </div>
+          ) : filteredTickets.length === 0 ? (
             <div className="py-20 text-center flex flex-col items-center justify-center">
               <div className="p-4 rounded-full bg-stone-800/80 text-stone-500 mb-3">
                 <Coffee className="w-10 h-10" />

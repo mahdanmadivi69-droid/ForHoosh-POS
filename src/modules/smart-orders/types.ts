@@ -1,5 +1,5 @@
 export type OrderStatus = 'Draft' | 'Queued' | 'In-Prep' | 'Ready' | 'Dispatched';
-export type PrepStation = 'BAR' | 'KITCHEN';
+export type PrepStation = 'BAR' | 'KITCHEN' | 'NO_PREP';
 export type ItemState = 'PENDING_DISPATCH' | 'DISPATCHED' | 'PREPARING' | 'SERVED' | 'SETTLED';
 
 export interface ModifierOption {

@@ -18,7 +18,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [2/3] بررسی بیلد پروداکشن ۱۰۰ هیچ...
-if not exist "dist\index.html" (
+if not exist "dist\100hich\index.html" (
     echo [اطلاع] فایل‌های بیلد یافت نشد. در حال کامپایل خودکار...
     call npm run build:100hich
 )
@@ -47,3 +47,4 @@ if %errorlevel% neq 0 (
     npx tsx server.ts
 )
 pause
+

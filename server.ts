@@ -1,6 +1,7 @@
 /**
  * CAFE OS — Full-Stack Express Server & Vite Dev Middleware
- * Hosts API endpoints for Multi-Tenant RLS Orders Sync, Barista Webhooks, and POS Static Assets.
+ * Hosts API endpoints for Multi-Tenant RLS Orders Sync, Barista Webhooks,
+ * Persistent KDS Backend Engine (TITAN), and Server-Managed Authentication (GATEKEEPER).
  */
 
 // Ensure HMR is disabled in container / iframe proxy environment
@@ -19,6 +20,14 @@ import {
   SyncOrderPayload,
 } from './src/services/sync-order-handler';
 import { handleOrderSync } from './src/services/sync-controller';
+import { getKdsService } from './server/kdsService';
+import { createAuthRouter } from './server/authRoutes';
+import {
+  requireAuth,
+  requireTenantMembership,
+  strictOriginValidation,
+  AuthenticatedRequest,
+} from './server/authMiddleware';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,9 +35,21 @@ const __dirname = path.dirname(__filename);
 const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
-async function startServer() {
+/**
+ * Creates and configures the Express application.
+ * Exported for seamless in-process integration testing.
+ */
+export function createServerApp() {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
+
+  // Strict Origin Validation for state-mutating requests
+  app.use(strictOriginValidation());
+
+  // -------------------------------------------------------------
+  // API Route: Authentication & Server-Managed Sessions (GATEKEEPER)
+  // -------------------------------------------------------------
+  app.use('/api/v1/auth', createAuthRouter());
 
   // In-memory Barista Queue for backend webhook storage
   const baristaWebhookTickets: any[] = [];
@@ -36,9 +57,29 @@ async function startServer() {
   // -------------------------------------------------------------
   // API Route: Idempotent Orders Sync (Phase 4 Task 1)
   // -------------------------------------------------------------
-  app.post('/api/v1/orders/sync', async (req: Request, res: Response): Promise<void> => {
+  app.post('/api/v1/orders/sync', requireAuth(), requireTenantMembership(), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const tenantId = (req.headers['x-tenant-id'] as string) || req.body?.order?.tenantId;
+      const sessionTenantId = req.user!.tenantId;
+      const headerTenantId = req.headers['x-tenant-id'] as string | undefined;
+      const bodyTenantId = (req.body?.tenantId || req.body?.order?.tenantId) as string | undefined;
+
+      // Fail-closed tenant verification against authenticated server session
+      if (headerTenantId && headerTenantId !== sessionTenantId) {
+        res.status(403).json({
+          success: false,
+          error: `Cross-tenant access denied. Header tenant "${headerTenantId}" does not match session "${sessionTenantId}".`,
+        });
+        return;
+      }
+      if (bodyTenantId && bodyTenantId !== sessionTenantId) {
+        res.status(403).json({
+          success: false,
+          error: `Cross-tenant access denied. Payload tenant "${bodyTenantId}" does not match session "${sessionTenantId}".`,
+        });
+        return;
+      }
+
+      const tenantId = sessionTenantId;
       const idempotencyKey = (req.headers['idempotency-key'] as string) || req.body?.clientGeneratedId;
 
       if (!tenantId) {
@@ -90,6 +131,26 @@ async function startServer() {
         } else {
           baristaWebhookTickets.unshift(ticketData);
         }
+
+        // Persistent KDS dispatch with restart recovery & NO_PREP exclusion
+        try {
+          const kds = getKdsService();
+          kds.dispatchOrder(tenantId, {
+            orderId: result.orderId,
+            orderNumber: result.orderNumber,
+            tableLabel: order.tableLabel,
+            cashierName: order.customerName,
+            items: order.items.map((i) => ({
+              id: (i as any).productId || (i as any).menuItemId || (i as any).id || 'item',
+              title: i.itemNameSnapshot,
+              quantity: i.quantity,
+              modifiers: i.modifiers.map((m) => m.nameFa),
+              notes: i.notes,
+            })),
+          });
+        } catch (kdsErr) {
+          console.error('[Server:KDS] Dispatch error:', kdsErr);
+        }
       }
 
       // Inventory Allocation & Overdraft Conflict Tracking
@@ -135,7 +196,7 @@ async function startServer() {
   });
 
   // Dedicated Sync Controller Endpoint
-  app.post('/api/v1/sync/orders', handleOrderSync);
+  app.post('/api/v1/sync/orders', requireAuth(), requireTenantMembership(), handleOrderSync);
 
   // -------------------------------------------------------------
   // API Routes: Cloud PostgreSQL Periodic Backup & Status Endpoints
@@ -185,7 +246,7 @@ async function startServer() {
   });
 
   // -------------------------------------------------------------
-  // API Route: Barista Webhook Incoming Receiver (Phase 4 Task 3)
+  // API Route: Barista Webhook Incoming Receiver
   // -------------------------------------------------------------
   app.post('/api/v1/barista/incoming', (req: Request, res: Response) => {
     const payload = req.body;
@@ -222,6 +283,101 @@ async function startServer() {
     }
   });
 
+  // -------------------------------------------------------------
+  // API Route: Persistent Multi-Tenant KDS Endpoints (A06-TITAN)
+  // Protected with requireAuth() and requireTenantMembership()
+  // -------------------------------------------------------------
+  app.get('/api/v1/kds/tickets', requireAuth(), requireTenantMembership(), (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const station = (req.query.station as 'BAR' | 'KITCHEN') || undefined;
+      const kds = getKdsService();
+      const tickets = kds.getTickets(tenantId, { station });
+      res.status(200).json({ success: true, tickets, tenantId });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err?.message || 'Error fetching KDS tickets' });
+    }
+  });
+
+  app.post('/api/v1/kds/tickets/dispatch', requireAuth(), requireTenantMembership(), (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const payload = req.body;
+      const kds = getKdsService();
+      const result = kds.dispatchOrder(tenantId, payload);
+      res.status(200).json({ success: true, result, tenantId });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err?.message || 'Error dispatching KDS tickets' });
+    }
+  });
+
+  app.post('/api/v1/kds/tickets/:ticketId/status', requireAuth(), requireTenantMembership(), (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const { ticketId } = req.params;
+      const { prepStatus, callerStation } = req.body;
+      const kds = getKdsService();
+      const updated = kds.updateTicketStatus(tenantId, ticketId, prepStatus, callerStation);
+      res.status(200).json({ success: true, ticket: updated });
+    } catch (err: any) {
+      const statusCode =
+        err?.name === 'StationSecurityViolationError' || err?.name === 'TenantIsolationViolationError'
+          ? 403
+          : 400;
+      res.status(statusCode).json({ success: false, error: err?.message || 'Error updating KDS ticket status' });
+    }
+  });
+
+  app.post('/api/v1/kds/tickets/:ticketId/cancel', requireAuth(), requireTenantMembership(), (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const { ticketId } = req.params;
+      const { reason, callerStation } = req.body;
+      const kds = getKdsService();
+      const updated = kds.cancelTicket(tenantId, ticketId, reason, callerStation);
+      res.status(200).json({ success: true, ticket: updated });
+    } catch (err: any) {
+      const statusCode =
+        err?.name === 'StationSecurityViolationError' || err?.name === 'TenantIsolationViolationError'
+          ? 403
+          : 400;
+      res.status(statusCode).json({ success: false, error: err?.message || 'Error cancelling KDS ticket' });
+    }
+  });
+
+  app.post('/api/v1/kds/tickets/:ticketId/reopen', requireAuth(), requireTenantMembership(), (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const { ticketId } = req.params;
+      const { callerStation } = req.body;
+      const kds = getKdsService();
+      const updated = kds.reopenTicket(tenantId, ticketId, callerStation);
+      res.status(200).json({ success: true, ticket: updated });
+    } catch (err: any) {
+      const statusCode =
+        err?.name === 'StationSecurityViolationError' || err?.name === 'TenantIsolationViolationError'
+          ? 403
+          : 400;
+      res.status(statusCode).json({ success: false, error: err?.message || 'Error reopening KDS ticket' });
+    }
+  });
+
+  app.get('/api/v1/kds/counts', requireAuth(), requireTenantMembership(), (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const kds = getKdsService();
+      const counts = kds.getActiveCounts(tenantId);
+      res.status(200).json({ success: true, counts, tenantId });
+    } catch (err: any) {
+      res.status(400).json({ success: false, error: err?.message || 'Error fetching active counts' });
+    }
+  });
+
+  return app;
+}
+
+export async function startServer() {
+  const app = createServerApp();
   const server = http.createServer(app);
 
   // -------------------------------------------------------------
@@ -262,7 +418,10 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error('Failed to start server:', err);
-  process.exit(1);
-});
+// Auto-run if executed directly
+if (process.argv[1] && process.argv[1].endsWith('server.ts')) {
+  startServer().catch((err) => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}

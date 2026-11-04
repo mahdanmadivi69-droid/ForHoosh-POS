@@ -98,7 +98,7 @@ console.log('[Suite 1: Z-Report Financial Ledger & Drawer Reconciliation]');
     assert(balancedReport.material_depletions.length > 0, 'Tracks consumed raw materials for orders in shift');
 
     const espressoDepletion = balancedReport.material_depletions.find(
-      (m) => m.item_id === 'ing_espresso_blend'
+      (m) => m.item_id === 'ing_espresso_blend' || m.item_id === 'mod_ing_espresso_blend'
     );
     assert(espressoDepletion !== undefined, 'Accurately identifies espresso blend bean consumption');
     if (espressoDepletion) {
@@ -108,7 +108,7 @@ console.log('[Suite 1: Z-Report Financial Ledger & Drawer Reconciliation]');
     }
 
     const milkDepletion = balancedReport.material_depletions.find(
-      (m) => m.item_id === 'ing_whole_milk'
+      (m) => m.item_id === 'ing_whole_milk' || m.item_id === 'mod_ing_milk'
     );
     if (milkDepletion) {
       assert(milkDepletion.unit === 'ml', 'Dairy milk unit is milliliters (ml)');

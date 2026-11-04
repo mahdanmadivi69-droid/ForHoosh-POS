@@ -18,7 +18,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [2/3] بررسی بیلد پروداکشن مودندو...
-if not exist "dist\index.html" (
+if not exist "dist\modendo\index.html" (
     echo [اطلاع] فایل‌های بیلد یافت نشد. در حال کامپایل خودکار...
     call npm run build:modendo
 )
@@ -48,3 +48,4 @@ if %errorlevel% neq 0 (
     npx tsx server.ts
 )
 pause
+

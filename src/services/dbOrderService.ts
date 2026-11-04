@@ -61,6 +61,7 @@ CREATE INDEX IF NOT EXISTS idx_orders_tenant ON orders(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_orders_client_id ON orders(client_generated_id);
 
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE orders FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS orders_tenant_isolation ON orders;
 CREATE POLICY orders_tenant_isolation ON orders
@@ -84,6 +85,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 CREATE INDEX IF NOT EXISTS idx_order_items_tenant ON order_items(tenant_id);
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE order_items FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS order_items_tenant_isolation ON order_items;
 CREATE POLICY order_items_tenant_isolation ON order_items
@@ -110,6 +112,7 @@ CREATE TABLE IF NOT EXISTS payments (
 
 CREATE INDEX IF NOT EXISTS idx_payments_tenant ON payments(tenant_id);
 ALTER TABLE payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payments FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS payments_tenant_isolation ON payments;
 CREATE POLICY payments_tenant_isolation ON payments
@@ -129,6 +132,7 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
 
 CREATE INDEX IF NOT EXISTS idx_idempotency_tenant ON idempotency_keys(tenant_id);
 ALTER TABLE idempotency_keys ENABLE ROW LEVEL SECURITY;
+ALTER TABLE idempotency_keys FORCE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS idempotency_keys_tenant_isolation ON idempotency_keys;
 CREATE POLICY idempotency_keys_tenant_isolation ON idempotency_keys

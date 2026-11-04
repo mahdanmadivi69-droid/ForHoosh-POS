@@ -1,0 +1,121 @@
+/**
+ * CAFE OS — Tailwind 4 Multi-Tenant Design Tokens
+ * Path: src/styles/theme-tokens.css
+ * 
+ * Supports:
+ * - 100 HICH Coffee Roasters (tenant-100hich-01): Crimson Red (#D71921), Navy Blue (#0F223D), Industrial Dark Slate
+ * - Modendo Cafe (tenant-modendo-01): Emerald Velvet (#059669), Deep Canvas Dark (#0B0D11), PS5 Neon Blue (#3B82F6)
+ */
+
+@layer base {
+  /* Default / 100 HICH Specialty Coffee Lab (Primary Tenant) */
+  :root,
+  [data-tenant="tenant-100hich-01"],
+  [data-tenant="100hich"],
+  .theme-100hich {
+    --brand-tenant-id: 'tenant-100hich-01';
+    --brand-name: '100 HICH Coffee Roasters';
+    --brand-name-fa: 'قهوه‌فروشی ۱۰۰هیچ';
+
+    /* Brand Primary & Secondary Colors */
+    --color-brand-primary: #D71921;
+    --color-brand-primary-rgb: 215, 25, 33;
+    --color-brand-primary-hover: #B9151B;
+    --color-brand-primary-light: rgba(215, 25, 33, 0.12);
+    --color-brand-primary-border: rgba(215, 25, 33, 0.35);
+
+    --color-brand-secondary: #0F223D;
+    --color-brand-secondary-rgb: 15, 34, 61;
+    --color-brand-secondary-hover: #162E52;
+    --color-brand-secondary-light: rgba(15, 34, 61, 0.2);
+
+    --color-brand-accent: #9EACB8;
+    --color-brand-accent-hover: #CBD5E1;
+
+    /* Semantic Surface Colors */
+    --color-surface-base: #0D0F12;
+    --color-surface-card: #161A1F;
+    --color-surface-panel: #1A1F26;
+    --color-surface-hover: #222933;
+    --color-surface-border: #27303D;
+    --color-surface-input: #12151A;
+
+    /* Text Colors */
+    --color-text-primary: #F8FAFC;
+    --color-text-secondary: #94A3B8;
+    --color-text-muted: #64748B;
+    --color-text-inverse: #0D0F12;
+
+    /* Header & Navigation Shell */
+    --color-header-bg: #0F223D;
+    --color-header-border: #D71921;
+    --color-tab-active-bg: rgba(215, 25, 33, 0.15);
+    --color-tab-active-border: #D71921;
+
+    /* Badges & Indicators */
+    --color-badge-bg: rgba(215, 25, 33, 0.15);
+    --color-badge-text: #F87171;
+    --color-badge-border: rgba(215, 25, 33, 0.3);
+
+    /* Thermal Printing Configuration */
+    --printer-dpi: 203;
+    --printer-paper-width-mm: 80;
+    --printer-dots-per-line: 576;
+    --printer-chars-per-line: 42;
+  }
+
+  /* Modendo Cafe & Gaming Lounge (Secondary Tenant) */
+  [data-tenant="tenant-modendo-01"],
+  [data-tenant="modendo"],
+  .theme-modendo {
+    --brand-tenant-id: 'tenant-modendo-01';
+    --brand-name: 'Modendo Boardgame & Gaming Cafe';
+    --brand-name-fa: 'کافه بازی و گیمینگ مودندو';
+
+    /* Brand Primary & Secondary Colors */
+    --color-brand-primary: #059669;
+    --color-brand-primary-rgb: 5, 150, 105;
+    --color-brand-primary-hover: #047857;
+    --color-brand-primary-light: rgba(5, 150, 105, 0.12);
+    --color-brand-primary-border: rgba(5, 150, 105, 0.35);
+
+    --color-brand-secondary: #0B0D11;
+    --color-brand-secondary-rgb: 11, 13, 17;
+    --color-brand-secondary-hover: #141820;
+    --color-brand-secondary-light: rgba(11, 13, 17, 0.4);
+
+    --color-brand-accent: #3B82F6; /* PS5 Neon Blue */
+    --color-brand-accent-hover: #60A5FA;
+
+    /* Semantic Surface Colors */
+    --color-surface-base: #08090C;
+    --color-surface-card: #11141A;
+    --color-surface-panel: #161A22;
+    --color-surface-hover: #1D232E;
+    --color-surface-border: #222938;
+    --color-surface-input: #0E1015;
+
+    /* Text Colors */
+    --color-text-primary: #F1F5F9;
+    --color-text-secondary: #94A3B8;
+    --color-text-muted: #64748B;
+    --color-text-inverse: #08090C;
+
+    /* Header & Navigation Shell */
+    --color-header-bg: #0B0D11;
+    --color-header-border: #059669;
+    --color-tab-active-bg: rgba(5, 150, 105, 0.15);
+    --color-tab-active-border: #10B981;
+
+    /* Badges & Indicators */
+    --color-badge-bg: rgba(5, 150, 105, 0.15);
+    --color-badge-text: #34D399;
+    --color-badge-border: rgba(5, 150, 105, 0.3);
+
+    /* Thermal Printing Configuration */
+    --printer-dpi: 203;
+    --printer-paper-width-mm: 80;
+    --printer-dots-per-line: 576;
+    --printer-chars-per-line: 42;
+  }
+}
