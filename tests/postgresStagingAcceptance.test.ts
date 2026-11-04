@@ -10,6 +10,7 @@
  */
 
 import { POSTGRES_RLS_SCHEMA_DDL } from '../src/services/dbOrderService';
+import { runRlsPoolVerification } from './staging/verify-rls-pool.test';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -129,6 +130,12 @@ async function runStagingAcceptance() {
   await client.query("SELECT set_config('app.current_tenant_id', $1, true)", ['tenant-100hich-01']);
   await client.query('ROLLBACK'); // Error rollback
   assert(activeTenantContext === null, 'After error ROLLBACK, tenant context is completely wiped from client');
+
+  // Suite 3: Z-Report Persistence and Pool Isolation
+  console.log('\n[Suite 3: Live Z-Report Persistence & Pool Max 1 Validation]');
+  const rlsResult = await runRlsPoolVerification();
+  passed += rlsResult.passed;
+  failed += rlsResult.failed;
 
   console.log(`\n========================================`);
   console.log(`PostgreSQL Staging Summary: ${passed} Passed, ${failed} Failed`);
