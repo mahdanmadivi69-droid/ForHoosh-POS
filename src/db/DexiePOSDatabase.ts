@@ -5,8 +5,10 @@
  * Implements:
  * 1. Normalized, decomposed table entities with mandatory tenant scoping.
  * 2. Compound indexing syntax ([tenantId+field]) for performant multi-tenant offline queries.
- * 3. Dexie v2 schema migrations with backward compatibility.
+ * 3. Dexie v2/v3/v4 schema migrations with backward compatibility.
  * 4. Strongly typed repository accessors scoped to active tenant.
+ * 5. Dedicated venue floor layouts, zones, and 4 PS5 stations for Modendo.
+ * 6. Dual-mode takeaway ordering support (Instant Pay vs Open Tab for regulars).
  */
 
 import Dexie, { Table } from 'dexie';
@@ -26,6 +28,8 @@ export interface DecomposedOrderRecord {
   tableSessionId?: string;
   flowType?: 'COUNTER_QUICK_PAY' | 'TAB_PAY_LATER' | 'DINE_IN_PAY_BY_ORDER';
   orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+  takeawayBillingMode?: 'INSTANT_PAY' | 'OPEN_TAB_REGULAR';
+  isRegularCustomerTab?: boolean;
   status: 'DRAFT' | 'PLACED' | 'PAID' | 'FULFILLED' | 'VOIDED';
   grossAmountToman: number;
   discountAmountToman: number;
@@ -105,6 +109,32 @@ export interface DecomposedTableTabRecord {
   totalDueToman: number;
 }
 
+export interface DecomposedVenueZoneRecord {
+  id: string;
+  tenantId: string;
+  nameFa: string;
+  nameEn: string;
+  zoneType: 'COUNTER' | 'HALL' | 'GAMING_PS5' | 'VIP_BOARDGAME' | 'RETAIL' | 'TERRACE' | 'TAKEAWAY';
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface DecomposedVenueTableRecord {
+  id: string;
+  tenantId: string;
+  zoneId: string;
+  tableNumber: string | number;
+  label: string;
+  capacity: number;
+  isPs5Station?: boolean;
+  ps5StationNumber?: number; // 1, 2, 3, 4
+  hourlyRateToman?: number;
+  status: 'AVAILABLE' | 'OCCUPIED' | 'RESERVED' | 'MAINTENANCE';
+  currentSessionId?: string;
+  currentOrderId?: string;
+  updatedAt: string;
+}
+
 export interface DecomposedZReportRecord {
   id: string;
   tenantId: string;
@@ -171,6 +201,8 @@ export class DexiePOSDatabase extends Dexie {
   public inventoryItems!: Table<DecomposedInventoryItemRecord, string>;
   public menuItems!: Table<DecomposedMenuItemRecord, string>;
   public tableTabs!: Table<DecomposedTableTabRecord, string>;
+  public venueZones!: Table<DecomposedVenueZoneRecord, string>;
+  public venueTables!: Table<DecomposedVenueTableRecord, string>;
   public zReports!: Table<DecomposedZReportRecord, string>;
   public stockInward!: Table<DecomposedStockInwardRecord, string>;
   public syncQueue!: Table<DecomposedSyncQueueRecord, string>;
@@ -213,6 +245,16 @@ export class DexiePOSDatabase extends Dexie {
       orders:
         'id, clientGeneratedId, tenantId, shiftId, status, createdAt, synced, tableSessionId, flowType, [tenantId+id], [tenantId+status], [tenantId+createdAt], [tenantId+shiftId], [tenantId+synced], [tenantId+tableSessionId], [tenantId+flowType]',
     });
+
+    // Version 4: Dedicated Venue Floor Layouts, Zones, and Stations
+    this.version(4).stores({
+      venueZones:
+        'id, tenantId, zoneType, sortOrder, [tenantId+id], [tenantId+zoneType], [tenantId+sortOrder]',
+      venueTables:
+        'id, tenantId, zoneId, status, [tenantId+id], [tenantId+zoneId], [tenantId+status]',
+      orders:
+        'id, clientGeneratedId, tenantId, shiftId, status, createdAt, synced, tableSessionId, flowType, takeawayBillingMode, [tenantId+id], [tenantId+status], [tenantId+createdAt], [tenantId+shiftId], [tenantId+synced], [tenantId+tableSessionId], [tenantId+flowType], [tenantId+takeawayBillingMode]',
+    });
   }
 
   // ===========================================================================
@@ -229,6 +271,10 @@ export class DexiePOSDatabase extends Dexie {
 
   public getOrdersByFlowType(tenantId: string, flowType: NonNullable<DecomposedOrderRecord['flowType']>) {
     return this.orders.where('[tenantId+flowType]').equals([tenantId, flowType]);
+  }
+
+  public getTakeawayOrders(tenantId: string) {
+    return this.orders.where('[tenantId+status]').between([tenantId, Dexie.minKey], [tenantId, Dexie.maxKey]).filter((o) => o.orderType === 'TAKEAWAY');
   }
 
   public getActiveOrdersByTenant(tenantId: string, status: DecomposedOrderRecord['status']) {
@@ -261,6 +307,201 @@ export class DexiePOSDatabase extends Dexie {
 
   public getPendingSyncQueueByTenant(tenantId: string) {
     return this.syncQueue.where('[tenantId+syncStatus]').equals([tenantId, 'QUEUED']);
+  }
+
+  // ===========================================================================
+  // Venue Layout & Station Accessors
+  // ===========================================================================
+
+  public getVenueZonesByTenant(tenantId: string) {
+    return this.venueZones.where('[tenantId+sortOrder]').between([tenantId, Dexie.minKey], [tenantId, Dexie.maxKey]);
+  }
+
+  public getVenueTablesByTenant(tenantId: string) {
+    return this.venueTables.where('[tenantId+zoneId]').between([tenantId, Dexie.minKey], [tenantId, Dexie.maxKey]);
+  }
+
+  public getVenueTablesByZone(tenantId: string, zoneId: string) {
+    return this.venueTables.where('[tenantId+zoneId]').equals([tenantId, zoneId]);
+  }
+
+  public async getPs5StationsByTenant(tenantId: string): Promise<DecomposedVenueTableRecord[]> {
+    const allTables = await this.venueTables
+      .where('[tenantId+zoneId]')
+      .between([tenantId, Dexie.minKey], [tenantId, Dexie.maxKey])
+      .toArray();
+    return allTables.filter((t) => Boolean(t.isPs5Station));
+  }
+
+  /**
+   * Seeds default floor layouts and stations into Dexie for a given tenant if not already present.
+   */
+  public async seedVenueLayout(tenantId: string): Promise<void> {
+    const existingCount = await this.venueZones
+      .where('[tenantId+zoneType]')
+      .between([tenantId, Dexie.minKey], [tenantId, Dexie.maxKey])
+      .count();
+
+    if (existingCount > 0) return;
+
+    if (tenantId.includes('modendo')) {
+      // Modendo Layout (Hall + 4 PS5 Stations + VIP)
+      const zones: DecomposedVenueZoneRecord[] = [
+        {
+          id: `zone-${tenantId}-hall`,
+          tenantId,
+          nameFa: 'سالن اصلی بردگیم',
+          nameEn: 'Main Boardgame Hall',
+          zoneType: 'HALL',
+          sortOrder: 1,
+          isActive: true,
+        },
+        {
+          id: `zone-${tenantId}-ps5`,
+          tenantId,
+          nameFa: 'ایستگاه‌های کنسول PS5',
+          nameEn: 'PS5 Gaming Pods',
+          zoneType: 'GAMING_PS5',
+          sortOrder: 2,
+          isActive: true,
+        },
+        {
+          id: `zone-${tenantId}-vip`,
+          tenantId,
+          nameFa: 'اتاق VIP بردگیم',
+          nameEn: 'VIP Boardgame Suite',
+          zoneType: 'VIP_BOARDGAME',
+          sortOrder: 3,
+          isActive: true,
+        },
+      ];
+      await this.venueZones.bulkPut(zones);
+
+      const tables: DecomposedVenueTableRecord[] = [
+        ...[1, 2, 3, 4, 5, 6].map((num) => ({
+          id: `tbl-${tenantId}-hall-${num}`,
+          tenantId,
+          zoneId: `zone-${tenantId}-hall`,
+          tableNumber: num,
+          label: `میز ${num} (سالن)`,
+          capacity: num % 2 === 0 ? 6 : 4,
+          status: 'AVAILABLE' as const,
+          updatedAt: new Date().toISOString(),
+        })),
+        ...[1, 2, 3, 4].map((stationNum) => ({
+          id: `tbl-${tenantId}-ps5-${stationNum}`,
+          tenantId,
+          zoneId: `zone-${tenantId}-ps5`,
+          tableNumber: `PS5-${stationNum}`,
+          label: `پاد PS5 شماره ${stationNum}`,
+          capacity: stationNum <= 2 ? 2 : 4,
+          isPs5Station: true,
+          ps5StationNumber: stationNum,
+          hourlyRateToman: 90000,
+          status: 'AVAILABLE' as const,
+          updatedAt: new Date().toISOString(),
+        })),
+        {
+          id: `tbl-${tenantId}-vip-1`,
+          tenantId,
+          zoneId: `zone-${tenantId}-vip`,
+          tableNumber: 'VIP-1',
+          label: 'میز VIP بردگیم',
+          capacity: 8,
+          hourlyRateToman: 150000,
+          status: 'AVAILABLE' as const,
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      await this.venueTables.bulkPut(tables);
+    } else {
+      // 100 HICH Layout (Counter + Retail Tasting Tables)
+      const zones: DecomposedVenueZoneRecord[] = [
+        {
+          id: `zone-${tenantId}-counter`,
+          tenantId,
+          nameFa: 'کانتر و بار اکسپرس',
+          nameEn: 'Express Bar & Counter',
+          zoneType: 'COUNTER',
+          sortOrder: 1,
+          isActive: true,
+        },
+        {
+          id: `zone-${tenantId}-retail`,
+          tenantId,
+          nameFa: 'میزهای تست و خرده‌فروشی دان',
+          nameEn: 'Coffee Tasting & Retail Tables',
+          zoneType: 'RETAIL',
+          sortOrder: 2,
+          isActive: true,
+        },
+      ];
+      await this.venueZones.bulkPut(zones);
+
+      const tables: DecomposedVenueTableRecord[] = [
+        {
+          id: `tbl-${tenantId}-c1`,
+          tenantId,
+          zoneId: `zone-${tenantId}-counter`,
+          tableNumber: 'C1',
+          label: 'پیشخوان ۱ (سفارش سریع)',
+          capacity: 1,
+          status: 'AVAILABLE',
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-c2`,
+          tenantId,
+          zoneId: `zone-${tenantId}-counter`,
+          tableNumber: 'C2',
+          label: 'پیشخوان ۲ (بار دم‌آوری)',
+          capacity: 1,
+          status: 'AVAILABLE',
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-b1`,
+          tenantId,
+          zoneId: `zone-${tenantId}-counter`,
+          tableNumber: 'B1',
+          label: 'صندلی بار ۱',
+          capacity: 1,
+          status: 'AVAILABLE',
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-b2`,
+          tenantId,
+          zoneId: `zone-${tenantId}-counter`,
+          tableNumber: 'B2',
+          label: 'صندلی بار ۲',
+          capacity: 1,
+          status: 'AVAILABLE',
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-r1`,
+          tenantId,
+          zoneId: `zone-${tenantId}-retail`,
+          tableNumber: 'R1',
+          label: 'میز تست و کاپینگ ۱',
+          capacity: 4,
+          status: 'AVAILABLE',
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-r2`,
+          tenantId,
+          zoneId: `zone-${tenantId}-retail`,
+          tableNumber: 'R2',
+          label: 'میز مشاوره دان و دم‌آوری ۲',
+          capacity: 4,
+          status: 'AVAILABLE',
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      await this.venueTables.bulkPut(tables);
+    }
   }
 }
 
