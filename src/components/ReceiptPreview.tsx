@@ -91,9 +91,12 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
       <Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md transition-opacity duration-200 print:hidden" />
         <Dialog.Positioner className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4 overflow-y-auto print:p-0 print:static print:inset-auto">
-          <Dialog.Content className="bg-[#1B222C] border border-[#293444] rounded-2xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3 focus:outline-none print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full print:bg-white animate-fadeIn select-none">
+          <Dialog.Content
+            data-tenant={order.tenantId || (tenantName?.toUpperCase().includes('MODENDO') ? 'tenant-modendo-01' : 'tenant-100hich-01')}
+            className="bg-[var(--color-surface-card,#1B222C)] border border-[var(--color-surface-border,#293444)] rounded-2xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3 focus:outline-none print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full print:bg-white animate-fadeIn select-none"
+          >
             {/* Actions Bar (Hidden during print) */}
-            <div className="flex items-center justify-between pb-2 border-b border-[#293444] print:hidden">
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--color-surface-border,#293444)] print:hidden">
               <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold">
                 <CheckCircle className="w-4 h-4" />
                 <span>فاکتور با موفقیت تسویه و ثبت شد</span>
@@ -133,14 +136,14 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
                   playPosBeep('click');
                   onClose();
                 }}
-                className="flex-1 bg-[#121417] hover:bg-[#222B38] text-white border border-[#293444] py-2.5 rounded-xl text-xs font-bold transition cursor-pointer"
+                className="flex-1 bg-[var(--color-surface-base,#121417)] hover:bg-[var(--color-surface-hover,#222B38)] text-white border border-[var(--color-surface-border,#293444)] py-2.5 rounded-xl text-xs font-bold transition cursor-pointer"
               >
                 سفارش جدید
               </button>
               <button
                 type="button"
                 onClick={handlePrint}
-                className="flex-2 bg-[#D71921] hover:bg-[#B8141B] text-white py-2.5 rounded-xl text-xs font-black shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)] transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                className="flex-2 bg-[var(--color-brand-primary,#D71921)] hover:bg-[var(--color-brand-primary-hover,#B8141B)] text-white py-2.5 rounded-xl text-xs font-black shadow-[0_0_15px_-3px_var(--color-brand-primary-light,rgba(215,25,33,0.45))] transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
               >
                 <Printer className="w-4 h-4" />
                 <span>پرینت مستقیم فیش (۸۰ میلی‌متری)</span>

@@ -174,11 +174,14 @@ export function CashierCheckoutPage({
   }
 
   return (
-    <div className="bg-stone-900 border border-stone-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4 text-stone-100">
+    <div
+      data-tenant={tenantId}
+      className="bg-[var(--color-surface-panel,#1c1917)] border border-[var(--color-surface-border,#292524)] rounded-2xl p-5 shadow-xl flex flex-col gap-4 text-[var(--color-text-primary,#f5f5f4)]"
+    >
       {/* هدر صفحه تسویه سریع و نشانگر وضعیت شبکه */}
       <div className="flex flex-wrap items-center justify-between pb-3 border-b border-stone-800 gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/30">
+          <div className="p-2.5 rounded-xl bg-[var(--color-brand-primary-light,rgba(215,25,33,0.15))] text-[var(--color-brand-primary,#D71921)] border border-[var(--color-brand-primary-border,rgba(215,25,33,0.3))]">
             <Zap className="w-5 h-5" />
           </div>
           <div>
@@ -272,7 +275,7 @@ export function CashierCheckoutPage({
                   value="POS_TERMINAL"
                   className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition select-none ${
                     paymentMethod === 'POS_TERMINAL'
-                      ? 'bg-amber-600 text-white shadow-xs'
+                      ? 'bg-[var(--color-brand-primary,#D71921)] text-white shadow-xs'
                       : 'text-stone-400 hover:text-stone-200 hover:bg-stone-850'
                   }`}
                 >
@@ -286,7 +289,7 @@ export function CashierCheckoutPage({
                   value="CASH"
                   className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition select-none ${
                     paymentMethod === 'CASH'
-                      ? 'bg-amber-600 text-white shadow-xs'
+                      ? 'bg-[var(--color-brand-primary,#D71921)] text-white shadow-xs'
                       : 'text-stone-400 hover:text-stone-200 hover:bg-stone-850'
                   }`}
                 >
@@ -300,7 +303,7 @@ export function CashierCheckoutPage({
                   value="CARD_MANUAL"
                   className={`flex-1 py-2 px-2 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition select-none ${
                     paymentMethod === 'CARD_MANUAL'
-                      ? 'bg-amber-600 text-white shadow-xs'
+                      ? 'bg-[var(--color-brand-primary,#D71921)] text-white shadow-xs'
                       : 'text-stone-400 hover:text-stone-200 hover:bg-stone-850'
                   }`}
                 >
@@ -316,7 +319,7 @@ export function CashierCheckoutPage({
           <div className="pt-4">
             <button
               onClick={() => handleFastCheckout()}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white py-3 rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full bg-[var(--color-brand-primary,#059669)] hover:brightness-110 active:scale-[0.99] text-white py-3 rounded-xl font-bold text-sm shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
             >
               <Zap className="w-4 h-4" />
               <span>

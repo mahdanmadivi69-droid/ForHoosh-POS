@@ -71,7 +71,10 @@ export const Header: React.FC<HeaderProps> = ({
   }, []);
 
   return (
-    <header className="bg-[#0F223D] border-b border-[#293444] sticky top-0 z-40 transition-all shadow-md select-none">
+    <header
+      data-tenant={tenant.id}
+      className="bg-[var(--color-header-bg,#0F223D)] border-b border-[var(--color-surface-border,#293444)] sticky top-0 z-40 transition-all shadow-md select-none"
+    >
       {/* Top Main Brand & Control Bar */}
       <div className="max-w-[1720px] mx-auto px-3 md:px-5 py-2.5 flex items-center justify-between gap-3">
         {/* Brand & Branch Identity */}
@@ -118,7 +121,7 @@ export const Header: React.FC<HeaderProps> = ({
               }}
               className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
                 currentTab === 'pos'
-                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                  ? 'bg-[var(--color-brand-primary,#D71921)] text-white shadow-[0_0_15px_-3px_var(--color-brand-primary-light,rgba(215,25,33,0.45))]'
                   : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
               }`}
             >
@@ -134,7 +137,7 @@ export const Header: React.FC<HeaderProps> = ({
                 }}
                 className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer font-bold ${
                   currentTab === 'zero-g'
-                    ? 'bg-gradient-to-r from-[#D71921] to-[#E52E38] text-white shadow-[0_0_15px_-2px_rgba(215,25,33,0.6)] ring-1 ring-red-400'
+                    ? 'bg-gradient-to-r from-[var(--color-brand-primary,#D71921)] to-[var(--color-brand-primary-hover,#E52E38)] text-white shadow-[0_0_15px_-2px_var(--color-brand-primary-light,rgba(215,25,33,0.6))] ring-1 ring-red-400'
                     : 'text-amber-400 hover:text-amber-300 hover:bg-[#1B222C] border border-amber-500/30'
                 }`}
                 title="سامانه مافوق سریع Zero-G (کلیدهای ۱ تا ۹ بدون تأخیر)"
