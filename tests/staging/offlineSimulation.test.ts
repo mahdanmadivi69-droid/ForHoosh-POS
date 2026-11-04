@@ -276,12 +276,6 @@ export async function runGate5OfflineSimulation() {
     assertEqual(db.getStock('modendo-burger-patty', MODENDO_TENANT), 35, 'Modendo stock untouched: remained 35 (NO double deduction)');
 
     // Now test DecomposedOfflineSyncQueue handling HTTP 409 from server bridge
-    const testQueue = new DecomposedOfflineSyncQueue({
-      tenantId: HICH_TENANT,
-      apiBaseUrl: 'http://127.0.0.1:3001',
-    });
-
-    let queueResolvedSuccess = 0;
     const originalFetch = (globalThis as any).fetch;
 
     // Bridge returns HTTP 409 Conflict with isIdempotentReplay
@@ -294,6 +288,13 @@ export async function runGate5OfflineSimulation() {
         message: 'Order already synchronized in previous transaction.',
       }),
     });
+
+    const testQueue = new DecomposedOfflineSyncQueue({
+      tenantId: HICH_TENANT,
+      apiBaseUrl: 'http://127.0.0.1:3001',
+    });
+
+    let queueResolvedSuccess = 0;
 
     const testOrder = orders100Hich[0];
     const queuedRec = await testQueue.enqueueOrderAtomic({

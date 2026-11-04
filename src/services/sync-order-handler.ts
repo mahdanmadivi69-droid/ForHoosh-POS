@@ -412,6 +412,8 @@ export class InMemoryDatabaseClient implements DatabaseClient {
     return this.inventoryMap.get(productId)?.availableQuantity;
   }
 
+  private static idCounter: number = 0;
+
   async transaction<T>(callback: (tx: TransactionContext) => Promise<T>): Promise<T> {
     let localTenant: string | null = this.currentTenantContext;
 
@@ -437,7 +439,8 @@ export class InMemoryDatabaseClient implements DatabaseClient {
               return { ...order, isIdempotentReplay: true };
             }
           }
-          const id = `ord-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          InMemoryDatabaseClient.idCounter++;
+          const id = `ord-${Date.now()}-${InMemoryDatabaseClient.idCounter}-${Math.random().toString(36).substring(2, 7)}`;
           const record = { id, ...data, isIdempotentReplay: false };
           this.ordersMap.set(id, record);
           return record;
@@ -448,7 +451,8 @@ export class InMemoryDatabaseClient implements DatabaseClient {
               return { id: order.id, inserted: false, isIdempotentReplay: true };
             }
           }
-          const id = `ord-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          InMemoryDatabaseClient.idCounter++;
+          const id = `ord-${Date.now()}-${InMemoryDatabaseClient.idCounter}-${Math.random().toString(36).substring(2, 7)}`;
           const record = { id, ...data, isIdempotentReplay: false };
           this.ordersMap.set(id, record);
           return { id, inserted: true, isIdempotentReplay: false };
@@ -456,7 +460,8 @@ export class InMemoryDatabaseClient implements DatabaseClient {
       },
       payments: {
         insert: async (data) => {
-          const id = `pay-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+          InMemoryDatabaseClient.idCounter++;
+          const id = `pay-${Date.now()}-${InMemoryDatabaseClient.idCounter}-${Math.random().toString(36).substring(2, 7)}`;
           const record = { id, ...data };
           this.paymentsMap.set(id, record);
           return record;
