@@ -57,9 +57,29 @@ export function createServerApp() {
   // -------------------------------------------------------------
   // API Route: Idempotent Orders Sync (Phase 4 Task 1)
   // -------------------------------------------------------------
-  app.post('/api/v1/orders/sync', async (req: Request, res: Response): Promise<void> => {
+  app.post('/api/v1/orders/sync', requireAuth(), requireTenantMembership(), async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-      const tenantId = (req.headers['x-tenant-id'] as string) || req.body?.order?.tenantId;
+      const sessionTenantId = req.user!.tenantId;
+      const headerTenantId = req.headers['x-tenant-id'] as string | undefined;
+      const bodyTenantId = (req.body?.tenantId || req.body?.order?.tenantId) as string | undefined;
+
+      // Fail-closed tenant verification against authenticated server session
+      if (headerTenantId && headerTenantId !== sessionTenantId) {
+        res.status(403).json({
+          success: false,
+          error: `Cross-tenant access denied. Header tenant "${headerTenantId}" does not match session "${sessionTenantId}".`,
+        });
+        return;
+      }
+      if (bodyTenantId && bodyTenantId !== sessionTenantId) {
+        res.status(403).json({
+          success: false,
+          error: `Cross-tenant access denied. Payload tenant "${bodyTenantId}" does not match session "${sessionTenantId}".`,
+        });
+        return;
+      }
+
+      const tenantId = sessionTenantId;
       const idempotencyKey = (req.headers['idempotency-key'] as string) || req.body?.clientGeneratedId;
 
       if (!tenantId) {
@@ -176,7 +196,7 @@ export function createServerApp() {
   });
 
   // Dedicated Sync Controller Endpoint
-  app.post('/api/v1/sync/orders', handleOrderSync);
+  app.post('/api/v1/sync/orders', requireAuth(), requireTenantMembership(), handleOrderSync);
 
   // -------------------------------------------------------------
   // API Routes: Cloud PostgreSQL Periodic Backup & Status Endpoints

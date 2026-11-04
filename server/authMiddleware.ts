@@ -98,19 +98,25 @@ export function requireTenantMembership(paramOrHeader: string = 'x-tenant-id') {
       return;
     }
 
-    // Resolve requested tenant from headers, params, or body
-    const requestedTenant =
-      (req.headers['x-tenant-id'] as string) ||
-      (req.params.tenantId as string) ||
-      (req.query.tenantId as string) ||
-      req.body?.tenantId;
+    // Resolve requested tenant from headers, params, query, or body (including nested order.tenantId)
+    const headerTenant = req.headers['x-tenant-id'] as string | undefined;
+    const paramTenant = req.params?.tenantId as string | undefined;
+    const queryTenant = req.query?.tenantId as string | undefined;
+    const bodyTenant = req.body?.tenantId as string | undefined;
+    const bodyOrderTenant = req.body?.order?.tenantId as string | undefined;
 
-    if (requestedTenant && requestedTenant !== req.user.tenantId) {
-      res.status(403).json({
-        success: false,
-        error: `Cross-tenant access denied. Your session belongs to "${req.user.tenantId}", cannot access "${requestedTenant}".`,
-      });
-      return;
+    const requestedTenants = [headerTenant, paramTenant, queryTenant, bodyTenant, bodyOrderTenant].filter(
+      (t): t is string => typeof t === 'string' && t.trim().length > 0
+    );
+
+    for (const requestedTenant of requestedTenants) {
+      if (requestedTenant !== req.user.tenantId) {
+        res.status(403).json({
+          success: false,
+          error: `Cross-tenant access denied. Your session belongs to "${req.user.tenantId}", cannot access "${requestedTenant}".`,
+        });
+        return;
+      }
     }
 
     next();

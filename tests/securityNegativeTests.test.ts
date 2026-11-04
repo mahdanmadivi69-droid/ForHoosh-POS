@@ -44,10 +44,17 @@ async function runSecurityNegativeTests() {
     console.log('[Test 1: Order Sync Route Negative Tests]');
     const resSync1 = await fetch(`${baseUrl}/api/v1/orders/sync`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Origin': `http://127.0.0.1:${port}` },
+      headers: { 'Content-Type': 'application/json', 'Origin': 'http://127.0.0.1:3001' },
       body: JSON.stringify({ tenantId: 'tenant-100hich-01', order: { id: 'order-x' } })
     });
-    assert(resSync1.status !== 500, '/api/v1/orders/sync handles request safely without 500 server crash');
+    assert(resSync1.status === 401, '/api/v1/orders/sync rejects unauthenticated requests with 401 Unauthorized');
+
+    const resSync2 = await fetch(`${baseUrl}/api/v1/sync/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Origin': 'http://127.0.0.1:3001' },
+      body: JSON.stringify({ tenantId: 'tenant-100hich-01', order: { items: [], totalNet: 1000 } })
+    });
+    assert(resSync2.status === 401, '/api/v1/sync/orders rejects unauthenticated requests with 401 Unauthorized');
 
     // 2. Strict Origin Validation & Anti-CSRF
     console.log('\n[Test 2: Origin Validation & Anti-CSRF Scenarios]');

@@ -212,9 +212,194 @@ async function runHttpTests() {
     assertEqual(reopenData.ticket.status, 'PENDING', 'Ticket status reset to PENDING');
 
     // =========================================================================
-    // Suite 7: HTTP Logout & Post-Logout Invalidation
+    // Suite 7: Authenticated Order Sync & Fail-Closed Cross-Tenant Enforcement
     // =========================================================================
-    console.log('\n[Suite 7: HTTP Logout & Post-Logout Invalidation]');
+    console.log('\n[Suite 7: Authenticated Order Sync & Fail-Closed Cross-Tenant Enforcement]');
+
+    // 1. Unauthenticated calls to /api/v1/orders/sync and /api/v1/sync/orders
+    const unauthSyncRes1 = await fetch(`${baseUrl}/api/v1/orders/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idempotencyKey: 'idemp-unauth-1',
+        order: { items: [], totalNet: 10000 },
+      }),
+    });
+    assertEqual(unauthSyncRes1.status, 401, 'Unauthenticated POST /api/v1/orders/sync returns 401 Unauthorized');
+
+    const unauthSyncRes2 = await fetch(`${baseUrl}/api/v1/sync/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientGeneratedId: 'idemp-unauth-2',
+        order: { items: [], totalNet: 10000 },
+      }),
+    });
+    assertEqual(unauthSyncRes2.status, 401, 'Unauthenticated POST /api/v1/sync/orders returns 401 Unauthorized');
+
+    // 2. Cross-Tenant Forgery Rejection: 100 HICH session trying to sync under Modendo
+    const crossTenantSyncHeaderRes = await fetch(`${baseUrl}/api/v1/orders/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookieValue,
+        'X-Tenant-Id': 'tenant-modendo-01',
+        'Idempotency-Key': 'idemp-cross-tenant-1',
+      },
+      body: JSON.stringify({
+        order: {
+          clientGeneratedId: 'idemp-cross-tenant-1',
+          orderType: 'DINE_IN',
+          state: 'PAID',
+          items: [{ itemId: 'item-1', itemNameSnapshot: 'قهوه', quantity: 1, unitPriceToman: 50000, finalPriceToman: 50000, modifiers: [] }],
+          payments: [{ paymentMethod: 'CASH', amountToman: 50000 }],
+          grossTotalToman: 50000,
+          discountTotalToman: 0,
+          netTotalToman: 50000,
+          vatTotalToman: 4128,
+          createdAt: new Date().toISOString(),
+        },
+      }),
+    });
+    assertEqual(crossTenantSyncHeaderRes.status, 403, 'Cross-tenant X-Tenant-Id header on /api/v1/orders/sync returns 403 Forbidden');
+
+    const crossTenantSyncBodyRes = await fetch(`${baseUrl}/api/v1/orders/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookieValue,
+        'Idempotency-Key': 'idemp-cross-tenant-2',
+      },
+      body: JSON.stringify({
+        tenantId: 'tenant-modendo-01',
+        order: {
+          clientGeneratedId: 'idemp-cross-tenant-2',
+          orderType: 'DINE_IN',
+          state: 'PAID',
+          items: [{ itemId: 'item-1', itemNameSnapshot: 'قهوه', quantity: 1, unitPriceToman: 50000, finalPriceToman: 50000, modifiers: [] }],
+          payments: [{ paymentMethod: 'CASH', amountToman: 50000 }],
+          grossTotalToman: 50000,
+          discountTotalToman: 0,
+          netTotalToman: 50000,
+          vatTotalToman: 4128,
+          createdAt: new Date().toISOString(),
+        },
+      }),
+    });
+    assertEqual(crossTenantSyncBodyRes.status, 403, 'Cross-tenant body.tenantId on /api/v1/orders/sync returns 403 Forbidden');
+
+    const crossTenantSyncControllerRes = await fetch(`${baseUrl}/api/v1/sync/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookieValue,
+        'X-Tenant-Id': 'tenant-modendo-01',
+      },
+      body: JSON.stringify({
+        clientGeneratedId: 'idemp-cross-tenant-3',
+        tenantId: 'tenant-modendo-01',
+        order: {
+          items: [{ productId: 'item-1', quantity: 1, name: 'قهوه' }],
+          totalNet: 50000,
+          payments: [{ method: 'POS_TERMINAL', amount: 50000 }],
+        },
+      }),
+    });
+    assertEqual(crossTenantSyncControllerRes.status, 403, 'Cross-tenant access on /api/v1/sync/orders returns 403 Forbidden');
+
+    // 3. Authenticated Order Sync Succeeds for Matching Tenant
+    const validOrder = {
+      clientGeneratedId: `idemp-success-${uniqueSuffix}`,
+      id: `ord_valid_${uniqueSuffix}`,
+      orderNumber: 999,
+      tenantId: 'tenant-100hich-01',
+      state: 'PAID' as const,
+      orderType: 'DINE_IN' as const,
+      tableLabel: 'میز ۱',
+      customerName: 'مشتری آزمایشی',
+      grossAmountToman: 110000,
+      grossAmount: 110000,
+      discountAmountToman: 0,
+      discountAmount: 0,
+      netTotalToman: 110000,
+      totalNet: 110000,
+      paidAmountToman: 110000,
+      paidAmount: 110000,
+      shiftId: 'shift-1',
+      createdByUserId: 'usr-1',
+      createdByUserName: 'صندوق‌دار',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: [
+        {
+          id: `item-ag-${uniqueSuffix}`,
+          menuItemId: 'item-1',
+          itemNameSnapshot: 'لاته کلاسیک',
+          quantity: 2,
+          unitPriceSnapshotToman: 55000,
+          modifiersDeltaToman: 0,
+          modifiers: [],
+          subtotalToman: 110000,
+        },
+      ],
+      payments: [
+        {
+          id: `pay-ag-${uniqueSuffix}`,
+          orderId: `ord_valid_${uniqueSuffix}`,
+          clientGeneratedId: `pay-idem-${uniqueSuffix}`,
+          tenantId: 'tenant-100hich-01',
+          shiftId: 'shift-1',
+          receivedByUserId: 'usr-1',
+          paymentMethod: 'POS_TERMINAL' as const,
+          amountToman: 110000,
+          status: 'SUCCESSFUL' as const,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    };
+
+    const syncSuccessRes = await fetch(`${baseUrl}/api/v1/orders/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookieValue,
+        'Idempotency-Key': `idemp-success-${uniqueSuffix}`,
+      },
+      body: JSON.stringify({
+        source: 'POS',
+        clientGeneratedId: `idemp-success-${uniqueSuffix}`,
+        order: validOrder,
+      }),
+    });
+    assertEqual(syncSuccessRes.status, 200, 'Authenticated POST /api/v1/orders/sync returns 200 OK');
+    const syncSuccessData = await syncSuccessRes.json();
+    assert(syncSuccessData.success === true, 'Order sync reports success === true');
+    assert(!!syncSuccessData.orderId, 'Order sync returns persisted orderId');
+
+    // 4. Authenticated /api/v1/sync/orders Succeeds for Matching Tenant
+    const syncControllerSuccessRes = await fetch(`${baseUrl}/api/v1/sync/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookieValue,
+      },
+      body: JSON.stringify({
+        clientGeneratedId: `idemp-ctrl-success-${uniqueSuffix}`,
+        order: {
+          items: [{ productId: 'item-ctrl-1', quantity: 1, name: 'آیتم کنترلر' }],
+          totalNet: 75000,
+          payments: [{ method: 'POS_TERMINAL', amount: 75000 }],
+        },
+      }),
+    });
+    assertEqual(syncControllerSuccessRes.status, 200, 'Authenticated POST /api/v1/sync/orders returns 200 OK');
+    const syncCtrlData = await syncControllerSuccessRes.json();
+    assert(syncCtrlData.success === true, 'Dedicated sync controller reports success === true');
+
+    // =========================================================================
+    // Suite 8: HTTP Logout & Post-Logout Invalidation
+    // =========================================================================
+    console.log('\n[Suite 8: HTTP Logout & Post-Logout Invalidation]');
 
     const logoutRes = await fetch(`${baseUrl}/api/v1/auth/logout`, {
       method: 'POST',

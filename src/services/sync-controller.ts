@@ -6,11 +6,46 @@ import {
   DatabaseClient,
 } from './sync-order-handler';
 import { websocketServer } from './websocket-server'; // مدیریت اتصالات سوکت
+import { AuthenticatedRequest } from '../../server/authMiddleware';
 
 export const db: DatabaseClient = defaultDatabaseClient;
 
-export async function handleOrderSync(req: Request, res: Response) {
-  const tenantId = (req.headers['x-tenant-id'] as string) || req.body?.tenantId || 'tenant_100hich';
+export async function handleOrderSync(req: Request | AuthenticatedRequest, res: Response) {
+  const authReq = req as AuthenticatedRequest;
+  const sessionTenantId = authReq.user?.tenantId;
+  const headerTenantId = req.headers['x-tenant-id'] as string | undefined;
+  const bodyTenantId = (req.body?.tenantId || req.body?.order?.tenantId) as string | undefined;
+
+  // Strict fail-closed tenant validation:
+  // 1. If authenticated session exists, tenantId MUST derive from session.
+  // 2. Any explicit tenant in header or body must match session (fail-closed 403 on mismatch).
+  // 3. Silent fallback ('tenant_100hich') is completely eliminated.
+  let tenantId: string;
+
+  if (sessionTenantId) {
+    if (headerTenantId && headerTenantId !== sessionTenantId) {
+      return res.status(403).json({
+        success: false,
+        error: `Cross-tenant access denied. Header tenant "${headerTenantId}" does not match authenticated session "${sessionTenantId}".`,
+      });
+    }
+    if (bodyTenantId && bodyTenantId !== sessionTenantId) {
+      return res.status(403).json({
+        success: false,
+        error: `Cross-tenant access denied. Body tenant "${bodyTenantId}" does not match authenticated session "${sessionTenantId}".`,
+      });
+    }
+    tenantId = sessionTenantId;
+  } else {
+    // When invoked outside middleware (e.g. unit tests), require an explicit tenant from header or body
+    tenantId = (headerTenantId || bodyTenantId)!;
+    if (!tenantId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required tenant identifier. Silent tenant fallback is prohibited.',
+      });
+    }
+  }
   const payload = req.body;
 
   try {
