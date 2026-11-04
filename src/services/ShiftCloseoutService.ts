@@ -147,6 +147,7 @@ export class ShiftCloseoutService {
         item_id: ingId,
         name: ing ? ing.title_fa : ingId,
         consumed_qty: roundedQty,
+        depleted_amount: roundedQty,
         unit: ing ? ing.unit : 'واحد',
         total_cost_toman: Math.round(roundedQty * unitCost),
       });
@@ -170,7 +171,11 @@ export class ShiftCloseoutService {
       opened_by: shift.openedByUserName,
       closed_by: closedBy,
       opening_cash: openingCash,
+      opening_cash_float: openingCash,
+      openingCash: openingCash,
+      openingCashToman: openingCash,
       counted_cash_float: countedCashFloat,
+      actual_cash_counted: countedCashFloat,
       expected_cash: expectedCash,
       discrepancy,
       is_shortage: isShortage,
@@ -195,12 +200,14 @@ export class ShiftCloseoutService {
       tenant_id: tId,
     };
 
-    // Persist to IndexedDB
-    try {
-      const targetDb = tId ? getCafeDatabase(tId) : db;
-      await targetDb.zReports.put(zReport);
-    } catch (err) {
-      console.warn('[ShiftCloseoutService] Failed to persist Z-Report in IndexedDB:', err);
+    // Persist to IndexedDB (if indexedDB runtime environment is available)
+    if (typeof indexedDB !== 'undefined' || typeof (globalThis as any).indexedDB !== 'undefined') {
+      try {
+        const targetDb = tId ? getCafeDatabase(tId) : db;
+        await targetDb.zReports.put(zReport);
+      } catch (err) {
+        console.warn('[ShiftCloseoutService] Failed to persist Z-Report in IndexedDB:', err);
+      }
     }
 
     return zReport;
@@ -316,9 +323,9 @@ export class ShiftCloseoutService {
       formatCols('هزینه‌های تنخواه نقدی:', `${formatToman(zReport.expenses_cash_drawer)} ت`),
       ruleLine,
       'مغایرت‌سنجی صندوق فیزیکی (CASH RECONCILIATION):',
-      formatCols('موجودی اولیه صندوق:', `${formatToman(zReport.opening_cash)} ت`),
+      formatCols('موجودی اولیه صندوق:', `${formatToman(zReport.opening_cash ?? (zReport as any).opening_cash_float ?? (zReport as any).openingCash ?? (zReport as any).openingCashToman ?? 0)} ت`),
       formatCols('موجودی سیستمی مورد انتظار:', `${formatToman(zReport.expected_cash)} ت`),
-      formatCols('شمارش واقعی ثبت‌شده:', `${formatToman(zReport.actual_cash_counted)} ت`),
+      formatCols('شمارش واقعی ثبت‌شده:', `${formatToman((zReport as any).actual_cash_counted ?? zReport.counted_cash_float ?? 0)} ت`),
     ];
 
     if (zReport.is_shortage) {
@@ -347,7 +354,8 @@ export class ShiftCloseoutService {
     } else {
       for (const item of zReport.material_depletions) {
         const itemLine = `  • ${item.name}`;
-        const qtyLine = `${item.depleted_amount} ${item.unit}`;
+        const qty = (item as any).depleted_amount ?? item.consumed_qty ?? 0;
+        const qtyLine = `${qty} ${item.unit}`;
         textLines.push(formatCols(itemLine, qtyLine));
       }
     }
@@ -381,16 +389,8 @@ export class ShiftCloseoutService {
     const ruleLine = '-'.repeat(charWidth);
     const doubleRule = '='.repeat(charWidth);
 
-    const openDate = new Date(zReport.opened_at).toLocaleDateString('fa-IR');
-    const openTime = new Date(zReport.opened_at).toLocaleTimeString('fa-IR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-    const closeDate = new Date(zReport.closed_at).toLocaleDateString('fa-IR');
-    const closeTime = new Date(zReport.closed_at).toLocaleTimeString('fa-IR', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const openIso = new Date(zReport.opened_at).toISOString().replace('T', ' ').substring(0, 19);
+    const closeIso = new Date(zReport.closed_at).toISOString().replace('T', ' ').substring(0, 19);
 
     const byteChunks: number[] = [];
 
@@ -419,27 +419,36 @@ export class ShiftCloseoutService {
     byteChunks.push(0x1b, 0x61, 0x00);
     this.appendAscii(byteChunks, `${doubleRule}\n`);
     this.appendAscii(byteChunks, `SHIFT ID: #${zReport.shift_id.slice(-6)}   ORDERS: ${zReport.order_count}\n`);
-    this.appendAscii(byteChunks, `OPENED:   ${openDate} ${openTime}\n`);
-    this.appendAscii(byteChunks, `CLOSED:   ${closeDate} ${closeTime}\n`);
+    this.appendAscii(byteChunks, `OPENED:   ${openIso} UTC\n`);
+    this.appendAscii(byteChunks, `CLOSED:   ${closeIso} UTC\n`);
     this.appendAscii(byteChunks, `${ruleLine}\n`);
-    this.appendAscii(byteChunks, `GROSS SALES:   ${formatToman(zReport.gross_sales)} TOMAN\n`);
-    this.appendAscii(byteChunks, `DISCOUNTS:     ${formatToman(zReport.discounts_total)} TOMAN\n`);
-    this.appendAscii(byteChunks, `NET SALES:     ${formatToman(zReport.net_sales)} TOMAN\n`);
-    this.appendAscii(byteChunks, `VAT (9%):      ${formatToman(zReport.vat_total)} TOMAN\n`);
+    this.appendAscii(byteChunks, `GROSS SALES:   ${formatToman(zReport.gross_sales, false)} TOMAN\n`);
+    this.appendAscii(byteChunks, `DISCOUNTS:     ${formatToman(zReport.discounts_total, false)} TOMAN\n`);
+    this.appendAscii(byteChunks, `NET SALES:     ${formatToman(zReport.net_sales, false)} TOMAN\n`);
+    this.appendAscii(byteChunks, `VAT (9%):      ${formatToman(zReport.vat_total, false)} TOMAN\n`);
     this.appendAscii(byteChunks, `${ruleLine}\n`);
-    this.appendAscii(byteChunks, `POS TERMINAL:  ${formatToman(zReport.payment_methods.pos_card)} TOMAN\n`);
-    this.appendAscii(byteChunks, `CASH IN:       ${formatToman(zReport.payment_methods.cash)} TOMAN\n`);
-    this.appendAscii(byteChunks, `PETTY EXPENSE: ${formatToman(zReport.expenses_cash_drawer)} TOMAN\n`);
+    this.appendAscii(byteChunks, `POS TERMINAL:  ${formatToman(zReport.payment_methods.pos_card, false)} TOMAN\n`);
+    this.appendAscii(byteChunks, `CASH IN:       ${formatToman(zReport.payment_methods.cash, false)} TOMAN\n`);
+    this.appendAscii(byteChunks, `PETTY EXPENSE: ${formatToman(zReport.expenses_cash_drawer, false)} TOMAN\n`);
     this.appendAscii(byteChunks, `${ruleLine}\n`);
-    this.appendAscii(byteChunks, `EXPECTED CASH: ${formatToman(zReport.expected_cash)} TOMAN\n`);
-    this.appendAscii(byteChunks, `COUNTED CASH:  ${formatToman(zReport.actual_cash_counted)} TOMAN\n`);
+    this.appendAscii(byteChunks, `EXPECTED CASH: ${formatToman(zReport.expected_cash, false)} TOMAN\n`);
+    this.appendAscii(byteChunks, `COUNTED CASH:  ${formatToman((zReport as any).actual_cash_counted ?? zReport.counted_cash_float ?? 0, false)} TOMAN\n`);
 
     if (zReport.is_shortage) {
-      this.appendAscii(byteChunks, `DISCREPANCY:   SHORTAGE -${formatToman(Math.abs(zReport.discrepancy))} TOMAN\n`);
+      this.appendAscii(byteChunks, `DISCREPANCY:   SHORTAGE -${formatToman(Math.abs(zReport.discrepancy), false)} TOMAN\n`);
     } else if (zReport.is_overage) {
-      this.appendAscii(byteChunks, `DISCREPANCY:   OVERAGE +${formatToman(zReport.discrepancy)} TOMAN\n`);
+      this.appendAscii(byteChunks, `DISCREPANCY:   OVERAGE +${formatToman(zReport.discrepancy, false)} TOMAN\n`);
     } else {
       this.appendAscii(byteChunks, `DISCREPANCY:   PERFECTLY BALANCED (0 TOMAN)\n`);
+    }
+
+    if (zReport.material_depletions && zReport.material_depletions.length > 0) {
+      this.appendAscii(byteChunks, `${ruleLine}\n`);
+      this.appendAscii(byteChunks, 'RAW MATERIALS & BEANS DEPLETED:\n');
+      for (const mat of zReport.material_depletions) {
+        const matQty = (mat as any).depleted_amount ?? mat.consumed_qty ?? 0;
+        this.appendAscii(byteChunks, `- ${mat.name}: ${matQty} ${mat.unit}\n`);
+      }
     }
 
     this.appendAscii(byteChunks, `${doubleRule}\n\n\n\n`);

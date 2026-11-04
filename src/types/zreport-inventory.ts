@@ -7,6 +7,7 @@ export interface MaterialDepletionItem {
   item_id: string;
   name: string;
   consumed_qty: number;
+  depleted_amount?: number; // Supported alias for consumed_qty
   unit: string;
   total_cost_toman?: number;
 }
@@ -21,7 +22,11 @@ export interface ZReportData {
   opened_by: string;
   closed_by: string;
   opening_cash: number;
+  opening_cash_float?: number; // Supported alias
+  openingCash?: number; // Supported alias
+  openingCashToman?: number; // Supported alias
   counted_cash_float: number;
+  actual_cash_counted?: number; // Supported alias for counted_cash_float
   expected_cash: number;
   discrepancy: number;
   is_shortage: boolean;

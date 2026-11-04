@@ -10,8 +10,9 @@ import { Order, Payment, Expense, Shift, ShiftReportSummary } from '../types/dom
  * Format a Toman amount with Persian comma grouping
  * e.g., 145000 -> "۱۴۵,۰۰۰" or "145,000"
  */
-export function formatToman(amount: number, usePersianDigits = true): string {
-  const rounded = Math.round(amount);
+export function formatToman(amount: number | undefined | null, usePersianDigits = true): string {
+  const safe = (typeof amount === 'number' && !isNaN(amount)) ? amount : 0;
+  const rounded = Math.round(safe);
   const formatted = new Intl.NumberFormat('en-US').format(rounded);
   if (!usePersianDigits) return formatted;
   
