@@ -38,6 +38,8 @@ import { websocketServer } from '../services/websocket-server';
 import { SmartOrdersStore } from '../services/storage';
 import { thermalPrinterDriver } from '../services/ThermalPrinterDriver';
 import { StationRouter } from '../services/StationRouter';
+import { useLanOrderReceiver } from '../hooks/useLanOrderReceiver';
+import type { LanOrderPayload } from '../services/lanOrderSocketDaemon';
 
 export interface BaristaKdsModalProps {
   isOpen: boolean;
@@ -121,6 +123,31 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
   // Explicit tenant context: prop takes precedence over canonical store
   const activeTenantId = tenantId || SmartOrdersStore.getActiveTenantId();
   const isTenantValid = isValidTenantId(activeTenantId);
+
+  // Realtime LAN order receiver hook
+  const { isConnected: isLanConnected } = useLanOrderReceiver({
+    tenantId: activeTenantId,
+    enabled: isOpen && isTenantValid,
+    onOrderArrived: (order: LanOrderPayload) => {
+      baristaDispatcher.dispatchOrder({
+        orderId: order.orderId,
+        tenantId: order.tenantId,
+        tableNumber: order.tableNumber,
+        items: order.items.map((item) => ({
+          productId: item.id,
+          title: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          subtotal: item.unitPrice * item.quantity,
+          notes: item.notes ? [item.notes] : [],
+        })),
+        totalAmount: order.subtotal,
+        status: 'PAID',
+        prepStatus: 'PENDING',
+        paidAt: new Date(order.timestamp).toISOString(),
+      }, activeTenantId);
+    },
+  });
 
   // Live timer tick every 1000ms for accurate SLA calculations
   useEffect(() => {
@@ -348,6 +375,19 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
 
           {/* Right Action Tools & Fullscreen Toggle */}
           <div className="flex items-center gap-2">
+            {/* Live LAN WebSocket Telemetry */}
+            <div
+              className={`hidden md:flex items-center gap-1.5 px-2.5 py-1.5 border rounded-xl text-xs font-mono transition-all ${
+                isLanConnected
+                  ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-300'
+                  : 'bg-stone-900 border-stone-800 text-stone-500'
+              }`}
+              title={isLanConnected ? 'متصل به سرور وب‌سوکت شبکه محلی (پورت ۹۱۰۱)' : 'عدم اتصال به دیمن محلی'}
+            >
+              <span className={`w-2 h-2 rounded-full ${isLanConnected ? 'bg-emerald-400 animate-pulse' : 'bg-stone-600'}`} />
+              <span className="text-[10px]">{isLanConnected ? 'LAN KDS ONLINE' : 'LAN OFFLINE'}</span>
+            </div>
+
             {/* Live SLA Badge Indicators */}
             <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-stone-900/90 border border-stone-800 rounded-xl text-xs font-mono">
               <div className="flex items-center gap-1.5 text-emerald-400" title="سفارشات در بازه استاندارد">

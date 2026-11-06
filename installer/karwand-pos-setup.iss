@@ -1,5 +1,5 @@
 #define MyAppName "KarWand POS"
-#define MyAppVersion "0.14.0"
+#define MyAppVersion "0.15.0"
 #define MyAppPublisher "KarWand Software Technologies"
 #define MyAppURL "https://smartorders.io"
 #define MyAppExeName "KarWandLauncher.exe"

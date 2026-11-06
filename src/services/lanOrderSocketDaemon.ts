@@ -1,6 +1,7 @@
 // src/services/lanOrderSocketDaemon.ts
 import { createServer, Server as HttpServer } from 'http';
 import { WebSocketServer, WebSocket, RawData } from 'ws';
+import { dispatchPrintJob } from './printerBridge';
 
 export type ClientRole = 'KDS' | 'POS' | 'TABLE_CLIENT';
 
@@ -319,4 +320,32 @@ export class LanOrderSocketDaemon {
   public getConnectedCount(): number {
     return this.clients.size;
   }
+}
+
+/**
+ * Wires incoming LAN orders directly to the local hardware printer bridge (BAR station).
+ */
+export function wireLanOrderToPrinter(
+  daemon: LanOrderSocketDaemon,
+  options: { autoPrintBar?: boolean } = { autoPrintBar: true }
+): void {
+  daemon.onOrderReceived(async (order: LanOrderPayload) => {
+    if (!options.autoPrintBar) return;
+    try {
+      await dispatchPrintJob('BAR', {
+        ticketId: order.orderId,
+        orderNumber: order.orderId,
+        tableLabel: order.tableNumber,
+        items: order.items.map((it) => ({
+          name: it.name,
+          quantity: it.quantity,
+          notes: it.notes,
+          priceToman: it.unitPrice,
+        })),
+        totalAmountToman: order.subtotal,
+      });
+    } catch (err) {
+      console.warn('[LanOrderSocketDaemon] Auto-print BAR job failed:', err);
+    }
+  });
 }
