@@ -19,7 +19,9 @@ import {
   SplitTicketResult,
 } from './StationRouter';
 import { TicketLayoutEngine } from '../templates/KitchenTicketTemplate';
-import { PersianEscPosRenderer } from '../hardware/persianEscPos';
+import { PersianEscPosRenderer, PersianReceiptLine } from '../hardware/persianEscPos';
+import { RasterLogoRenderer } from '../hardware/rasterLogoRenderer';
+import { ImageLoader } from '../hardware/imageLoader';
 
 export type SpoolerJobStatus = 'QUEUED' | 'SENDING' | 'SUCCESS' | 'FAILED';
 export type StationStatus = 'IDLE' | 'BUSY' | 'OFFLINE' | 'ERROR';
@@ -575,4 +577,31 @@ export async function dispatchPrintJob(
     ticketId: typeof payload === 'object' && 'ticketId' in payload ? (payload as any).ticketId : undefined,
     tableLabel: typeof payload === 'object' && 'tableLabel' in payload ? (payload as any).tableLabel : undefined,
   });
+}
+
+/**
+ * Generates a complete Persian ESC/POS ticket buffer with optional rasterized logo.
+ */
+export async function generateReceiptWithLogo(
+  logoBase64: string | null,
+  orderId: string,
+  tableName: string,
+  lines: PersianReceiptLine[]
+): Promise<Buffer> {
+  let logoBuffer: Buffer | null = null;
+
+  if (logoBase64) {
+    try {
+      const pixelBuffer = await ImageLoader.fromBrowserSource(logoBase64, 576);
+      logoBuffer = RasterLogoRenderer.toEscPosRaster(pixelBuffer, {
+        dither: true,
+        centerAlign: true,
+        maxPrinterDots: 576,
+      });
+    } catch (err) {
+      console.warn('Could not rasterize logo, falling back to text header:', err);
+    }
+  }
+
+  return PersianEscPosRenderer.buildReceiptWithLogo(logoBuffer, orderId, tableName, lines);
 }

@@ -371,13 +371,20 @@ function isRtlString(str: string): boolean {
 // Raw ESC/POS Binary Ticket Builder
 // -------------------------------------------------------------
 
+export interface PersianReceiptLine {
+  name: string;
+  quantity: number;
+  notes?: string;
+  priceToman?: number;
+}
+
 export interface ThermalTicketOptions {
   ticketId?: string | number;
   orderNumber?: string | number;
   tableLabel?: string;
   station?: string;
   brandNameFa?: string;
-  items?: Array<{ name: string; quantity: number; notes?: string; priceToman?: number }>;
+  items?: Array<PersianReceiptLine>;
   totalAmountToman?: number;
   timestamp?: string | number;
   logoBuffer?: Buffer;
@@ -587,11 +594,42 @@ export class PersianEscPosRenderer {
 
   /**
    * Prepend branded raster logo before rendering standard Persian ESC/POS ticket.
+   * Supports both:
+   * 1. buildReceiptWithLogo(ticketOptions, logoBuffer)
+   * 2. buildReceiptWithLogo(logoBuffer, orderId, tableName, lines)
    */
-  public static buildReceiptWithLogo(ticket: ThermalTicketOptions, logoBuffer: Buffer): Buffer {
+  public static buildReceiptWithLogo(
+    arg1: ThermalTicketOptions | Buffer | null,
+    arg2?: Buffer | string,
+    tableName?: string,
+    lines?: PersianReceiptLine[]
+  ): Buffer {
+    if (typeof arg2 === 'string') {
+      const logoBuffer = Buffer.isBuffer(arg1) ? arg1 : undefined;
+      const orderId = arg2;
+      const table = tableName || 'میز ۴';
+      const items = lines || [];
+      const totalAmountToman = items.reduce(
+        (sum, item) => sum + (item.priceToman || 0) * (item.quantity || 1),
+        0
+      );
+
+      return this.renderTicket({
+        ticketId: orderId,
+        orderNumber: orderId,
+        tableLabel: table,
+        items,
+        totalAmountToman: totalAmountToman > 0 ? totalAmountToman : undefined,
+        logoBuffer,
+      });
+    }
+
+    const ticket = (arg1 || {}) as ThermalTicketOptions;
+    const logo = Buffer.isBuffer(arg2) ? arg2 : ticket.logoBuffer;
+
     return this.renderTicket({
       ...ticket,
-      logoBuffer,
+      logoBuffer: logo,
     });
   }
 }
