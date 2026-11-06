@@ -46,11 +46,13 @@ Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameter
 [Run]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""KarWand POS LAN Print Gateway (Port 9100)"" dir=in action=allow protocol=TCP localport=9100"; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""KarWand POS LAN Print Gateway Out (Port 9100)"" dir=out action=allow protocol=TCP localport=9100"; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""KarWand POS LAN Order Socket (Port 9101)"" dir=in action=allow protocol=TCP localport=9101 profile=private,domain"; Flags: runhidden
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""KarWand POS LAN Print Gateway (Port 9100)"""; Flags: runhidden
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""KarWand POS LAN Print Gateway Out (Port 9100)"""; Flags: runhidden
+Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall delete rule name=""KarWand POS LAN Order Socket (Port 9101)"""; Flags: runhidden
 
 [UninstallDelete]
 Type: files; Name: "{app}\venue-config.json"
