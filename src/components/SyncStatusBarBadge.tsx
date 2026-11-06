@@ -10,7 +10,7 @@ export interface SyncStatusBarBadgeProps {
 }
 
 const physicsSpring = {
-  type: 'spring',
+  type: 'spring' as const,
   stiffness: 420,
   damping: 32,
   mass: 0.7,

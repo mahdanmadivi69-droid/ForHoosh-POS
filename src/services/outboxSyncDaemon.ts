@@ -1,4 +1,4 @@
-﻿import type { CafeDatabase } from '../db/cafeDb';
+import type { CafeDatabase } from '../db/cafeDb';
 import type { Order } from '../types/db';
 import type { SyncOrder } from '../../central-framework/types/officeAgentTypes';
 import { CentralSyncBridge, type SyncEngineStatus } from './centralSyncBridge';
@@ -111,10 +111,10 @@ export class OutboxSyncDaemon {
         tableNumber: o.tableId,
         items: (o.items || []).map((it) => ({
           id: it.menuItemId || it.id || 'item',
-          name: it.title || it.name || 'Unknown Item',
+          name: it.title || (it as any).name || 'Unknown Item',
           quantity: it.quantity || 1,
-          unitPrice: Math.round(it.unitPrice || it.price || 0),
-          totalPrice: Math.round((it.unitPrice || it.price || 0) * (it.quantity || 1)),
+          unitPrice: Math.round(it.unitPrice || (it as any).price || 0),
+          totalPrice: Math.round((it.unitPrice || (it as any).price || 0) * (it.quantity || 1)),
         })),
       }));
 
