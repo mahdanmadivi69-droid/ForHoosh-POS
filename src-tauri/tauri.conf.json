@@ -1,0 +1,23 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "KarWandLauncher",
+  "version": "0.14.0",
+  "identifier": "io.smartorders.karwand.pos",
+  "build": {
+    "frontendDist": "../dist/100hich"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "KarWand POS Terminal",
+        "width": 1280,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  }
+}

@@ -16,3 +16,10 @@ backups/
 
 .kds_data/
 .kds_test_tmp/
+
+# Desktop / Tauri / Windows build artifacts
+src-tauri/target/
+dist-installer/
+dist-win/
+vitest.cmd
+vitest.ps1
