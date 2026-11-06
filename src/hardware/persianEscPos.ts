@@ -371,6 +371,18 @@ function isRtlString(str: string): boolean {
 // Raw ESC/POS Binary Ticket Builder
 // -------------------------------------------------------------
 
+export interface ThermalTicketOptions {
+  ticketId?: string | number;
+  orderNumber?: string | number;
+  tableLabel?: string;
+  station?: string;
+  brandNameFa?: string;
+  items?: Array<{ name: string; quantity: number; notes?: string; priceToman?: number }>;
+  totalAmountToman?: number;
+  timestamp?: string | number;
+  logoBuffer?: Buffer;
+}
+
 export class PersianEscPosRenderer {
   private chunks: Buffer[] = [];
   private readonly columns: number;
@@ -434,6 +446,15 @@ export class PersianEscPosRenderer {
   /**
    * Appends raw binary opcode sequence.
    */
+  /**
+   * Appends pre-rendered ESC/POS raster graphics buffer (e.g., from RasterLogoRenderer).
+   */
+  public logo(buffer: Buffer): this {
+    this.chunks.push(buffer);
+    this.feed(1);
+    return this;
+  }
+
   public raw(buffer: Buffer): this {
     this.chunks.push(buffer);
     return this;
@@ -516,24 +537,20 @@ export class PersianEscPosRenderer {
   /**
    * Convenience helper to render a complete order or station dispatch ticket into Font B binary ESC/POS.
    */
-  public static renderTicket(ticket: {
-    ticketId?: string | number;
-    orderNumber?: string | number;
-    tableLabel?: string;
-    station?: string;
-    brandNameFa?: string;
-    items?: Array<{ name: string; quantity: number; notes?: string; priceToman?: number }>;
-    totalAmountToman?: number;
-    timestamp?: string | number;
-  }): Buffer {
+  public static renderTicket(ticket: ThermalTicketOptions): Buffer {
     const renderer = new PersianEscPosRenderer(FONT_B_COLUMNS);
     const brand = ticket.brandNameFa || 'رستری تخصصی ۱۰۰ هیچ';
     const stationLabel = ticket.station === 'BAR' ? 'ایستگاه بار (BAR)' : 'ایستگاه آشپزخانه (KITCHEN)';
     const orderNo = ticket.orderNumber || ticket.ticketId || '101';
     const table = ticket.tableLabel || 'میز ۴';
 
+    renderer.init();
+
+    if (ticket.logoBuffer && ticket.logoBuffer.length > 0) {
+      renderer.logo(ticket.logoBuffer);
+    }
+
     renderer
-      .init()
       .alignCenter()
       .bold(true)
       .line(brand)
@@ -566,5 +583,15 @@ export class PersianEscPosRenderer {
       .cut();
 
     return renderer.toBuffer();
+  }
+
+  /**
+   * Prepend branded raster logo before rendering standard Persian ESC/POS ticket.
+   */
+  public static buildReceiptWithLogo(ticket: ThermalTicketOptions, logoBuffer: Buffer): Buffer {
+    return this.renderTicket({
+      ...ticket,
+      logoBuffer,
+    });
   }
 }

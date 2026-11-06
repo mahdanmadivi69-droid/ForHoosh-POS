@@ -268,5 +268,42 @@ describe('Persian ESC/POS & Thermal Layout Engine', () => {
       expect(buffer[len - 2]).toBe(0x56);
       expect(buffer[len - 1]).toBe(0x00);
     });
+    it('prepends logoBuffer before ticket headers when using buildReceiptWithLogo()', () => {
+      const mockLogo = Buffer.from([0x1d, 0x76, 0x30, 0x00, 0x01, 0x00, 0x01, 0x00, 0xff]);
+      const buffer = PersianEscPosRenderer.buildReceiptWithLogo(
+        {
+          ticketId: '202',
+          orderNumber: '202',
+          tableLabel: 'میز ۱۰',
+          station: 'BAR',
+          brandNameFa: 'رستری تخصصی ۱۰۰ هیچ',
+          items: [{ name: 'آمریکانو', quantity: 1, priceToman: 70000 }],
+          totalAmountToman: 70000,
+        },
+        mockLogo
+      );
+
+      expect(buffer).toBeInstanceOf(Buffer);
+
+      // Printer init: ESC @ (0x1b, 0x40) and Font B ESC M 1 (0x1b, 0x4d, 0x01)
+      expect(buffer[0]).toBe(0x1b);
+      expect(buffer[1]).toBe(0x40);
+      expect(buffer[2]).toBe(0x1b);
+      expect(buffer[3]).toBe(0x4d);
+      expect(buffer[4]).toBe(0x01);
+
+      // Followed immediately by the mock logo buffer bytes (at offset 5)
+      const logoSlice = buffer.subarray(5, 5 + mockLogo.length);
+      expect(logoSlice.equals(mockLogo)).toBe(true);
+
+      // Followed by feed byte (LF = 0x0a)
+      expect(buffer[5 + mockLogo.length]).toBe(0x0a);
+
+      // Ends with paper cut GS V 0
+      const len = buffer.length;
+      expect(buffer[len - 3]).toBe(0x1d);
+      expect(buffer[len - 2]).toBe(0x56);
+      expect(buffer[len - 1]).toBe(0x00);
+    });
   });
 });
