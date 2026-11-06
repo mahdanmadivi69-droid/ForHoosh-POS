@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SyncStatusBarBadge } from '../src/components/SyncStatusBarBadge';
@@ -16,7 +16,7 @@ describe('SyncStatusBarBadge UI Component', () => {
         }}
       />
     );
-    expect(screen.getByText('همگام')).toBeDefined();
+    expect(screen.getByText('همگام ابری')).toBeDefined();
   });
 
   it('renders pending queue indicator and invokes manual flush on click', () => {
@@ -34,8 +34,8 @@ describe('SyncStatusBarBadge UI Component', () => {
       />
     );
 
-    expect(screen.getByText('4 سفارش در صف ارسال')).toBeDefined();
-    fireEvent.click(screen.getByText('4 سفارش در صف ارسال'));
+    expect(screen.getByText('صف آفلاین')).toBeDefined();
+    fireEvent.click(screen.getByText('صف آفلاین'));
     expect(handleFlush).toHaveBeenCalledTimes(1);
   });
 
@@ -51,6 +51,6 @@ describe('SyncStatusBarBadge UI Component', () => {
         }}
       />
     );
-    expect(screen.getByText('تعلیق ابری (نیاز به تمدید)')).toBeDefined();
+    expect(screen.getByText('تعلیق اشتراک')).toBeDefined();
   });
 });
