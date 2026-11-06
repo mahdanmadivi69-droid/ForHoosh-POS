@@ -22,6 +22,7 @@ import {
 import { handleOrderSync } from './src/services/sync-controller';
 import { getKdsService } from './server/kdsService';
 import { createAuthRouter } from './server/authRoutes';
+import { createCentralOfficeRouter } from './central-framework';
 import {
   requireAuth,
   requireTenantMembership,
@@ -50,6 +51,11 @@ export function createServerApp() {
   // API Route: Authentication & Server-Managed Sessions (GATEKEEPER)
   // -------------------------------------------------------------
   app.use('/api/v1/auth', createAuthRouter());
+
+  // -------------------------------------------------------------
+  // API Route: KarWand Central Control Office Agents Framework
+  // -------------------------------------------------------------
+  app.use('/api/v1/central', createCentralOfficeRouter());
 
   // In-memory Barista Queue for backend webhook storage
   const baristaWebhookTickets: any[] = [];

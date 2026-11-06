@@ -40,6 +40,8 @@ import { RBACService } from './services/RBACService';
 import { SettingsService } from './services/settingsService';
 import { FloorPlanView } from './components/floorplan/FloorPlanView';
 import { dailyBackupScheduler } from './services/dailyBackupScheduler';
+import { ExecutivePLBoard } from './components/ExecutivePLBoard';
+import { TenantConfigBuilder } from './components/TenantConfigBuilder';
 
 export default function App() {
   const [tenant, setTenant] = useState<Tenant>(SmartOrdersStore.getTenant());
@@ -56,7 +58,8 @@ export default function App() {
 
   // UI state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
-  const [currentTab, setCurrentTab] = useState<'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings'>('pos');
+  const [currentTab, setCurrentTab] = useState<'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('pos');
+  const [isTenantConfigOpen, setIsTenantConfigOpen] = useState(false);
   const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [isZReportModalOpen, setIsZReportModalOpen] = useState(false);
@@ -303,6 +306,7 @@ export default function App() {
         onOpenExpenseModal={() => setIsExpenseModalOpen(true)}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
         onOpenBaristaKds={() => setIsBaristaKdsOpen(true)}
+        onOpenTenantConfig={() => setIsTenantConfigOpen(true)}
         baristaActiveCount={baristaActiveCount}
         onUserChange={handleUserChange}
         onLogout={handleLogout}
@@ -387,6 +391,12 @@ export default function App() {
           />
         )}
 
+        {currentTab === 'executive-pl' && (
+          <div className="p-4 max-w-7xl mx-auto">
+            <ExecutivePLBoard />
+          </div>
+        )}
+
         {currentTab === 'settings' && (
           <SettingsView
             currentUserRole={activeUser.role as any}
@@ -405,6 +415,21 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* SaaS Dynamic Tenant Intake Modal */}
+      {isTenantConfigOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
+          <div className="w-full max-w-5xl my-8">
+            <TenantConfigBuilder
+              onClose={() => setIsTenantConfigOpen(false)}
+              onProvisionComplete={(res) => {
+                showToast(`شعبه جدید ${res.tenantId} با موفقیت ایجاد و فعال شد.`);
+                refreshState();
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modals */}
       <ShiftModal

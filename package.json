@@ -2,7 +2,7 @@
   "name": "smartorders-pos",
   "private": true,
   "version": "1.0.0",
-  "description": "سامانه مدیریت صندوق و سفارشات کافه ۱۰۰هیچ (100 Hich Coffee Roasters)",
+  "description": "\u0633\u0627\u0645\u0627\u0646\u0647 \u0645\u062f\u06cc\u0631\u06cc\u062a \u0635\u0646\u062f\u0648\u0642 \u0648 \u0633\u0641\u0627\u0631\u0634\u0627\u062a \u06a9\u0627\u0641\u0647 \u06f1\u06f0\u06f0\u0647\u06cc\u0686 (100 Hich Coffee Roasters)",
   "homepage": "https://mahdanmadivi69-droid.github.io/ForHoosh-POS",
   "type": "module",
   "scripts": {
@@ -26,10 +26,11 @@
     "test:phase1": "tsx tests/phase1InventoryBomIsolation.test.ts && tsx tests/phase1OpenTabIsolation.test.ts && tsx tests/phase1BaristaKdsIsolation.test.ts && tsx tests/phase1IndexedDbIsolation.test.ts",
     "test:p2": "tsx tests/stationRouterPolicy.test.ts && tsx tests/kdsPersistentBackend.test.ts && tsx tests/kdsRestartRecovery.test.ts && tsx tests/authSecurity.test.ts && tsx tests/serverIntegration.test.ts",
     "test:p3": "tsx tests/posOfflineSync.test.ts && tsx tests/shiftCloseoutAccounting.test.ts && tsx tests/stockProcurement.test.ts",
-    "test:p4": "tsx tests/e2eOperationalSmoke.test.ts",
+    "test:p4": "tsx tests/e2eOperationalSmoke.test.ts && tsx tests/centralOfficeAgents.test.ts",
     "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoIsolationAndGateway.test.ts && tsx tests/dualCafeIsolation.test.ts && tsx tests/cloudBackupSync.test.ts && npm run test:phase1 && npm run test:p2 && npm run test:p3 && npm run test:p4",
     "test:silent": "node -e \"import('child_process').then(({ execSync }) => { try { execSync('npm test', { stdio: 'pipe' }); console.log('All regression test suites passed silently (0 failures).'); } catch (e) { console.error(e.stdout ? e.stdout.toString() : e); process.exit(1); } })\"",
-    "test:regression": "npm run test:silent"
+    "test:regression": "npm run test:silent",
+    "test:office": "tsx tests/centralOfficeAgents.test.ts"
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.3",

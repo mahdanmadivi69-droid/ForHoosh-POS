@@ -14,6 +14,8 @@ import {
   Boxes,
   Settings,
   LayoutGrid,
+  TrendingUp,
+  Sparkles,
 } from 'lucide-react';
 import { Shift, User, Tenant, isManagerOrOwner } from '../types/domain';
 import { formatToman } from '../services/financialMath';
@@ -26,13 +28,14 @@ interface HeaderProps {
   activeShift: Shift | null;
   activeUser: User;
   allUsers: User[];
-  currentTab: 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings';
-  onTabChange: (tab: 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings') => void;
+  currentTab: 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl';
+  onTabChange: (tab: 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl') => void;
   onOpenShiftModal: () => void;
   onOpenZReportModal?: () => void;
   onOpenExpenseModal: () => void;
   onOpenBackupModal: () => void;
   onOpenBaristaKds: () => void;
+  onOpenTenantConfig?: () => void;
   baristaActiveCount?: number;
   onUserChange: (userId: string) => void;
   onLogout: () => void;
@@ -50,6 +53,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenExpenseModal,
   onOpenBackupModal,
   onOpenBaristaKds,
+  onOpenTenantConfig,
   baristaActiveCount = 0,
   onUserChange,
   onLogout,
@@ -281,6 +285,25 @@ export const Header: React.FC<HeaderProps> = ({
                 <Lock className="w-2.5 h-2.5 text-amber-400" />
               )}
             </button>
+
+            {/* Executive P&L Board Tab */}
+            {isManager && (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('executive-pl');
+                }}
+                className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                  currentTab === 'executive-pl'
+                    ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                    : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                }`}
+                title="داشبورد یکپارچه سود و زیان (Executive P&L Board)"
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+                <span>داشبورد P&amp;L</span>
+              </button>
+            )}
           </nav>
         </div>
 
@@ -317,6 +340,21 @@ export const Header: React.FC<HeaderProps> = ({
                 : 'باریستا'}
             </span>
           </div>
+
+          {/* SaaS Tenant Intake Modal Trigger */}
+          {onOpenTenantConfig && (
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onOpenTenantConfig();
+              }}
+              className="flex items-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-800/60 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+              title="پذیرش و راه‌اندازی شعبه جدید (SaaS Onboarding)"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+              <span className="hidden xl:inline">شعبه جدید</span>
+            </button>
+          )}
 
           {/* Barista KDS Trigger */}
           <button
