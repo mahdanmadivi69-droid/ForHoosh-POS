@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useOutboxSync } from '../hooks/useOutboxSync';
+import { SyncStatusBarBadge } from './SyncStatusBarBadge';
 import {
   Coffee,
   Clock,
@@ -58,6 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
   onUserChange,
   onLogout,
 }) => {
+  const { status: syncStatus, triggerFlush } = useOutboxSync(tenant.id);
   const isManager = isManagerOrOwner(activeUser.role);
   const [liveClock, setLiveClock] = useState<string>('');
 
@@ -309,6 +312,9 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Live Status, Clock & Actions */}
         <div className="flex items-center gap-2.5">
+                    {/* AntiGravity Cloud Outbox Sync Badge */}
+          <SyncStatusBarBadge status={syncStatus} onManualFlush={triggerFlush} />
+
           {/* Shift Status Indicator */}
           {activeShift ? (
             <div className="hidden sm:flex items-center gap-1.5 bg-emerald-950/50 border border-emerald-800/60 text-emerald-400 px-2.5 py-1 rounded-lg text-xs">
