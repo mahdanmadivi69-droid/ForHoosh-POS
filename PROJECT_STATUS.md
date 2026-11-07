@@ -79,3 +79,13 @@
   بیلد/تست باید در محیط توسعه انجام شود.
 - تست `tests/financialMath.test.ts` رفتار «گرد کردن اعشار» را تأیید می‌کند که با ادعای
   «منع مطلق اعشار» در اسناد قبلی در تضاد بود؛ ادعا اصلاح شد.
+
+---
+
+## Branch state (2026-11-07) � read this first
+
+This repository has divergent lines. main carries the P0/P1 hardening but the
+2026-11-01 feature set. \eature/shared-core-preparation\ is the most advanced
+line and has none of the hardening.
+
+**Authoritative map and decision: docs/audit/BRANCH_MAP.md**
