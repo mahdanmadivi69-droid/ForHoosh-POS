@@ -11,7 +11,8 @@ import { OrderAggregate, OrderItemAggregate, PaymentRecord, OrderState, Modifier
 export function toOrderAggregate(
   order: Order,
   payments: Payment[] = [],
-  clientGeneratedId?: string
+  clientGeneratedId?: string,
+  stateOverride?: OrderState
 ): OrderAggregate {
   const statusToStateMap: Record<OrderStatus, OrderState> = {
     DRAFT: 'DRAFT',
@@ -70,7 +71,7 @@ export function toOrderAggregate(
     shiftId: order.shiftId,
     orderNumber: order.orderNumber,
     orderType: order.orderType,
-    state: statusToStateMap[order.status] || 'DRAFT',
+    state: stateOverride ?? statusToStateMap[order.status] ?? 'DRAFT',
     tableLabel: order.tableLabel,
     customerName: order.customerName,
     items: aggregateItems,

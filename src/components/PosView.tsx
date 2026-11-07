@@ -442,7 +442,7 @@ export const PosView: React.FC<PosViewProps> = ({
 
       // Reached only after createOrder + recordPayment were persisted.
       playPosBeep('success');
-      const orderSyncPayload = toOrderAggregate(result.order, [result.payment], clientGeneratedId);
+      const orderSyncPayload = toOrderAggregate(result.order, [result.payment], clientGeneratedId, 'PAID');
 
       // 1. Enqueue in OfflineSyncQueue (IndexedDB)
       globalOfflineSyncQueue.enqueue(orderSyncPayload).catch((err) => {

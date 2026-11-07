@@ -220,8 +220,8 @@ export function renderReceiptTemplateHtml(
       <div style="text-align: center; margin-bottom: 8px;">
         <h1 style="font-size: 20px; font-weight: 900; letter-spacing: 1px; margin: 0 0 2px 0; color: #000;">100 HICH</h1>
         <p style="font-size: 11px; font-weight: 800; letter-spacing: 2px; margin: 0 0 4px 0; text-transform: uppercase; color: #333;">COFFEE ROASTERS</p>
-        <p style="font-size: 10px; color: #444; margin: 0 0 2px 0;">${address}</p>
-        <p style="font-size: 10px; color: #444; margin: 0; font-family: monospace;">تلفن: ${phone}</p>
+        <p style="font-size: 10px; color: #444; margin: 0 0 2px 0;">${escapeHtml(address)}</p>
+        <p style="font-size: 10px; color: #444; margin: 0; font-family: monospace;">تلفن: ${escapeHtml(phone)}</p>
       </div>
 
       <div style="border-bottom: 1px dashed #666; margin: 8px 0;"></div>
@@ -246,7 +246,7 @@ export function renderReceiptTemplateHtml(
         </div>` : ""}
         <div style="display: flex; justify-content: space-between; color: #444;">
           <span>صندوقدار / باریستا:</span>
-          <span>${cashier}</span>
+          <span>${escapeHtml(cashier)}</span>
         </div>
       </div>
 
