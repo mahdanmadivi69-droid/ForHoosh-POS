@@ -64,6 +64,7 @@ import { playPosBeep } from '../services/soundEffects';
 import { printThermalReceipt } from '../services/receiptPrinter';
 import { inventoryBomService } from '../services/inventoryBomService';
 import { openTabService } from '../services/openTabService';
+import { getActiveTenant } from '../config/tenantConfig';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -119,10 +120,19 @@ export const PosView: React.FC<PosViewProps> = ({
     }
   });
 
+  const activeTenant = getActiveTenant();
+  const [tableToast, setTableToast] = useState<string | null>(null);
+  const showTableToast = (msg: string) => {
+    setTableToast(msg);
+    setTimeout(() => setTableToast(null), 3500);
+  };
+
   // Current Order / Cart State
   const [cartItems, setCartItems] = useState<OrderItem[]>([]);
-  const [orderType, setOrderType] = useState<OrderType>('TAKEAWAY');
-  const [tableLabel, setTableLabel] = useState<string>('میز ۱');
+  const [orderType, setOrderType] = useState<OrderType>(activeTenant.workflow.defaultOrderType);
+  const [tableLabel, setTableLabel] = useState<string>(
+    preselectedTableLabel || (activeTenant.workflow.requireTableNumber ? '' : 'میز ۱')
+  );
   const [isTablePickerOpen, setIsTablePickerOpen] = useState<boolean>(false);
 
   useEffect(() => {
@@ -219,6 +229,11 @@ export const PosView: React.FC<PosViewProps> = ({
       // Hotkey 'P' or 'p': Direct POS Card payment
       if (e.key === 'p' || e.key === 'P' || e.key === 'پ') {
         if (cartItems.length > 0 && activeShift) {
+          if (activeTenant.workflow.requireTableNumber && orderType === 'DINE_IN' && !tableLabel.trim()) {
+            showTableToast('لطفاً شماره میز را انتخاب کنید');
+            playPosBeep('delete');
+            return;
+          }
           e.preventDefault();
           setPaymentMethod('CARD_MANUAL');
           setIsCheckoutOpen(true);
@@ -229,6 +244,11 @@ export const PosView: React.FC<PosViewProps> = ({
       // Hotkey 'C' or 'c': Direct Cash payment
       if (e.key === 'c' || e.key === 'C') {
         if (cartItems.length > 0 && activeShift) {
+          if (activeTenant.workflow.requireTableNumber && orderType === 'DINE_IN' && !tableLabel.trim()) {
+            showTableToast('لطفاً شماره میز را انتخاب کنید');
+            playPosBeep('delete');
+            return;
+          }
           e.preventDefault();
           setPaymentMethod('CASH');
           setCashTendered(netTotalToman);
@@ -403,6 +423,11 @@ export const PosView: React.FC<PosViewProps> = ({
       return;
     }
     if (cartItems.length === 0) return;
+    if (activeTenant.workflow.requireTableNumber && orderType === 'DINE_IN' && !tableLabel.trim()) {
+      showTableToast('لطفاً شماره میز را انتخاب کنید');
+      playPosBeep('delete');
+      return;
+    }
     setCashTendered(netTotalToman);
     setIsCheckoutOpen(true);
   };
@@ -1071,6 +1096,11 @@ export const PosView: React.FC<PosViewProps> = ({
                 onChange={(e) => setTableLabel(e.target.value)}
                 className="text-[10px] text-white bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] cursor-pointer focus:outline-none"
               >
+                {activeTenant.workflow.requireTableNumber && (
+                  <option value="" className="bg-[#1B222C] text-gray-400">
+                    -- انتخاب میز --
+                  </option>
+                )}
                 {floorPlanService.getTables().map((tbl) => (
                   <option key={tbl.id} value={tbl.display_name} className="bg-[#1B222C] text-white">
                     {tbl.display_name}
@@ -1084,6 +1114,42 @@ export const PosView: React.FC<PosViewProps> = ({
             </span>
           )}
         </div>
+
+        {/* Quick-Select Table Button Bar for Table-Required Tenants (e.g. Modendo) */}
+        {orderType === 'DINE_IN' && activeTenant.workflow.requireTableNumber && activeTenant.workflow.quickTables.length > 0 && (
+          <div className="px-3 py-2 bg-[#121417]/80 border-b border-[#293444]">
+            <div className="text-[10px] text-[#9EACB8] font-bold mb-1.5 flex items-center justify-between">
+              <span>میزهای پرکاربرد (سریع):</span>
+              {tableLabel ? (
+                <span className="text-emerald-400 font-extrabold flex items-center gap-1">
+                  <span>میز فعال:</span>
+                  <span className="bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-600/50">{tableLabel}</span>
+                </span>
+              ) : (
+                <span className="text-amber-400 font-bold">میزی انتخاب نشده است</span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {activeTenant.workflow.quickTables.map((tbl) => (
+                <button
+                  key={tbl}
+                  type="button"
+                  onClick={() => {
+                    playPosBeep('click');
+                    setTableLabel(tbl);
+                  }}
+                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                    tableLabel === tbl
+                      ? 'bg-[var(--app-accent,#005A3E)] text-white shadow-md border border-emerald-400 scale-105'
+                      : 'bg-[#1B222C] text-[#9EACB8] hover:text-white border border-[#293444]'
+                  }`}
+                >
+                  {tbl}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Invoice Notes */}
         <div className="px-3 py-1.5 bg-[#121417]/30 border-b border-[#293444] flex items-center text-xs gap-2">
@@ -1682,6 +1748,14 @@ export const PosView: React.FC<PosViewProps> = ({
               setHardwarePrintStatus(null);
             }}
           />
+        </div>
+      )}
+
+      {/* Table Requirement Toast */}
+      {tableToast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#842029] text-white border border-red-500/50 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
+          <AlertCircle className="w-4 h-4 text-red-300" />
+          <span>{tableToast}</span>
         </div>
       )}
 

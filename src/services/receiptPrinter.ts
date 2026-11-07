@@ -10,8 +10,12 @@ import { escapeHtml } from '../lib/escapeHtml';
 
 export interface PrintOptions {
   documentTitle?: string;
+  tenantName?: string;
   tenantAddress?: string;
   tenantPhone?: string;
+  logoPath?: string;
+  headerNoteFa?: string;
+  printKitchenTicket?: boolean;
 }
 
 export function printThermalReceipt(
@@ -25,8 +29,12 @@ export function printThermalReceipt(
       if (typeof targetOrData === 'object' && targetOrData !== null && !('nodeType' in targetOrData)) {
         // Direct data rendering via ReceiptPrintTemplate
         receiptHtml = renderReceiptTemplateHtml(targetOrData as ReceiptOrderData, {
+          name: options.tenantName,
           address: options.tenantAddress,
           phone: options.tenantPhone,
+          logoPath: options.logoPath,
+          headerNoteFa: options.headerNoteFa,
+          printKitchenTicket: options.printKitchenTicket,
         });
       } else {
         let targetEl: HTMLElement | null = null;
@@ -124,6 +132,10 @@ export function printThermalReceipt(
               border: none !important;
               border-radius: 0 !important;
               box-shadow: none !important;
+            }
+            .kitchen-ticket-break {
+              page-break-before: always !important;
+              break-before: page !important;
             }
             table {
               width: 100% !important;

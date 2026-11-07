@@ -24,6 +24,7 @@ import { formatToman } from '../services/financialMath';
 import { PWAInstallButton } from './PWAInstallButton';
 import { playPosBeep } from '../services/soundEffects';
 import { FEATURES } from '../modules/smart-orders';
+import { getActiveTenant } from '../config/tenantConfig';
 
 interface HeaderProps {
   tenant: Tenant;
@@ -60,6 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
   onUserChange,
   onLogout,
 }) => {
+  const activeTenant = getActiveTenant();
   const { status: syncStatus, triggerFlush } = useOutboxSync(tenant.id);
   const isManager = isManagerOrOwner(activeUser.role);
   const [liveClock, setLiveClock] = useState<string>('');
@@ -86,35 +88,60 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-[1720px] mx-auto px-3 md:px-5 py-2.5 flex items-center justify-between gap-3">
         {/* Brand & Branch Identity */}
         <div className="flex items-center gap-3">
-          <div className="flex items-center bg-[#081425] border border-[#293444] px-3 py-1.5 rounded-lg">
-            {tenant.id?.includes('modendo') ? (
+          <div
+            className="flex items-center bg-[#081425] border border-[#293444] px-3 py-1.5 rounded-lg"
+            style={{
+              backgroundColor: activeTenant.palette.surfaceBg,
+              borderColor: activeTenant.palette.borderHairline,
+            }}
+          >
+            {/* Tenant Logo Badge */}
+            <div className="flex items-center gap-2">
+              <div
+                className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center p-0.5 border"
+                style={{
+                  borderColor: activeTenant.palette.borderHairline,
+                  backgroundColor: activeTenant.palette.primaryBg,
+                }}
+              >
+                <img
+                  src={activeTenant.receipt.logoPath}
+                  alt={activeTenant.brandNameEn}
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    if (!img.src.endsWith('.svg')) {
+                      img.src = activeTenant.receipt.logoPath.replace('.png', '.svg');
+                    }
+                  }}
+                />
+              </div>
               <div className="text-left font-black tracking-tighter leading-none pr-1">
-                <span className="text-xl font-black text-cyan-400">MODENDO</span>
-                <span className="text-[9px] block text-amber-400 tracking-widest font-black uppercase">
-                  GAMING CAFE
+                <span className="text-xl font-black" style={{ color: activeTenant.palette.accentColor }}>
+                  {activeTenant.id === 'modendo' ? 'MODENDO' : '100'}
+                </span>
+                <span
+                  className="text-[9px] block tracking-widest font-black uppercase"
+                  style={{ color: activeTenant.palette.textMuted }}
+                >
+                  {activeTenant.id === 'modendo' ? 'CAFÉ' : 'HICH'}
                 </span>
               </div>
-            ) : (
-              <div className="text-left font-black tracking-tighter leading-none pr-1">
-                <span className="text-2xl font-black text-white">100</span>
-                <span className="text-[10px] block text-[#D71921] tracking-widest font-black uppercase">
-                  HICH
-                </span>
-              </div>
-            )}
-            <div className="h-6 w-[1.5px] bg-[#293444] mx-2.5"></div>
+            </div>
+            <div className="h-6 w-[1.5px] bg-[#293444] mx-2.5" style={{ backgroundColor: activeTenant.palette.borderHairline }}></div>
             <div>
-              <h1 className="text-sm font-extrabold text-white flex items-center gap-1.5">
-                <span>{tenant.name || (tenant.id?.includes('modendo') ? 'کافه بردگیم و گیمینگ مودندو' : 'قهوه‌فروشی صَد هیچ')}</span>
-                <span className={`text-[10px] text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
-                  tenant.id?.includes('modendo') ? 'bg-cyan-600' : 'bg-[#D71921]'
-                }`}>
-                  {tenant.id?.includes('modendo') ? 'BOARDGAME & PS5' : 'ROASTERS'}
+              <h1 className="text-sm font-extrabold text-white flex items-center gap-1.5" style={{ color: activeTenant.palette.textPrimary }}>
+                <span>{activeTenant.brandNameFa}</span>
+                <span
+                  className="text-[10px] text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider"
+                  style={{ backgroundColor: activeTenant.palette.accentColor }}
+                >
+                  {activeTenant.id === 'modendo' ? 'MODENDO CAFÉ' : 'ROASTERS'}
                 </span>
               </h1>
-              <p className="text-[11px] text-[#9EACB8] flex items-center gap-1">
+              <p className="text-[11px] text-[#9EACB8] flex items-center gap-1" style={{ color: activeTenant.palette.textMuted }}>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
-                <span>{tenant.address || (tenant.id?.includes('modendo') ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱' : 'شعبه ۱: اکباتان - فاز ۱')}</span>
+                <span>{activeTenant.id === 'modendo' ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱' : (tenant.address || 'شعبه ۱: اکباتان - فاز ۱')}</span>
               </p>
             </div>
           </div>

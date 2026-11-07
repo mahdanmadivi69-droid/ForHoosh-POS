@@ -42,8 +42,10 @@ import { FloorPlanView } from './components/floorplan/FloorPlanView';
 import { dailyBackupScheduler } from './services/dailyBackupScheduler';
 import { ExecutivePLBoard } from './components/ExecutivePLBoard';
 import { TenantConfigBuilder } from './components/TenantConfigBuilder';
+import { getActiveTenant } from './config/tenantConfig';
 
 export default function App() {
+  const activeTenant = getActiveTenant();
   const [tenant, setTenant] = useState<Tenant>(SmartOrdersStore.getTenant());
   const [allUsers, setAllUsers] = useState<User[]>(SmartOrdersStore.getUsers());
   const [activeUser, setActiveUser] = useState<User>(SmartOrdersStore.getActiveUser());
@@ -102,6 +104,15 @@ export default function App() {
     dailyBackupScheduler.init();
     refreshState();
   }, []);
+
+  // Sync active tenant from tenantConfig runtime
+  useEffect(() => {
+    const targetTenantId = activeTenant.id === 'modendo' ? 'tenant-modendo-01' : 'tenant-100hich-01';
+    if (SmartOrdersStore.getActiveTenantId() !== targetTenantId) {
+      SmartOrdersStore.switchTenant(targetTenantId);
+      refreshState();
+    }
+  }, [activeTenant.id]);
 
   const refreshState = () => {
     setTenant(SmartOrdersStore.getTenant());
@@ -281,6 +292,18 @@ export default function App() {
   return (
     <div
       data-tenant={tenant.id}
+      style={{
+        ['--app-bg' as any]: activeTenant.palette.primaryBg,
+        ['--app-surface' as any]: activeTenant.palette.surfaceBg,
+        ['--app-accent' as any]: activeTenant.palette.accentColor,
+        ['--app-text' as any]: activeTenant.palette.textPrimary,
+        ['--app-border' as any]: activeTenant.palette.borderHairline,
+        ['--color-surface-base' as any]: activeTenant.palette.primaryBg,
+        ['--color-brand-primary' as any]: activeTenant.palette.accentColor,
+        ['--color-header-bg' as any]: activeTenant.palette.surfaceBg,
+        backgroundColor: activeTenant.palette.primaryBg,
+        color: activeTenant.palette.textPrimary,
+      } as React.CSSProperties}
       className="min-h-screen bg-[var(--color-surface-base,#121417)] text-white flex flex-col font-sans selection:bg-[var(--color-brand-primary,#D71921)] selection:text-white"
     >
       {/* Toast Notification */}

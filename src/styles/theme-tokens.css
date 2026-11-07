@@ -17,6 +17,13 @@
     --brand-name: '100 HICH Coffee Roasters';
     --brand-name-fa: 'قهوه‌فروشی ۱۰۰هیچ';
 
+    /* App Dynamic Theme Variables */
+    --app-bg: #0A0D11;
+    --app-surface: #0F223D;
+    --app-accent: #D71921;
+    --app-text: #FFFFFF;
+    --app-border: #293444;
+
     /* Brand Primary & Secondary Colors */
     --color-brand-primary: #D71921;
     --color-brand-primary-rgb: 215, 25, 33;
@@ -71,6 +78,13 @@
     --brand-tenant-id: 'tenant-modendo-01';
     --brand-name: 'Modendo Boardgame & Gaming Cafe';
     --brand-name-fa: 'کافه بازی و گیمینگ مودندو';
+
+    /* App Dynamic Theme Variables */
+    --app-bg: #081813;
+    --app-surface: #0F2922;
+    --app-accent: #005A3E;
+    --app-text: #F8EED9;
+    --app-border: rgba(248, 238, 217, 0.15);
 
     /* Brand Primary & Secondary Colors */
     --color-brand-primary: #059669;
