@@ -8,7 +8,8 @@ import { SmartOrdersContainer, SmartOrdersContainerProps } from './SmartOrdersCo
 import { FeaturesConfig } from './types';
 
 export const FEATURES: FeaturesConfig = {
-  ENABLE_ZERO_G_SMART_ORDERS: true,
+  // P0-1: Zero-G module disabled by default for 100 Hich single-cashier pilot to prevent unrecorded financial leaks
+  ENABLE_ZERO_G_SMART_ORDERS: false,
 };
 
 export interface SmartOrdersGateProps extends SmartOrdersContainerProps {

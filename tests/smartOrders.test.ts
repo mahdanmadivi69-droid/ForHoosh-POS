@@ -49,8 +49,8 @@ assert(
   'Feature flag ENABLE_ZERO_G_SMART_ORDERS is strictly typed boolean'
 );
 assert(
-  FEATURES.ENABLE_ZERO_G_SMART_ORDERS === true,
-  'Feature flag defaults to enabled in production deployment'
+  FEATURES.ENABLE_ZERO_G_SMART_ORDERS === false,
+  'Feature flag defaults to false (disabled) in 100 Hich single-cashier pilot (P0-1 Guard)'
 );
 
 // Verify toggling flag

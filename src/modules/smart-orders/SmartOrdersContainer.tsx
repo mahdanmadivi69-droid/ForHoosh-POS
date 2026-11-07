@@ -445,20 +445,18 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
     }
   );
 
-  // 7. Fast Settlement
+  // 7. Fast Settlement (P0-1 LEAK GUARD: Blocked to prevent unrecorded cash/card leaks)
   const handleSettleOrder = useCallback(
     (ticketId: string, method: 'CARD' | 'CASH') => {
-      playPosBeep('success');
-      setTickets((prev) =>
-        prev.map((t) =>
-          t.id === ticketId
-            ? { ...t, status: 'Dispatched', paymentMethod: method }
-            : t
-        )
-      );
+      // P0-1 Audit Guard: Zero-G direct settlement does not persist to Dexie/IndexedDB or offline queue.
+      // Settlement must only be performed through standard PosView to ensure ledger integrity.
+      playPosBeep('delete');
       showToast(
-        `فاکتور با موفقیت از طریق ${method === 'CARD' ? 'کارتخوان بانکی' : 'وجه نقد'} تسویه شد.`,
-        'success'
+        'خطای امنیتی تسویه: ثبت مالی مستقیم در ماژول آزمایشی Zero-G به دلیل عدم اتصال به دفتر کل مسدود است. لطفاً سفارش را در صندوق استاندارد (POS) ثبت و تسویه فرمایید.',
+        'error'
+      );
+      console.error(
+        `[P0-1 LEAK GUARD] Blocked unrecorded settlement attempt for ticket ${ticketId} via ${method}. Zero-G lacks ledger/storage persistence.`
       );
     },
     [showToast]
