@@ -1,5 +1,6 @@
 import React from 'react';
 import { ReceiptOrderData, renderReceiptTemplateHtml } from '../components/ReceiptPrintTemplate';
+import { escapeHtml } from '../lib/escapeHtml';
 
 /**
  * Dedicated POS Thermal Receipt Printing Service (Isolated Sandboxed Iframe)
@@ -49,10 +50,11 @@ export function printThermalReceipt(
         receiptHtml = targetEl.outerHTML;
       }
 
-      // Create an isolated sandbox iframe
+      // Create an isolated sandbox iframe (P1-3: sandbox blocks script execution while allowing same-origin write and print modal)
       const iframe = document.createElement('iframe');
       iframe.setAttribute('role', 'presentation');
       iframe.setAttribute('title', 'Receipt Print Sandbox');
+      iframe.setAttribute('sandbox', 'allow-same-origin allow-modals');
       iframe.style.position = 'fixed';
       iframe.style.left = '0';
       iframe.style.top = '0';
@@ -78,7 +80,7 @@ export function printThermalReceipt(
         <html lang="fa" dir="rtl">
         <head>
           <meta charset="utf-8" />
-          <title>${options.documentTitle || 'رسید حرارتی ۸۰ میلی‌متری'}</title>
+          <title>${escapeHtml(options.documentTitle || 'رسید حرارتی ۸۰ میلی‌متری')}</title>
           <style>
             @page {
               size: 80mm auto !important;
