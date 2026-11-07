@@ -14,6 +14,7 @@ import {
   Expense,
   AuditLog,
 } from '../types/domain';
+import { InvoiceSequenceService } from './invoiceSequence';
 
 const STORAGE_KEYS = {
   ACTIVE_TENANT_ID: 'smartorders_active_tenant_id_v2',
@@ -2010,7 +2011,8 @@ export class SmartOrdersStore {
 
   static createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>): Order {
     const orders = this.getOrders();
-    const nextOrderNumber = orders.length + 1;
+    const tenantId = this.getTenant().id;
+    const nextOrderNumber = InvoiceSequenceService.nextOrderNumber(tenantId, orders);
     const now = new Date().toISOString();
 
     const newOrder: Order = {
@@ -2446,7 +2448,10 @@ export class SmartOrdersStore {
       if (Array.isArray(parsed.categories)) save(STORAGE_KEYS.CATEGORIES, parsed.categories);
       if (Array.isArray(parsed.menuItems)) save(STORAGE_KEYS.MENU_ITEMS, parsed.menuItems);
       if (Array.isArray(parsed.shifts)) save(STORAGE_KEYS.SHIFTS, parsed.shifts);
-      if (Array.isArray(parsed.orders)) save(STORAGE_KEYS.ORDERS, parsed.orders);
+      if (Array.isArray(parsed.orders)) {
+        save(STORAGE_KEYS.ORDERS, parsed.orders);
+        InvoiceSequenceService.reconcile(parsed.tenant?.id || this.getTenant().id, parsed.orders);
+      }
       if (Array.isArray(parsed.payments)) save(STORAGE_KEYS.PAYMENTS, parsed.payments);
       if (Array.isArray(parsed.expenses)) save(STORAGE_KEYS.EXPENSES, parsed.expenses);
       if (Array.isArray(parsed.auditLogs)) save(STORAGE_KEYS.AUDIT_LOGS, parsed.auditLogs);
