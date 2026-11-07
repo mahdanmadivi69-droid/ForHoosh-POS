@@ -14,6 +14,7 @@ import {
   Expense,
   AuditLog,
 } from '../types/domain';
+import { InvoiceSequenceService } from './invoiceSequence';
 import {
   mirrorOrdersToDexie,
   readMirroredOrders,
@@ -1532,7 +1533,8 @@ export class SmartOrdersStore {
 
   static createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>): Order {
     const orders = this.getOrders();
-    const nextOrderNumber = orders.length + 1;
+    const tenantId = order.tenantId || this.getTenant().id;
+    const nextOrderNumber = InvoiceSequenceService.nextOrderNumber(tenantId, orders);
     const now = new Date().toISOString();
 
     const newOrder: Order = {
@@ -1791,6 +1793,8 @@ export class SmartOrdersStore {
     if (shifts.length === 0) {
       const initialShift = this.openShift(500000, 'شیفت صبح آزمایشی کافه نارنج');
 
+      InvoiceSequenceService.reconcile(this.getTenant().id, this.getOrders());
+
       // Create two sample completed orders
       const user = this.getActiveUser();
       const menu = this.getMenuItems();
@@ -1938,6 +1942,7 @@ export class SmartOrdersStore {
         // Keep the Dexie mirror in sync with a restored backup (clear+bulkPut
         // also removes orders that are absent from the backup).
         this.saveOrders(parsed.orders);
+        InvoiceSequenceService.reconcile(parsed.tenant?.id || this.getTenant().id, parsed.orders);
       }
       if (Array.isArray(parsed.payments)) save(STORAGE_KEYS.PAYMENTS, parsed.payments);
       if (Array.isArray(parsed.expenses)) save(STORAGE_KEYS.EXPENSES, parsed.expenses);
