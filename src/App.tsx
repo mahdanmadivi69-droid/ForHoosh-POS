@@ -129,9 +129,14 @@ export default function App() {
 
   // RBAC Tab Protection Guard
   useEffect(() => {
-    if (!isManagerOrOwner(activeUser.role) && (currentTab === 'menu' || currentTab === 'audit')) {
+    // P1-8: financial reports were reachable by every role; the tab is now
+    // manager/owner-only, matching the menu and audit guards.
+    if (
+      !isManagerOrOwner(activeUser.role) &&
+      (currentTab === 'menu' || currentTab === 'audit' || currentTab === 'reports')
+    ) {
       setCurrentTab('pos');
-      showToast('دسترسی به بخش مدیریت منو و حسابرسی فقط برای مدیر و مالک مجاز است.');
+      showToast('دسترسی به بخش مدیریت منو، حسابرسی و گزارش مالی فقط برای مدیر و مالک مجاز است.');
     }
   }, [activeUser.role, currentTab]);
 
