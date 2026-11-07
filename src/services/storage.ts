@@ -15,6 +15,7 @@ import {
   AuditLog,
 } from '../types/domain';
 import { InvoiceSequenceService } from './invoiceSequence';
+import { getDexiePOSDatabase } from '../db/DexiePOSDatabase';
 
 const STORAGE_KEYS = {
   ACTIVE_TENANT_ID: 'smartorders_active_tenant_id_v2',
@@ -1593,12 +1594,41 @@ function load<T>(key: string, fallback: T): T {
   }
 }
 
+export class StorageWriteError extends Error {
+  readonly code: 'QUOTA_EXCEEDED' | 'STORAGE_UNAVAILABLE';
+  readonly storageKey: string;
+
+  constructor(storageKey: string, code: 'QUOTA_EXCEEDED' | 'STORAGE_UNAVAILABLE') {
+    super(
+      code === 'QUOTA_EXCEEDED'
+        ? 'ذخیره‌سازی محلی انجام نشد: حافظه مرورگر (LocalStorage) پر شده است. این عملیات ثبت نشد؛ لطفاً از داده‌ها پشتیبان بگیرید و حافظه را آزاد کنید. تا رفع مشکل وجهی دریافت نکنید.'
+        : 'ذخیره‌سازی محلی انجام نشد: مرورگر دسترسی نوشتن به LocalStorage را مسدود کرده است. این عملیات ثبت نشد؛ تا رفع مشکل وجهی دریافت نکنید.'
+    );
+    this.name = 'StorageWriteError';
+    this.code = code;
+    this.storageKey = storageKey;
+  }
+}
+
+function isQuotaExceededError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const anyErr = err as { name?: string; code?: number; message?: string };
+  return (
+    anyErr.name === 'QuotaExceededError' ||
+    anyErr.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    anyErr.code === 22 ||
+    anyErr.code === 1014 ||
+    (typeof anyErr.message === 'string' && /quota/i.test(anyErr.message))
+  );
+}
+
 function save<T>(key: string, data: T): void {
   try {
     if (typeof localStorage === 'undefined' || !localStorage) return;
     localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
-    // ignore in node/test environments
+    console.error(`Error saving key ${key}:`, err);
+    throw new StorageWriteError(key, isQuotaExceededError(err) ? 'QUOTA_EXCEEDED' : 'STORAGE_UNAVAILABLE');
   }
 }
 
@@ -1673,7 +1703,11 @@ export class SmartOrdersStore {
   }
 
   static setActiveUserId(userId: string): void {
-    save(STORAGE_KEYS.ACTIVE_USER_ID, userId);
+    try {
+      save(STORAGE_KEYS.ACTIVE_USER_ID, userId);
+    } catch (err) {
+      console.error('[storage] active user pointer could not be persisted', err);
+    }
   }
 
   static isAuthenticated(): boolean {
@@ -2007,6 +2041,56 @@ export class SmartOrdersStore {
   static saveOrders(orders: Order[]): void {
     const key = this.getTenantKey(STORAGE_KEYS.ORDERS);
     save(key, orders);
+    if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined') {
+      try {
+        const tenantId = this.getTenant().id;
+        const db = getDexiePOSDatabase(tenantId);
+        db.orders.bulkPut(
+          orders.map((o) => ({
+            id: o.id,
+            clientGeneratedId: (o as any).clientGeneratedId || o.id,
+            tenantId: o.tenantId || tenantId,
+            shiftId: o.shiftId,
+            orderNumber: o.orderNumber,
+            tableLabel: o.tableLabel,
+            orderType: o.orderType,
+            status: (o.status === 'COMPLETED' ? 'PAID' : (o.status as any)) || 'PAID',
+            grossAmountToman: o.grossAmountToman,
+            discountAmountToman: o.discountAmountToman,
+            netTotalToman: o.netTotalToman,
+            paidAmountToman: o.netTotalToman,
+            vatTotalToman: 0,
+            customerName: o.customerName,
+            createdAt: o.createdAt,
+            updatedAt: o.updatedAt,
+            synced: (o as any).synced ?? false,
+          }))
+        ).catch(() => {});
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  static async hydrateOrdersFromDexie(tenantId?: string): Promise<Order[]> {
+    if (typeof window !== 'undefined' && typeof indexedDB !== 'undefined') {
+      try {
+        const tid = tenantId || this.getTenant().id;
+        const db = getDexiePOSDatabase(tid);
+        const dexieOrders = await db.orders.toArray();
+        if (dexieOrders && dexieOrders.length > 0) {
+          const localOrders = this.getOrders();
+          if (localOrders.length === 0) {
+            const key = this.getTenantKey(STORAGE_KEYS.ORDERS);
+            save(key, dexieOrders as any);
+            return dexieOrders as any;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return this.getOrders();
   }
 
   static createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>): Order {
@@ -2237,7 +2321,11 @@ export class SmartOrdersStore {
 
   static saveAuditLogs(logs: AuditLog[]): void {
     const key = this.getTenantKey(STORAGE_KEYS.AUDIT_LOGS);
-    save(key, logs);
+    try {
+      save(key, logs);
+    } catch (err) {
+      console.error('[storage] audit log could not be persisted', err);
+    }
   }
 
   static addAuditLog(action: string, entityName: string, entityId: string, details: string): void {

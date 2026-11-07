@@ -222,6 +222,7 @@ export default function App() {
       showToast(`سفارش #${createdOrder.orderNumber} با موفقیت تسویه شد.`);
       return { order: createdOrder, payment: newPayment };
     } catch (err: any) {
+      showToast(`ثبت فاکتور انجام نشد — وجهی دریافت نکنید: ${err.message}`);
       alert(err.message);
       return null;
     }
