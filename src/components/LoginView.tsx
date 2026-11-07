@@ -27,42 +27,73 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // P1-7: explicit credential enrolment (never implicit on first login)
+  const [enrollTarget, setEnrollTarget] = useState<{ username: string; requiresCode: boolean } | null>(null);
+  const [setupCode, setSetupCode] = useState('');
+  const [enrollMessage, setEnrollMessage] = useState<string | null>(null);
+
   const allUsers = SmartOrdersStore.getUsers();
 
-  const handleLogin = (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     playPosBeep('click');
     setErrorMessage(null);
     setIsLoading(true);
 
-    setTimeout(() => {
-      const res = SmartOrdersStore.login(usernameOrPhone, password);
+    try {
+      const res = await SmartOrdersStore.login(usernameOrPhone, password);
       setIsLoading(false);
       if (res.success && res.user) {
         onLoginSuccess(res.user);
       } else {
+        if (res.requiresEnrollment) {
+          setEnrollTarget({
+            username: usernameOrPhone,
+            requiresCode: !!res.enrollmentRequiresSetupCode,
+          });
+        }
         setErrorMessage(res.error || 'خطا در ورود به سامانه');
       }
-    }, 250);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err?.message || 'خطا در برقراری ارتباط');
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!enrollTarget) return;
+    const target = enrollTarget;
+    playPosBeep('click');
+    setErrorMessage(null);
+    setIsLoading(true);
+    try {
+      const res = await SmartOrdersStore.enrollCredential(target.username, password, setupCode);
+      if (!res.success) {
+        setIsLoading(false);
+        setErrorMessage(res.error || 'تعریف رمز ناموفق بود.');
+        return;
+      }
+      setEnrollTarget(null);
+      setSetupCode('');
+      setEnrollMessage('رمز عبور تعریف شد. اکنون وارد می‌شوید...');
+      const loginRes = await SmartOrdersStore.login(target.username, password);
+      setIsLoading(false);
+      if (loginRes.success && loginRes.user) {
+        onLoginSuccess(loginRes.user);
+      } else {
+        setErrorMessage(loginRes.error || 'رمز تعریف شد، اما ورود ناموفق بود.');
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err?.message || 'خطا در تعریف رمز');
+    }
   };
 
   const handleQuickSelect = (u: User) => {
     playPosBeep('click');
     setUsernameOrPhone(u.username || u.phoneNumber);
-    setPassword(u.password || '123');
+    setPassword('');
     setErrorMessage(null);
-
-    // Auto-login on quick select for high-speed POS workflow
-    setIsLoading(true);
-    setTimeout(() => {
-      const res = SmartOrdersStore.login(u.username || u.phoneNumber, u.password || '123');
-      setIsLoading(false);
-      if (res.success && res.user) {
-        onLoginSuccess(res.user);
-      } else {
-        setErrorMessage(res.error || 'خطا در ورود');
-      }
-    }, 200);
   };
 
   return (
@@ -183,6 +214,48 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
           </button>
         </form>
 
+        {/* P1-7: explicit credential enrolment panel */}
+        {enrollTarget && (
+          <div className="mt-4 p-3.5 rounded-xl bg-[#121417] border border-[#C9B183]/40 space-y-3">
+            <div className="text-[11px] font-bold text-[#F3E9DD] flex items-center gap-1.5">
+              <KeyRound className="w-3.5 h-3.5" />
+              <span>تعریف رمز برای @{enrollTarget.username}</span>
+            </div>
+            <p className="text-[10px] text-[#9EACB8] leading-relaxed">
+              رمزی که در فرم بالا وارد کردید به‌عنوان رمز جدید این حساب ثبت می‌شود.
+              {enrollTarget.requiresCode
+                ? ' برای حساب مالک، کد ۶ رقمی راه‌اندازی که در کنسول سرور چاپ شده لازم است.'
+                : ' ابتدا حساب مالک باید راه‌اندازی شده باشد.'}
+            </p>
+            {enrollTarget.requiresCode && (
+              <input
+                type="text"
+                inputMode="numeric"
+                value={setupCode}
+                onChange={(e) => setSetupCode(e.target.value)}
+                placeholder="کد راه‌اندازی ۶ رقمی"
+                dir="ltr"
+                className="w-full bg-[#081425] border border-[#293444] focus:border-[#D71921] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-[#526071] outline-none font-mono text-center tracking-[0.4em]"
+              />
+            )}
+            <button
+              type="button"
+              onClick={handleEnroll}
+              disabled={isLoading || !password}
+              className="w-full bg-[#1B222C] hover:bg-[#222B38] border border-[#C9B183]/50 text-[#F3E9DD] font-black py-2.5 rounded-xl transition disabled:opacity-40 text-xs cursor-pointer"
+            >
+              ثبت رمز و ورود
+            </button>
+          </div>
+        )}
+
+        {enrollMessage && (
+          <div className="mt-4 bg-emerald-950/60 border border-emerald-800 text-emerald-200 px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{enrollMessage}</span>
+          </div>
+        )}
+
         {/* Quick Demo Logins for Fast Touchscreen Usage */}
         <div className="mt-8 pt-6 border-t border-[#293444]">
           <div className="flex items-center justify-between mb-3 text-xs">
@@ -190,7 +263,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
               <Shield className="w-3.5 h-3.5 text-[#F3E9DD]" />
               <span>ورود سریع پرسنل (لمسی):</span>
             </span>
-            <span className="text-[10px] text-[#9EACB8]">رمز پیش‌فرض: 123</span>
+            <span className="text-[10px] text-[#9EACB8]">انتخاب سریع نام کاربری (رمز را وارد نمایید)</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">

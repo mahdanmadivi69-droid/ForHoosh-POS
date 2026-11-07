@@ -9,6 +9,8 @@ export function isManagerOrOwner(role: UserRole): boolean {
   return role === 'OWNER' || role === 'MANAGER';
 }
 
+import { SecureCredential } from '../services/credentials';
+
 export interface User {
   id: string;
   tenantId: string;
@@ -17,6 +19,8 @@ export interface User {
   username: string;
   password?: string;
   pin?: string;
+  credential?: SecureCredential;
+  mustChangePassword?: boolean;
   role: UserRole;
   isActive: boolean;
 }

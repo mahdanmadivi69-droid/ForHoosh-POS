@@ -16,6 +16,7 @@ import {
 } from '../types/domain';
 import { InvoiceSequenceService } from './invoiceSequence';
 import { getDexiePOSDatabase } from '../db/DexiePOSDatabase';
+import { hashPassword, verifyPassword, SecureCredential } from './credentials';
 
 const STORAGE_KEYS = {
   ACTIVE_TENANT_ID: 'smartorders_active_tenant_id_v2',
@@ -53,7 +54,7 @@ export const MODENDO_USERS: User[] = [
     fullName: 'مهدان مددی (مدیر کل و مالک)',
     phoneNumber: '09121110001',
     username: 'admin',
-    password: '123',
+    mustChangePassword: true,
     pin: '1380',
     role: 'OWNER',
     isActive: true,
@@ -64,7 +65,7 @@ export const MODENDO_USERS: User[] = [
     fullName: 'علی شریفی (سرپرست و مدیر سالن)',
     phoneNumber: '09121110002',
     username: 'ali',
-    password: '123',
+    mustChangePassword: true,
     pin: '2468',
     role: 'MANAGER',
     isActive: true,
@@ -75,7 +76,7 @@ export const MODENDO_USERS: User[] = [
     fullName: 'مهسا کاظمی (صندوق‌دار شیفت)',
     phoneNumber: '09121110003',
     username: 'mahsa',
-    password: '123',
+    mustChangePassword: true,
     pin: '1122',
     role: 'CASHIER',
     isActive: true,
@@ -86,7 +87,7 @@ export const MODENDO_USERS: User[] = [
     fullName: 'پویا مرادی (بارتندر و باریستا)',
     phoneNumber: '09121110004',
     username: 'pouya',
-    password: '123',
+    mustChangePassword: true,
     pin: '3344',
     role: 'BARISTA',
     isActive: true,
@@ -97,7 +98,7 @@ export const MODENDO_USERS: User[] = [
     fullName: 'آرین خسروی (گیم‌مستر و مسئول کنسول PS5)',
     phoneNumber: '09121110005',
     username: 'arian',
-    password: '123',
+    mustChangePassword: true,
     pin: '5566',
     role: 'BARISTA',
     isActive: true,
@@ -422,7 +423,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'مهدان مددی (مدیر و مالک)',
     phoneNumber: '09120000001',
     username: 'admin',
-    password: '123',
+    mustChangePassword: true,
     role: 'OWNER',
     isActive: true,
   },
@@ -432,7 +433,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'سارا رضایی (سرپرست شیفت)',
     phoneNumber: '09120000002',
     username: 'sara',
-    password: '123',
+    mustChangePassword: true,
     role: 'MANAGER',
     isActive: true,
   },
@@ -442,7 +443,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'علی مرادی (صندوق‌دار)',
     phoneNumber: '09120000003',
     username: 'ali',
-    password: '123',
+    mustChangePassword: true,
     role: 'CASHIER',
     isActive: true,
   },
@@ -452,7 +453,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'نیما کمالی (باریستا)',
     phoneNumber: '09120000004',
     username: 'nima',
-    password: '123',
+    mustChangePassword: true,
     role: 'BARISTA',
     isActive: true,
   },
@@ -1632,6 +1633,13 @@ function save<T>(key: string, data: T): void {
   }
 }
 
+interface ThrottleState {
+  attempts: number;
+  lockedUntil?: number;
+}
+
+const loginThrottles = new Map<string, ThrottleState>();
+
 export class SmartOrdersStore {
   // Tenant-scoped key helper
   static getTenantKey(baseKey: string): string {
@@ -1720,12 +1728,158 @@ export class SmartOrdersStore {
     }
   }
 
-  static login(usernameOrPhone: string, password: string): { success: boolean; user?: User; error?: string } {
+  static saveUsers(users: User[]): void {
+    const activeTenantId = this.getActiveTenantId();
+    if (activeTenantId === 'tenant-100hich-01' || !activeTenantId) {
+      save(STORAGE_KEYS.USERS, users);
+    } else {
+      save(STORAGE_KEYS.USERS_MODENDO, users);
+    }
+  }
+
+  static updateUser(updated: User): void {
+    const users = this.getUsers().map((u) => (u.id === updated.id ? updated : u));
+    this.saveUsers(users);
+  }
+
+  static async migrateLegacyUserPasswords(): Promise<void> {
+    try {
+      const users = this.getUsers();
+      let modified = false;
+      const cleanUsers: User[] = [];
+
+      for (const u of users) {
+        const legacyPass = (u as any).password;
+        if (legacyPass && typeof legacyPass === 'string') {
+          modified = true;
+          const cred = await hashPassword(legacyPass);
+          const copy = { ...u };
+          delete (copy as any).password;
+          copy.credential = cred;
+          copy.mustChangePassword = true;
+          cleanUsers.push(copy);
+        } else {
+          const copy = { ...u };
+          delete (copy as any).password;
+          cleanUsers.push(copy);
+        }
+      }
+
+      if (modified) {
+        this.saveUsers(cleanUsers);
+        console.log('[Security] Legacy plaintext passwords migrated to PBKDF2-SHA256 credentials.');
+      }
+    } catch (err) {
+      console.error('[Security] Legacy password migration failed:', err);
+    }
+  }
+
+  static hasOwnerCredential(): boolean {
+    return this.getUsers().some((u) => u.role === 'OWNER' && !!u.credential);
+  }
+
+  private static async verifyOwnerSetupCode(code: string): Promise<boolean> {
+    try {
+      const res = await fetch('/api/v1/setup/verify-owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      if (!res.ok) return false;
+      const data = (await res.json()) as { ok?: boolean };
+      return data?.ok === true;
+    } catch {
+      return false;
+    }
+  }
+
+  static async enrollCredential(
+    usernameOrPhone: string,
+    password: string,
+    setupCode?: string
+  ): Promise<{ success: boolean; error?: string }> {
     const trimmed = (usernameOrPhone || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
     if (!trimmed || !cleanPass) {
       return { success: false, error: 'لطفاً نام کاربری و رمز عبور را وارد نمایید.' };
     }
+    if (cleanPass.length < 6) {
+      return { success: false, error: 'رمز عبور باید حداقل ۶ کاراکتر باشد.' };
+    }
+
+    const matched = this.getUsers().find(
+      (u) =>
+        u.isActive &&
+        (u.username?.toLowerCase() === trimmed ||
+          u.phoneNumber === trimmed ||
+          u.phoneNumber.replace(/^0/, '') === trimmed.replace(/^0/, ''))
+    );
+    if (!matched) {
+      return { success: false, error: 'کاربری با این مشخصات یافت نشد یا حساب غیرفعال است.' };
+    }
+    if (matched.credential) {
+      return { success: false, error: 'این حساب قبلاً رمز عبور دارد.' };
+    }
+
+    if (matched.role === 'OWNER') {
+      if (this.hasOwnerCredential()) {
+        return { success: false, error: 'حساب مالک قبلاً راه‌اندازی شده است.' };
+      }
+      const code = (setupCode || '').trim();
+      if (!code) {
+        return { success: false, error: 'کد راه‌اندازی مالک لازم است.' };
+      }
+      const verified = await SmartOrdersStore.verifyOwnerSetupCode(code);
+      if (!verified) {
+        return { success: false, error: 'کد راه‌اندازی نامعتبر است یا سرور در دسترس نیست.' };
+      }
+    } else if (!this.hasOwnerCredential()) {
+      return { success: false, error: 'ابتدا حساب مالک باید راه‌اندازی شود.' };
+    }
+
+    const credential = await hashPassword(cleanPass);
+    this.updateUser({ ...matched, credential, mustChangePassword: false });
+    this.addAuditLog(
+      'USER_ENROLLED',
+      'User',
+      matched.id,
+      `تعریف رمز عبور برای ${matched.fullName} (${matched.username}) با نقش ${matched.role}`
+    );
+    return { success: true };
+  }
+
+  static async login(usernameOrPhone: string, password: string): Promise<{
+    success: boolean;
+    user?: User;
+    error?: string;
+    requiresEnrollment?: boolean;
+    enrollmentRequiresSetupCode?: boolean;
+  }> {
+    const trimmed = (usernameOrPhone || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+    if (!trimmed || !cleanPass) {
+      return { success: false, error: 'لطفاً نام کاربری و رمز عبور را وارد نمایید.' };
+    }
+
+    const now = Date.now();
+    const throttle = loginThrottles.get(trimmed);
+    if (throttle?.lockedUntil && throttle.lockedUntil > now) {
+      const remainingSec = Math.ceil((throttle.lockedUntil - now) / 1000);
+      return {
+        success: false,
+        error: `تعداد تلاش‌های ناموفق بیش از حد مجاز است. لطفاً ${remainingSec} ثانیه صبر کنید.`,
+      };
+    }
+
+    const recordFailure = () => {
+      const record = loginThrottles.get(trimmed) || { attempts: 0 };
+      record.attempts += 1;
+      if (record.attempts >= 5) {
+        record.lockedUntil = Date.now() + 30000;
+        record.attempts = 0;
+      }
+      loginThrottles.set(trimmed, record);
+    };
 
     const users = this.getUsers();
     const matched = users.find(
@@ -1737,18 +1891,45 @@ export class SmartOrdersStore {
     );
 
     if (!matched) {
+      recordFailure();
       return { success: false, error: 'کاربری با این مشخصات یافت نشد یا حساب غیرفعال است.' };
     }
 
-    if (matched.password && matched.password !== cleanPass) {
-      return { success: false, error: 'رمز عبور وارد شده نادرست است.' };
+    if (matched.credential) {
+      const isValid = await verifyPassword(cleanPass, matched.credential);
+      if (!isValid) {
+        recordFailure();
+        return { success: false, error: 'رمز عبور وارد شده نادرست است.' };
+      }
+    } else if (matched.mustChangePassword) {
+      return {
+        success: false,
+        requiresEnrollment: true,
+        enrollmentRequiresSetupCode: matched.role === 'OWNER',
+        error:
+          matched.role === 'OWNER'
+            ? 'این حساب هنوز رمز ندارد. برای تعریف رمز مالک، کد راه‌اندازی را از کنسول سرور بردارید.'
+            : 'این حساب هنوز رمز ندارد. ابتدا حساب مالک باید راه‌اندازی شود.',
+      };
+    } else {
+      return {
+        success: false,
+        requiresEnrollment: true,
+        enrollmentRequiresSetupCode: matched.role === 'OWNER',
+        error: 'این حساب هنوز رمز ندارد. ابتدا حساب مالک باید راه‌اندازی شود.',
+      };
     }
 
+    loginThrottles.delete(trimmed);
     this.setActiveUserId(matched.id);
     try {
       window.sessionStorage?.setItem('smartorders_session_active_v1', 'true');
     } catch {}
-    save(STORAGE_KEYS.IS_LOGGED_IN, true);
+    try {
+      save(STORAGE_KEYS.IS_LOGGED_IN, true);
+    } catch (err) {
+      console.error('[storage] login flag could not be persisted', err);
+    }
     this.addAuditLog('USER_LOGIN', 'User', matched.id, `ورود موفق کاربر ${matched.fullName} (${matched.username}) با نقش ${matched.role}`);
 
     return { success: true, user: matched };
@@ -2503,7 +2684,7 @@ export class SmartOrdersStore {
       version: '1.0.0',
       exportedAt: new Date().toISOString(),
       tenant: this.getTenant(),
-      users: this.getUsers(),
+      users: this.getUsers().map(({ credential, password, ...rest }: any) => rest),
       categories: this.getCategories(),
       menuItems: this.getMenuItems(),
       shifts: this.getShifts(),
@@ -2532,7 +2713,20 @@ export class SmartOrdersStore {
       }
 
       save(STORAGE_KEYS.TENANT, parsed.tenant);
-      if (Array.isArray(parsed.users)) save(STORAGE_KEYS.USERS, parsed.users);
+      if (Array.isArray(parsed.users)) {
+        const priorCredentials = new Map(
+          this.getUsers().map((u) => [u.id, u.credential] as const)
+        );
+        const imported = parsed.users.map((u: any) => {
+          const { credential, password, ...rest } = u;
+          const prior = priorCredentials.get(rest.id);
+          if (prior) {
+            return { ...rest, credential: prior, mustChangePassword: false };
+          }
+          return { ...rest, mustChangePassword: true };
+        });
+        this.saveUsers(imported);
+      }
       if (Array.isArray(parsed.categories)) save(STORAGE_KEYS.CATEGORIES, parsed.categories);
       if (Array.isArray(parsed.menuItems)) save(STORAGE_KEYS.MENU_ITEMS, parsed.menuItems);
       if (Array.isArray(parsed.shifts)) save(STORAGE_KEYS.SHIFTS, parsed.shifts);

@@ -96,6 +96,7 @@ export default function App() {
   // Initialize seed data on startup
   useEffect(() => {
     SmartOrdersStore.initSeedData();
+    SmartOrdersStore.migrateLegacyUserPasswords().catch(() => {});
     RBACService.initDefaultUsers();
     SettingsService.initDefaults();
     dailyBackupScheduler.init();
