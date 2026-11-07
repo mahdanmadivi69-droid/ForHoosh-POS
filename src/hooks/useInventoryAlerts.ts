@@ -7,9 +7,11 @@ export interface StockAlert {
   id: string;
   productId: string;
   productName: string;
+  itemName?: string;
   severity: 'WARNING' | 'CRITICAL';
   message: string;
   currentStock: number;
+  remainingStock?: number;
   threshold: number;
   deficit?: number;
 }

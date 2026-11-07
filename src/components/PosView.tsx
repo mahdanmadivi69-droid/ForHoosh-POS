@@ -47,7 +47,8 @@ import {
 } from '../services/financialMath';
 import { ReceiptPreview } from './ReceiptPreview';
 import { ModifierModal } from './ModifierModal';
-import { ModifierOption, OrderAggregate, OrderItemAggregate } from '../types/order-domain';
+import { ModifierOption } from '../types/order-domain';
+import { toOrderAggregate } from '../types/order-adapter';
 import { globalOfflineSyncQueue, QueueStats } from '../services/offlineSyncQueue';
 import { baristaDispatcher } from '../services/baristaDispatcher';
 import {
@@ -441,71 +442,15 @@ export const PosView: React.FC<PosViewProps> = ({
 
       // Reached only after createOrder + recordPayment were persisted.
       playPosBeep('success');
-      const orderAggregateItems: OrderItemAggregate[] = cartItems.map((item) => {
-        const mods = item.modifiers ? item.modifiers.map((m) => ({ ...m })) : [];
-        const modsDelta = mods.reduce((sum, m) => sum + m.priceDeltaToman, 0);
-        return {
-          id: item.id,
-          menuItemId: item.menuItemId,
-          itemNameSnapshot: item.itemNameSnapshot,
-          unitPriceSnapshotToman: item.unitPriceSnapshotToman,
-          quantity: item.quantity,
-          modifiers: mods,
-          modifiersDeltaToman: modsDelta * item.quantity,
-          subtotalToman: item.subtotalToman,
-          notes: item.notes,
-        };
-      });
-
-      const orderAggregate: OrderAggregate = {
-        clientGeneratedId,
-        id: result.order.id,
-        tenantId: activeShift.tenantId,
-        shiftId: activeShift.id,
-        orderNumber: result.order.orderNumber,
-        orderType,
-        state: 'PAID',
-        tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
-        customerName: customerName.trim() || undefined,
-        items: orderAggregateItems,
-        grossAmountToman,
-        grossAmount: grossAmountToman,
-        discountAmountToman,
-        discountAmount: discountAmountToman,
-        netTotalToman,
-        totalNet: netTotalToman,
-        payments: [
-          {
-            id: result.payment.id,
-            tenantId: activeShift.tenantId,
-            orderId: result.order.id,
-            clientGeneratedId,
-            shiftId: activeShift.id,
-            receivedByUserId: activeUser.id,
-            receivedByUserName: activeUser.fullName,
-            amountToman: netTotalToman,
-            paymentMethod,
-            referenceCode: referenceCode.trim() || undefined,
-            terminalName,
-            status: 'SUCCESSFUL',
-            createdAt: new Date().toISOString(),
-          },
-        ],
-        paidAmountToman: netTotalToman,
-        paidAmount: netTotalToman,
-        createdAt: result.order.createdAt,
-        updatedAt: result.order.updatedAt,
-        createdByUserId: activeUser.id,
-        createdByUserName: activeUser.fullName,
-      };
+      const orderSyncPayload = toOrderAggregate(result.order, [result.payment], clientGeneratedId);
 
       // 1. Enqueue in OfflineSyncQueue (IndexedDB)
-      globalOfflineSyncQueue.enqueue(orderAggregate).catch((err) => {
+      globalOfflineSyncQueue.enqueue(orderSyncPayload).catch((err) => {
         console.warn('Enqueue into offline database failed:', err);
       });
 
       // 2. Dispatch to Barista Bar in real time
-      baristaDispatcher.dispatchPaidOrder(orderAggregate).catch((err) => {
+      baristaDispatcher.dispatchPaidOrder(orderSyncPayload).catch((err) => {
         console.warn('Dispatching to barista bar failed:', err);
       });
 
@@ -546,60 +491,9 @@ export const PosView: React.FC<PosViewProps> = ({
     setHardwarePrintStatus('در حال اتصال به چاپگر حرارتی...');
 
     try {
-      const orderAggregate: OrderAggregate = {
-        clientGeneratedId: completedReceiptOrder.id,
-        id: completedReceiptOrder.id,
-        tenantId: completedReceiptOrder.tenantId,
-        shiftId: completedReceiptOrder.shiftId,
-        orderNumber: completedReceiptOrder.orderNumber,
-        orderType: completedReceiptOrder.orderType,
-        state: 'PAID',
-        tableLabel: completedReceiptOrder.tableLabel,
-        customerName: completedReceiptOrder.customerName,
-        items: completedReceiptOrder.items.map((i) => ({
-          id: i.id,
-          menuItemId: i.menuItemId,
-          itemNameSnapshot: i.itemNameSnapshot,
-          unitPriceSnapshotToman: i.unitPriceSnapshotToman,
-          quantity: i.quantity,
-          modifiers: i.modifiers || [],
-          modifiersDeltaToman: 0,
-          subtotalToman: i.subtotalToman,
-          notes: i.notes,
-        })),
-        grossAmountToman: completedReceiptOrder.grossAmountToman,
-        grossAmount: completedReceiptOrder.grossAmountToman,
-        discountAmountToman: completedReceiptOrder.discountAmountToman,
-        discountAmount: completedReceiptOrder.discountAmountToman,
-        netTotalToman: completedReceiptOrder.netTotalToman,
-        totalNet: completedReceiptOrder.netTotalToman,
-        payments: completedReceiptPayment
-          ? [
-              {
-                id: completedReceiptPayment.id,
-                tenantId: completedReceiptPayment.tenantId,
-                orderId: completedReceiptPayment.orderId,
-                clientGeneratedId: completedReceiptOrder.id,
-                shiftId: completedReceiptPayment.shiftId,
-                receivedByUserId: completedReceiptPayment.receivedByUserId,
-                amountToman: completedReceiptPayment.amountToman,
-                paymentMethod: completedReceiptPayment.paymentMethod,
-                referenceCode: completedReceiptPayment.referenceCode,
-                terminalName: completedReceiptPayment.terminalName,
-                status: 'SUCCESSFUL',
-                createdAt: completedReceiptPayment.createdAt,
-              },
-            ]
-          : [],
-        paidAmountToman: completedReceiptOrder.netTotalToman,
-        paidAmount: completedReceiptOrder.netTotalToman,
-        createdAt: completedReceiptOrder.createdAt,
-        updatedAt: completedReceiptOrder.updatedAt,
-        createdByUserId: completedReceiptOrder.createdByUserId,
-        createdByUserName: completedReceiptOrder.createdByUserName,
-      };
+      const printPayload = toOrderAggregate(completedReceiptOrder, completedReceiptPayment ? [completedReceiptPayment] : []);
 
-      const canvas = renderReceiptToCanvas(orderAggregate, tenant);
+      const canvas = renderReceiptToCanvas(printPayload, tenant);
 
       const rasterBytes = convertCanvasToEscPosRaster(canvas);
 
