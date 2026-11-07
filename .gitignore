@@ -11,3 +11,4 @@ coverage
 .env*.local
 *.local
 !.env.example
+.kw-owner-code.txt

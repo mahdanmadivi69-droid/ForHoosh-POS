@@ -1272,7 +1272,97 @@ export class SmartOrdersStore {
     }
   }
 
-  static async login(usernameOrPhone: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
+  /**
+   * P1-7: true once a real OWNER credential exists on this device.
+   * Staff accounts may only set their own password after this is true.
+   */
+  static hasOwnerCredential(): boolean {
+    return this.getUsers().some((u) => u.role === 'OWNER' && !!u.credential);
+  }
+
+  /** Asks the local server to validate the one-time install code. */
+  private static async verifyOwnerSetupCode(code: string): Promise<boolean> {
+    try {
+      const res = await fetch('/api/v1/setup/verify-owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      if (!res.ok) return false;
+      const data = (await res.json()) as { ok?: boolean };
+      return data?.ok === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * P1-7: explicit credential enrolment.
+   * - OWNER requires the install code printed in the local server console.
+   * - Any other role requires that the OWNER has already been set up.
+   */
+  static async enrollCredential(
+    usernameOrPhone: string,
+    password: string,
+    setupCode?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const trimmed = (usernameOrPhone || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+    if (!trimmed || !cleanPass) {
+      return { success: false, error: 'لطفاً نام کاربری و رمز عبور را وارد نمایید.' };
+    }
+    if (cleanPass.length < 6) {
+      return { success: false, error: 'رمز عبور باید حداقل ۶ کاراکتر باشد.' };
+    }
+
+    const matched = this.getUsers().find(
+      (u) =>
+        u.isActive &&
+        (u.username?.toLowerCase() === trimmed ||
+          u.phoneNumber === trimmed ||
+          u.phoneNumber.replace(/^0/, '') === trimmed.replace(/^0/, ''))
+    );
+    if (!matched) {
+      return { success: false, error: 'کاربری با این مشخصات یافت نشد یا حساب غیرفعال است.' };
+    }
+    if (matched.credential) {
+      return { success: false, error: 'این حساب قبلاً رمز عبور دارد.' };
+    }
+
+    if (matched.role === 'OWNER') {
+      if (this.hasOwnerCredential()) {
+        return { success: false, error: 'حساب مالک قبلاً راه‌اندازی شده است.' };
+      }
+      const code = (setupCode || '').trim();
+      if (!code) {
+        return { success: false, error: 'کد راه‌اندازی مالک لازم است.' };
+      }
+      const verified = await SmartOrdersStore.verifyOwnerSetupCode(code);
+      if (!verified) {
+        return { success: false, error: 'کد راه‌اندازی نامعتبر است یا سرور در دسترس نیست.' };
+      }
+    } else if (!this.hasOwnerCredential()) {
+      return { success: false, error: 'ابتدا حساب مالک باید راه‌اندازی شود.' };
+    }
+
+    const credential = await hashPassword(cleanPass);
+    this.updateUser({ ...matched, credential, mustChangePassword: false });
+    this.addAuditLog(
+      'USER_ENROLLED',
+      'User',
+      matched.id,
+      `تعریف رمز عبور برای ${matched.fullName} (${matched.username}) با نقش ${matched.role}`
+    );
+    return { success: true };
+  }
+
+  static async login(usernameOrPhone: string, password: string): Promise<{
+    success: boolean;
+    user?: User;
+    error?: string;
+    requiresEnrollment?: boolean;
+    enrollmentRequiresSetupCode?: boolean;
+  }> {
     const trimmed = (usernameOrPhone || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
     if (!trimmed || !cleanPass) {
@@ -1320,14 +1410,25 @@ export class SmartOrdersStore {
         return { success: false, error: 'رمز عبور وارد شده نادرست است.' };
       }
     } else if (matched.mustChangePassword) {
-      // First-run credential setup
-      const initialCred = await hashPassword(cleanPass);
-      matched.credential = initialCred;
-      matched.mustChangePassword = false;
-      this.updateUser(matched);
+      // P1-7: A credential-less account is never claimable by whoever types
+      // first. Enrolment is an explicit action (enrollCredential) and, for the
+      // OWNER account, requires the install code printed by the local server.
+      return {
+        success: false,
+        requiresEnrollment: true,
+        enrollmentRequiresSetupCode: matched.role === 'OWNER',
+        error:
+          matched.role === 'OWNER'
+            ? 'این حساب هنوز رمز ندارد. برای تعریف رمز مالک، کد راه‌اندازی را از کنسول سرور بردارید.'
+            : 'این حساب هنوز رمز ندارد. ابتدا حساب مالک باید راه‌اندازی شود.',
+      };
     } else {
-      recordFailure();
-      return { success: false, error: 'حساب کاربری نیازمند تنظیم رمز عبور اولیه است.' };
+      return {
+        success: false,
+        requiresEnrollment: true,
+        enrollmentRequiresSetupCode: matched.role === 'OWNER',
+        error: 'این حساب هنوز رمز ندارد. ابتدا حساب مالک باید راه‌اندازی شود.',
+      };
     }
 
     loginThrottles.delete(trimmed);
@@ -2031,12 +2132,19 @@ export class SmartOrdersStore {
 
       save(STORAGE_KEYS.TENANT, parsed.tenant);
       if (Array.isArray(parsed.users)) {
+        // P1-7: a backup must never erase an established credential. Clearing
+        // hashes on restore re-opened enrolment on every account (OWNER
+        // included), which let the next person to touch the device claim it.
+        const priorCredentials = new Map(
+          this.getUsers().map((u) => [u.id, u.credential] as const)
+        );
         const imported = parsed.users.map((u: any) => {
           const { credential, password, ...rest } = u;
-          return {
-            ...rest,
-            mustChangePassword: true,
-          };
+          const prior = priorCredentials.get(rest.id);
+          if (prior) {
+            return { ...rest, credential: prior, mustChangePassword: false };
+          }
+          return { ...rest, mustChangePassword: true };
         });
         this.saveUsers(imported);
       }

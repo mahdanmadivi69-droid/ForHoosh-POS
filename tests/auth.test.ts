@@ -22,6 +22,24 @@ if (typeof globalThis.localStorage === 'undefined' || !globalThis.localStorage?.
 import { SmartOrdersStore } from '../src/services/storage';
 import { hashPassword, verifyPassword } from '../src/services/credentials';
 
+// P1-7: the OWNER install code is validated by the local server.
+// Mirror that endpoint here so the enrolment gate can be tested headlessly.
+const INSTALL_CODE = '123456';
+(globalThis as any).fetch = async (_url: any, init?: any) => {
+  let code = '';
+  try {
+    code = JSON.parse(String(init?.body ?? '{}')).code ?? '';
+  } catch {
+    code = '';
+  }
+  const ok = code === INSTALL_CODE;
+  return {
+    ok,
+    status: ok ? 200 : 403,
+    json: async () => ({ ok }),
+  } as any;
+};
+
 async function runAuthTests() {
   console.log('\n--- Running Authentication & Security Hardening Test Suite ---');
   let passed = 0;
@@ -37,13 +55,32 @@ async function runAuthTests() {
     }
   }
 
-  // 1. Initial credential setup & login
+  // 0. P1-7: no implicit claim of any account
+  const blockedOwner = await SmartOrdersStore.login('admin', 'AnyPassword1');
+  assert(blockedOwner.success === false, 'Credential-less OWNER cannot be claimed by typing a password');
+  assert(blockedOwner.requiresEnrollment === true, 'Login reports that enrolment is required');
+  assert(blockedOwner.enrollmentRequiresSetupCode === true, 'OWNER enrolment demands the install code');
+
+  const staffBeforeOwner = await SmartOrdersStore.enrollCredential('ali', 'StaffPass1');
+  assert(staffBeforeOwner.success === false, 'Staff cannot enrol before the OWNER is set up');
+
+  const ownerNoCode = await SmartOrdersStore.enrollCredential('admin', 'Admin@100Hich');
+  assert(ownerNoCode.success === false, 'OWNER enrolment without the install code is rejected');
+
+  const ownerWrongCode = await SmartOrdersStore.enrollCredential('admin', 'Admin@100Hich', '000000');
+  assert(ownerWrongCode.success === false, 'OWNER enrolment with a wrong install code is rejected');
+
+  const ownerEnrolled = await SmartOrdersStore.enrollCredential('admin', 'Admin@100Hich', INSTALL_CODE);
+  assert(ownerEnrolled.success === true, 'OWNER enrolment with the install code succeeds');
+  assert(SmartOrdersStore.hasOwnerCredential() === true, 'hasOwnerCredential() is true after enrolment');
+
+  // 1. Login with the enrolled credential
   const users = SmartOrdersStore.getUsers();
   const testUser = users[0]; // admin
   const setupRes = await SmartOrdersStore.login(testUser.username, 'Admin@100Hich');
-  assert(setupRes.success === true, 'First-run setup with password succeeds');
-  assert(setupRes.user?.credential !== undefined, 'User receives SecureCredential after first login');
-  assert(setupRes.user?.mustChangePassword === false, 'mustChangePassword cleared after setup');
+  assert(setupRes.success === true, 'Login with the enrolled password succeeds');
+  assert(setupRes.user?.credential !== undefined, 'User has a SecureCredential after enrolment');
+  assert(setupRes.user?.mustChangePassword === false, 'mustChangePassword is cleared after enrolment');
 
   // 2. Correct password verification
   const validLogin = await SmartOrdersStore.login(testUser.username, 'Admin@100Hich');
@@ -54,8 +91,17 @@ async function runAuthTests() {
   assert(wrongLogin.success === false, 'Login with incorrect password fails');
   assert(wrongLogin.error?.includes('نادرست') === true, 'Returns incorrect password error');
 
+  // 3b. P1-7: restoring a backup must never erase established credentials
+  const backupJson = SmartOrdersStore.exportBackupData();
+  const importRes = SmartOrdersStore.importBackupData(backupJson);
+  assert(importRes.success === true, 'Backup round-trip imports successfully');
+  const ownerAfterRestore = SmartOrdersStore.getUsers().find((u) => u.id === 'user-01');
+  assert(!!ownerAfterRestore?.credential, 'OWNER credential survives a backup restore');
+  const ownerStillLogsIn = await SmartOrdersStore.login('admin', 'Admin@100Hich');
+  assert(ownerStillLogsIn.success === true, 'OWNER can still log in after a backup restore');
+
   // 4. Throttling: 5 consecutive failures triggers lockout
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < 5; i++) {
     await SmartOrdersStore.login(testUser.username, 'WrongPassword');
   }
   const lockedLogin = await SmartOrdersStore.login(testUser.username, 'Admin@100Hich');
