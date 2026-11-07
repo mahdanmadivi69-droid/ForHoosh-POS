@@ -14,6 +14,10 @@ import {
   Expense,
   AuditLog,
 } from '../types/domain';
+import {
+  mirrorOrdersToDexie,
+  readMirroredOrders,
+} from './ordersMirror';
 
 const STORAGE_KEYS = {
   TENANT: 'smartorders_tenant_v1',
@@ -1125,11 +1129,47 @@ function load<T>(key: string, fallback: T): T {
   }
 }
 
+/**
+ * P0-2 (review R4): a failed localStorage write MUST NOT be swallowed.
+ * Callers on the money path (orders/payments) let this bubble up so the POS
+ * can block the payment button and refuse to print a receipt. Callers that
+ * write non-financial data (audit logs, active-user pointer, self-healing menu
+ * defaults) deliberately contain it — see the try/catch at each call site.
+ */
+export class StorageWriteError extends Error {
+  readonly code: 'QUOTA_EXCEEDED' | 'STORAGE_UNAVAILABLE';
+  readonly storageKey: string;
+
+  constructor(storageKey: string, code: 'QUOTA_EXCEEDED' | 'STORAGE_UNAVAILABLE') {
+    super(
+      code === 'QUOTA_EXCEEDED'
+        ? 'ذخیره‌سازی محلی انجام نشد: حافظه مرورگر (LocalStorage) پر شده است. این عملیات ثبت نشد؛ لطفاً از داده‌ها پشتیبان بگیرید و حافظه را آزاد کنید. تا رفع مشکل وجهی دریافت نکنید.'
+        : 'ذخیره‌سازی محلی انجام نشد: مرورگر دسترسی نوشتن به LocalStorage را مسدود کرده است. این عملیات ثبت نشد؛ تا رفع مشکل وجهی دریافت نکنید.'
+    );
+    this.name = 'StorageWriteError';
+    this.code = code;
+    this.storageKey = storageKey;
+  }
+}
+
+function isQuotaExceededError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const anyErr = err as { name?: string; code?: number; message?: string };
+  return (
+    anyErr.name === 'QuotaExceededError' ||
+    anyErr.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    anyErr.code === 22 ||
+    anyErr.code === 1014 ||
+    (typeof anyErr.message === 'string' && /quota/i.test(anyErr.message))
+  );
+}
+
 function save<T>(key: string, data: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
     console.error(`Error saving key ${key}:`, err);
+    throw new StorageWriteError(key, isQuotaExceededError(err) ? 'QUOTA_EXCEEDED' : 'STORAGE_UNAVAILABLE');
   }
 }
 
@@ -1158,7 +1198,12 @@ export class SmartOrdersStore {
   }
 
   static setActiveUserId(userId: string): void {
-    save(STORAGE_KEYS.ACTIVE_USER_ID, userId);
+    // Non-financial pointer: never let a full quota break user switching.
+    try {
+      save(STORAGE_KEYS.ACTIVE_USER_ID, userId);
+    } catch (err) {
+      console.error('[storage] active user pointer could not be persisted', err);
+    }
   }
 
   static isAuthenticated(): boolean {
@@ -1199,7 +1244,12 @@ export class SmartOrdersStore {
     try {
       window.sessionStorage?.setItem('smartorders_session_active_v1', 'true');
     } catch {}
-    save(STORAGE_KEYS.IS_LOGGED_IN, true);
+    try {
+      save(STORAGE_KEYS.IS_LOGGED_IN, true);
+    } catch (err) {
+      // sessionStorage already carries the session; this flag is legacy only.
+      console.error('[storage] login flag could not be persisted', err);
+    }
     this.addAuditLog('USER_LOGIN', 'User', matched.id, `ورود موفق کاربر ${matched.fullName} (${matched.username}) با نقش ${matched.role}`);
 
     return { success: true, user: matched };
@@ -1210,7 +1260,11 @@ export class SmartOrdersStore {
     try {
       window.sessionStorage?.removeItem('smartorders_session_active_v1');
     } catch {}
-    save(STORAGE_KEYS.IS_LOGGED_IN, false);
+    try {
+      save(STORAGE_KEYS.IS_LOGGED_IN, false);
+    } catch (err) {
+      console.error('[storage] logout flag could not be persisted', err);
+    }
     this.addAuditLog('USER_LOGOUT', 'User', user.id, `خروج کاربر ${user.fullName}`);
   }
 
@@ -1250,7 +1304,12 @@ export class SmartOrdersStore {
     });
 
     if (modified) {
-      save(STORAGE_KEYS.MENU_ITEMS, items);
+      try {
+        save(STORAGE_KEYS.MENU_ITEMS, items);
+      } catch (err) {
+        // Self-healing defaults only; never block the cashier UI for this.
+        console.error('[storage] could not persist self-healed menu defaults', err);
+      }
     }
     return items;
   }
@@ -1412,7 +1471,63 @@ export class SmartOrdersStore {
   }
 
   static saveOrders(orders: Order[]): void {
+    // localStorage stays the primary (synchronous) ledger for the cashier UI.
+    // If this throws, the caller must block the sale — no fake receipt.
     save(STORAGE_KEYS.ORDERS, orders);
+    // P0-2: write-through mirror AFTER the localStorage commit succeeded, so a
+    // blocked sale never appears later as a phantom order from IndexedDB.
+    mirrorOrdersToDexie(orders);
+  }
+
+  /**
+   * P0-2 boot merge: reads the Dexie `posOrders` mirror and merges it with the
+   * localStorage ledger by order id (localStorage wins for ids it still has,
+   * because it is written first and is therefore at least as fresh).
+   *
+   * Returns the merged list so the caller can render it even when the
+   * localStorage rewrite itself fails. Never throws: a broken mirror must not
+   * prevent the POS from starting.
+   */
+  static async hydrateOrdersFromDexie(): Promise<Order[]> {
+    const local = this.getOrders();
+    let mirrored: Order[] = [];
+    try {
+      mirrored = await readMirroredOrders();
+    } catch (err) {
+      console.error('[storage] reading the Dexie order mirror failed; keeping localStorage ledger only', err);
+      return local;
+    }
+
+    if (mirrored.length === 0) {
+      // First boot after the P0-2 upgrade: seed the mirror from the existing
+      // localStorage ledger so future losses are recoverable.
+      if (local.length > 0) mirrorOrdersToDexie(local);
+      return local;
+    }
+
+    const byId = new Map<string, Order>();
+    for (const order of mirrored) {
+      if (order && order.id) byId.set(order.id, order);
+    }
+    for (const order of local) {
+      if (order && order.id) byId.set(order.id, order);
+    }
+
+    const merged = Array.from(byId.values()).sort((a, b) =>
+      String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
+    );
+
+    if (merged.length > local.length) {
+      try {
+        save(STORAGE_KEYS.ORDERS, merged);
+      } catch (err) {
+        // Serve the recovered orders from memory; the next manual backup will
+        // still include them. Blocking the whole POS here would be worse.
+        console.error('[storage] orders recovered from Dexie but localStorage write failed', err);
+      }
+    }
+
+    return merged;
   }
 
   static createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>): Order {
@@ -1442,7 +1557,14 @@ export class SmartOrdersStore {
       }
     }
     if (stockChanged) {
-      this.saveMenuItems(menuItems);
+      try {
+        this.saveMenuItems(menuItems);
+      } catch (err) {
+        // The order itself is the ledger record and is already persisted.
+        // Stock drift is flagged in the console instead of pretending the
+        // whole sale failed (which would invite a duplicate order).
+        console.error('[storage] order persisted but stock deduction could not be saved', err);
+      }
     }
 
     this.addAuditLog(
@@ -1549,10 +1671,17 @@ export class SmartOrdersStore {
     };
 
     payments.unshift(newPayment);
+    // Money record first: if this throws, no payment exists and the POS keeps
+    // the checkout modal open with an error.
     save(STORAGE_KEYS.PAYMENTS, payments);
 
-    // Also mark order as COMPLETED
-    this.updateOrderStatus(payment.orderId, 'COMPLETED');
+    // Also mark order as COMPLETED. A failure here must not fail the payment
+    // that is already committed (that would invite a duplicate charge).
+    try {
+      this.updateOrderStatus(payment.orderId, 'COMPLETED');
+    } catch (err) {
+      console.error('[storage] payment persisted but order status could not be marked COMPLETED', err);
+    }
 
     this.addAuditLog(
       'ORDER_PAID',
@@ -1615,8 +1744,13 @@ export class SmartOrdersStore {
     };
 
     logs.unshift(newLog);
-    // Keep last 300 logs
-    save(STORAGE_KEYS.AUDIT_LOGS, logs.slice(0, 300));
+    // Keep last 300 logs. Audit logging is secondary to the money path: a
+    // quota failure here must not abort an already-persisted order/payment.
+    try {
+      save(STORAGE_KEYS.AUDIT_LOGS, logs.slice(0, 300));
+    } catch (err) {
+      console.error(`[storage] audit log "${action}" could not be persisted`, err);
+    }
   }
 
   // Seed sample initial shift and history if fresh install
@@ -1800,7 +1934,11 @@ export class SmartOrdersStore {
       if (Array.isArray(parsed.categories)) save(STORAGE_KEYS.CATEGORIES, parsed.categories);
       if (Array.isArray(parsed.menuItems)) save(STORAGE_KEYS.MENU_ITEMS, parsed.menuItems);
       if (Array.isArray(parsed.shifts)) save(STORAGE_KEYS.SHIFTS, parsed.shifts);
-      if (Array.isArray(parsed.orders)) save(STORAGE_KEYS.ORDERS, parsed.orders);
+      if (Array.isArray(parsed.orders)) {
+        // Keep the Dexie mirror in sync with a restored backup (clear+bulkPut
+        // also removes orders that are absent from the backup).
+        this.saveOrders(parsed.orders);
+      }
       if (Array.isArray(parsed.payments)) save(STORAGE_KEYS.PAYMENTS, parsed.payments);
       if (Array.isArray(parsed.expenses)) save(STORAGE_KEYS.EXPENSES, parsed.expenses);
       if (Array.isArray(parsed.auditLogs)) save(STORAGE_KEYS.AUDIT_LOGS, parsed.auditLogs);
@@ -1822,5 +1960,8 @@ export class SmartOrdersStore {
   static resetDatabaseToSeed(): void {
     Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
     this.initSeedData();
+    // P0-2: make the Dexie mirror reflect the reset ledger (clear+bulkPut), so
+    // old orders cannot be resurrected by the boot merge.
+    mirrorOrdersToDexie(this.getOrders());
   }
 }

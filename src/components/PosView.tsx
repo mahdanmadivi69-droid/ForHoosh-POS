@@ -138,6 +138,10 @@ export const PosView: React.FC<PosViewProps> = ({
   const [completedCashTendered, setCompletedCashTendered] = useState<number | undefined>(undefined);
   const [completedChange, setCompletedChange] = useState<number | undefined>(undefined);
   const [hardwarePrintStatus, setHardwarePrintStatus] = useState<string | null>(null);
+  // P0-2: settling + persistence failure state. While `paymentError` is set the
+  // payment buttons stay disabled — the receipt modal is never reached.
+  const [isSettling, setIsSettling] = useState<boolean>(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Financial totals calculation
   const { grossAmountToman, discountAmountToman, netTotalToman } = calculateOrderTotals(
@@ -154,6 +158,10 @@ export const PosView: React.FC<PosViewProps> = ({
   }, []);
 
   const stockAlertStats = countStockAlerts(menuItems, globalThreshold);
+
+  // P0-2: while a persistence error is unresolved (or a save is in flight) the
+  // checkout buttons stay disabled; only an explicit retry clears the error.
+  const isPaymentBlocked = isSettling || paymentError !== null;
 
   // Filter menu items
   const filteredItems = menuItems.filter((item) => {
@@ -378,48 +386,61 @@ export const PosView: React.FC<PosViewProps> = ({
       return;
     }
     if (cartItems.length === 0) return;
+    setPaymentError(null);
     setCashTendered(netTotalToman);
     setIsCheckoutOpen(true);
   };
 
   const handleConfirmPayment = (autoPrint = false) => {
     if (!activeShift) return;
+    // P0-2: a previous persistence failure blocks the button until the cashier
+    // acknowledges it (retry) — no double-click can slip a second sale through.
+    if (isSettling || paymentError) return;
 
-    playPosBeep('success');
+    setIsSettling(true);
+    setPaymentError(null);
 
-    const clientGeneratedId =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `cid-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    try {
+      const clientGeneratedId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `cid-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-    const newOrder: Order = {
-      id: `order-${Date.now()}`,
-      tenantId: activeShift.tenantId,
-      shiftId: activeShift.id,
-      createdByUserId: activeUser.id,
-      createdByUserName: activeUser.fullName,
-      orderNumber: 0,
-      orderType,
-      tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
-      customerName: customerName.trim() || undefined,
-      notes: orderNotes.trim() || undefined,
-      status: 'COMPLETED',
-      items: cartItems,
-      grossAmountToman,
-      discountAmountToman,
-      netTotalToman,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      const newOrder: Order = {
+        id: `order-${Date.now()}`,
+        tenantId: activeShift.tenantId,
+        shiftId: activeShift.id,
+        createdByUserId: activeUser.id,
+        createdByUserName: activeUser.fullName,
+        orderNumber: 0,
+        orderType,
+        tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
+        customerName: customerName.trim() || undefined,
+        notes: orderNotes.trim() || undefined,
+        status: 'COMPLETED',
+        items: cartItems,
+        grossAmountToman,
+        discountAmountToman,
+        netTotalToman,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
 
-    const result = onOrderCompleted(
-      newOrder,
-      paymentMethod,
-      referenceCode.trim() || undefined,
-      terminalName
-    );
+      const result = onOrderCompleted(
+        newOrder,
+        paymentMethod,
+        referenceCode.trim() || undefined,
+        terminalName
+      );
 
-    if (result) {
+      if (!result) {
+        // Blocked before persistence (e.g. no active shift). Keep the modal
+        // open, show nothing success-like, no receipt.
+        return;
+      }
+
+      // Reached only after createOrder + recordPayment were persisted.
+      playPosBeep('success');
       const orderAggregateItems: OrderItemAggregate[] = cartItems.map((item) => {
         const mods = item.modifiers ? item.modifiers.map((m) => ({ ...m })) : [];
         const modsDelta = mods.reduce((sum, m) => sum + m.priceDeltaToman, 0);
@@ -507,6 +528,15 @@ export const PosView: React.FC<PosViewProps> = ({
           printThermalReceipt('thermal-receipt');
         }, 300);
       }
+    } catch (err: any) {
+      // P0-2: order/payment persistence failed. Keep the cart and modal
+      // intact, disable the payment buttons and show the real error.
+      // No receipt modal is opened and no success sound is played.
+      console.error('[PosView] checkout persistence failed', err);
+      setPaymentError(err?.message || 'خطای نامشخص در ذخیره‌سازی فاکتور و پرداخت');
+      playPosBeep('delete');
+    } finally {
+      setIsSettling(false);
     }
   };
 
@@ -1366,7 +1396,10 @@ export const PosView: React.FC<PosViewProps> = ({
                 </h3>
                 <button
                   type="button"
-                  onClick={() => setIsCheckoutOpen(false)}
+                  onClick={() => {
+                    setIsCheckoutOpen(false);
+                    setPaymentError(null);
+                  }}
                   className="text-[#9EACB8] hover:text-white p-1"
                 >
                   <X className="w-5 h-5" />
@@ -1532,12 +1565,38 @@ export const PosView: React.FC<PosViewProps> = ({
               </div>
             </div>
 
+            {/* P0-2: loud persistence failure — no receipt, no success */}
+            {paymentError && (
+              <div className="mt-3 bg-rose-950/80 border border-rose-700 rounded-xl p-3 text-xs text-rose-100 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-extrabold text-rose-200">
+                    فاکتور و پرداخت ذخیره نشد — وجهی دریافت نکنید.
+                  </p>
+                  <p className="mt-1 leading-5 text-rose-200/90">{paymentError}</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setPaymentError(null);
+                    }}
+                    className="mt-2 px-3 py-1.5 rounded-lg bg-rose-900/70 hover:bg-rose-800 border border-rose-700 text-rose-100 font-bold cursor-pointer"
+                  >
+                    تلاش مجدد (پس از رفع مشکل حافظه)
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="pt-3 border-t border-[#293444] flex flex-col gap-2">
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsCheckoutOpen(false)}
+                  onClick={() => {
+                    setIsCheckoutOpen(false);
+                    setPaymentError(null);
+                  }}
                   className="w-1/3 bg-[#121417] hover:bg-[#222B38] border border-[#293444] text-[#9EACB8] hover:text-white py-3 rounded-lg font-bold text-xs cursor-pointer"
                 >
                   انصراف
@@ -1545,16 +1604,26 @@ export const PosView: React.FC<PosViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleConfirmPayment(false)}
-                  className="w-2/3 bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-white py-3 rounded-lg font-bold text-xs cursor-pointer"
+                  disabled={isPaymentBlocked}
+                  className={`w-2/3 border py-3 rounded-lg font-bold text-xs ${
+                    isPaymentBlocked
+                      ? 'bg-[#121417] border-[#293444] text-[#526071] cursor-not-allowed opacity-60'
+                      : 'bg-[#1B222C] hover:bg-[#222B38] border-[#293444] text-white cursor-pointer'
+                  }`}
                 >
-                  ثبت پرداخت و مشاهده فیش
+                  {isSettling ? 'در حال ثبت فاکتور…' : 'ثبت پرداخت و مشاهده فیش'}
                 </button>
               </div>
 
               <button
                 type="button"
                 onClick={() => handleConfirmPayment(true)}
-                className="w-full bg-[#D71921] hover:bg-[#B8141B] text-white py-3 rounded-lg font-extrabold flex items-center justify-center gap-2 shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)] cursor-pointer active:scale-95 transition"
+                disabled={isPaymentBlocked}
+                className={`w-full py-3 rounded-lg font-extrabold flex items-center justify-center gap-2 transition ${
+                  isPaymentBlocked
+                    ? 'bg-[#3a1417] text-[#9EACB8] cursor-not-allowed opacity-60'
+                    : 'bg-[#D71921] hover:bg-[#B8141B] text-white shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)] cursor-pointer active:scale-95'
+                }`}
               >
                 <Printer className="w-4 h-4" />
                 <span>تایید تراکنش و چاپ فیش حرارتی (۸۰ میلی‌متری)</span>

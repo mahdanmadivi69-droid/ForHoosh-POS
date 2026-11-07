@@ -49,8 +49,8 @@ assert(
   'Feature flag ENABLE_ZERO_G_SMART_ORDERS is strictly typed boolean'
 );
 assert(
-  FEATURES.ENABLE_ZERO_G_SMART_ORDERS === true,
-  'Feature flag defaults to enabled in production deployment'
+  FEATURES.ENABLE_ZERO_G_SMART_ORDERS === false,
+  'P0-1: Zero-G feature flag is hard OFF by default (opt-in via VITE_ENABLE_ZERO_G_SMART_ORDERS=true)'
 );
 
 // Verify toggling flag
