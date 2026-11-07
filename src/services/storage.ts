@@ -1,3 +1,4 @@
+import { SecureCredential, hashPassword, verifyPassword } from './credentials';
 /**
  * Storage and State Management Service for SmartOrders
  * Implements Multi-Tenant Data Isolation, Local Persistence, and Initial Realistic Seed Data.
@@ -14,6 +15,11 @@ import {
   Expense,
   AuditLog,
 } from '../types/domain';
+import { InvoiceSequenceService } from './invoiceSequence';
+import {
+  mirrorOrdersToDexie,
+  readMirroredOrders,
+} from './ordersMirror';
 
 const STORAGE_KEYS = {
   TENANT: 'smartorders_tenant_v1',
@@ -46,7 +52,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'مهدان مددی (مدیر و مالک)',
     phoneNumber: '09120000001',
     username: 'admin',
-    password: '123',
+    mustChangePassword: true,
     role: 'OWNER',
     isActive: true,
   },
@@ -56,7 +62,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'سارا رضایی (سرپرست شیفت)',
     phoneNumber: '09120000002',
     username: 'sara',
-    password: '123',
+    mustChangePassword: true,
     role: 'MANAGER',
     isActive: true,
   },
@@ -66,7 +72,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'علی مرادی (صندوق‌دار)',
     phoneNumber: '09120000003',
     username: 'ali',
-    password: '123',
+    mustChangePassword: true,
     role: 'CASHIER',
     isActive: true,
   },
@@ -76,7 +82,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'نیما کمالی (باریستا)',
     phoneNumber: '09120000004',
     username: 'nima',
-    password: '123',
+    mustChangePassword: true,
     role: 'BARISTA',
     isActive: true,
   },
@@ -1125,13 +1131,56 @@ function load<T>(key: string, fallback: T): T {
   }
 }
 
+/**
+ * P0-2 (review R4): a failed localStorage write MUST NOT be swallowed.
+ * Callers on the money path (orders/payments) let this bubble up so the POS
+ * can block the payment button and refuse to print a receipt. Callers that
+ * write non-financial data (audit logs, active-user pointer, self-healing menu
+ * defaults) deliberately contain it — see the try/catch at each call site.
+ */
+export class StorageWriteError extends Error {
+  readonly code: 'QUOTA_EXCEEDED' | 'STORAGE_UNAVAILABLE';
+  readonly storageKey: string;
+
+  constructor(storageKey: string, code: 'QUOTA_EXCEEDED' | 'STORAGE_UNAVAILABLE') {
+    super(
+      code === 'QUOTA_EXCEEDED'
+        ? 'ذخیره‌سازی محلی انجام نشد: حافظه مرورگر (LocalStorage) پر شده است. این عملیات ثبت نشد؛ لطفاً از داده‌ها پشتیبان بگیرید و حافظه را آزاد کنید. تا رفع مشکل وجهی دریافت نکنید.'
+        : 'ذخیره‌سازی محلی انجام نشد: مرورگر دسترسی نوشتن به LocalStorage را مسدود کرده است. این عملیات ثبت نشد؛ تا رفع مشکل وجهی دریافت نکنید.'
+    );
+    this.name = 'StorageWriteError';
+    this.code = code;
+    this.storageKey = storageKey;
+  }
+}
+
+function isQuotaExceededError(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false;
+  const anyErr = err as { name?: string; code?: number; message?: string };
+  return (
+    anyErr.name === 'QuotaExceededError' ||
+    anyErr.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+    anyErr.code === 22 ||
+    anyErr.code === 1014 ||
+    (typeof anyErr.message === 'string' && /quota/i.test(anyErr.message))
+  );
+}
+
 function save<T>(key: string, data: T): void {
   try {
     localStorage.setItem(key, JSON.stringify(data));
   } catch (err) {
     console.error(`Error saving key ${key}:`, err);
+    throw new StorageWriteError(key, isQuotaExceededError(err) ? 'QUOTA_EXCEEDED' : 'STORAGE_UNAVAILABLE');
   }
 }
+
+
+interface ThrottleState {
+  attempts: number;
+  lockedUntil?: number;
+}
+const loginThrottles = new Map<string, ThrottleState>();
 
 export class SmartOrdersStore {
   // Tenant
@@ -1147,6 +1196,53 @@ export class SmartOrdersStore {
   }
 
   // Users & Authentication
+
+  static saveUsers(users: User[]): void {
+    const clean = users.map((u) => {
+      const copy = { ...u };
+      delete (copy as any).password;
+      return copy;
+    });
+    save(STORAGE_KEYS.USERS, clean);
+  }
+
+  static updateUser(updated: User): void {
+    const users = this.getUsers().map((u) => (u.id === updated.id ? updated : u));
+    this.saveUsers(users);
+  }
+
+  static async migrateLegacyUserPasswords(): Promise<void> {
+    try {
+      const users = this.getUsers();
+      let modified = false;
+      const cleanUsers: User[] = [];
+
+      for (const u of users) {
+        const legacyPass = (u as any).password;
+        if (legacyPass && typeof legacyPass === 'string') {
+          modified = true;
+          const cred = await hashPassword(legacyPass);
+          const copy = { ...u };
+          delete (copy as any).password;
+          copy.credential = cred;
+          copy.mustChangePassword = true;
+          cleanUsers.push(copy);
+        } else {
+          const copy = { ...u };
+          delete (copy as any).password;
+          cleanUsers.push(copy);
+        }
+      }
+
+      if (modified) {
+        this.saveUsers(cleanUsers);
+        console.log('[Security] Legacy plaintext passwords migrated to PBKDF2-SHA256 credentials.');
+      }
+    } catch (err) {
+      console.error('[Security] Legacy password migration failed:', err);
+    }
+  }
+
   static getUsers(): User[] {
     return load(STORAGE_KEYS.USERS, DEFAULT_USERS);
   }
@@ -1158,7 +1254,12 @@ export class SmartOrdersStore {
   }
 
   static setActiveUserId(userId: string): void {
-    save(STORAGE_KEYS.ACTIVE_USER_ID, userId);
+    // Non-financial pointer: never let a full quota break user switching.
+    try {
+      save(STORAGE_KEYS.ACTIVE_USER_ID, userId);
+    } catch (err) {
+      console.error('[storage] active user pointer could not be persisted', err);
+    }
   }
 
   static isAuthenticated(): boolean {
@@ -1171,12 +1272,122 @@ export class SmartOrdersStore {
     }
   }
 
-  static login(usernameOrPhone: string, password: string): { success: boolean; user?: User; error?: string } {
+  /**
+   * P1-7: true once a real OWNER credential exists on this device.
+   * Staff accounts may only set their own password after this is true.
+   */
+  static hasOwnerCredential(): boolean {
+    return this.getUsers().some((u) => u.role === 'OWNER' && !!u.credential);
+  }
+
+  /** Asks the local server to validate the one-time install code. */
+  private static async verifyOwnerSetupCode(code: string): Promise<boolean> {
+    try {
+      const res = await fetch('/api/v1/setup/verify-owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      if (!res.ok) return false;
+      const data = (await res.json()) as { ok?: boolean };
+      return data?.ok === true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * P1-7: explicit credential enrolment.
+   * - OWNER requires the install code printed in the local server console.
+   * - Any other role requires that the OWNER has already been set up.
+   */
+  static async enrollCredential(
+    usernameOrPhone: string,
+    password: string,
+    setupCode?: string
+  ): Promise<{ success: boolean; error?: string }> {
     const trimmed = (usernameOrPhone || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
     if (!trimmed || !cleanPass) {
       return { success: false, error: 'لطفاً نام کاربری و رمز عبور را وارد نمایید.' };
     }
+    if (cleanPass.length < 6) {
+      return { success: false, error: 'رمز عبور باید حداقل ۶ کاراکتر باشد.' };
+    }
+
+    const matched = this.getUsers().find(
+      (u) =>
+        u.isActive &&
+        (u.username?.toLowerCase() === trimmed ||
+          u.phoneNumber === trimmed ||
+          u.phoneNumber.replace(/^0/, '') === trimmed.replace(/^0/, ''))
+    );
+    if (!matched) {
+      return { success: false, error: 'کاربری با این مشخصات یافت نشد یا حساب غیرفعال است.' };
+    }
+    if (matched.credential) {
+      return { success: false, error: 'این حساب قبلاً رمز عبور دارد.' };
+    }
+
+    if (matched.role === 'OWNER') {
+      if (this.hasOwnerCredential()) {
+        return { success: false, error: 'حساب مالک قبلاً راه‌اندازی شده است.' };
+      }
+      const code = (setupCode || '').trim();
+      if (!code) {
+        return { success: false, error: 'کد راه‌اندازی مالک لازم است.' };
+      }
+      const verified = await SmartOrdersStore.verifyOwnerSetupCode(code);
+      if (!verified) {
+        return { success: false, error: 'کد راه‌اندازی نامعتبر است یا سرور در دسترس نیست.' };
+      }
+    } else if (!this.hasOwnerCredential()) {
+      return { success: false, error: 'ابتدا حساب مالک باید راه‌اندازی شود.' };
+    }
+
+    const credential = await hashPassword(cleanPass);
+    this.updateUser({ ...matched, credential, mustChangePassword: false });
+    this.addAuditLog(
+      'USER_ENROLLED',
+      'User',
+      matched.id,
+      `تعریف رمز عبور برای ${matched.fullName} (${matched.username}) با نقش ${matched.role}`
+    );
+    return { success: true };
+  }
+
+  static async login(usernameOrPhone: string, password: string): Promise<{
+    success: boolean;
+    user?: User;
+    error?: string;
+    requiresEnrollment?: boolean;
+    enrollmentRequiresSetupCode?: boolean;
+  }> {
+    const trimmed = (usernameOrPhone || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+    if (!trimmed || !cleanPass) {
+      return { success: false, error: 'لطفاً نام کاربری و رمز عبور را وارد نمایید.' };
+    }
+
+    const now = Date.now();
+    const throttle = loginThrottles.get(trimmed);
+    if (throttle?.lockedUntil && throttle.lockedUntil > now) {
+      const remainingSec = Math.ceil((throttle.lockedUntil - now) / 1000);
+      return {
+        success: false,
+        error: `تعداد تلاش‌های ناموفق بیش از حد مجاز است. لطفاً ${remainingSec} ثانیه صبر کنید.`,
+      };
+    }
+
+    const recordFailure = () => {
+      const record = loginThrottles.get(trimmed) || { attempts: 0 };
+      record.attempts += 1;
+      if (record.attempts >= 5) {
+        record.lockedUntil = Date.now() + 30000;
+        record.attempts = 0;
+      }
+      loginThrottles.set(trimmed, record);
+    };
 
     const users = this.getUsers();
     const matched = users.find(
@@ -1188,18 +1399,48 @@ export class SmartOrdersStore {
     );
 
     if (!matched) {
+      recordFailure();
       return { success: false, error: 'کاربری با این مشخصات یافت نشد یا حساب غیرفعال است.' };
     }
 
-    if (matched.password && matched.password !== cleanPass) {
-      return { success: false, error: 'رمز عبور وارد شده نادرست است.' };
+    if (matched.credential) {
+      const isValid = await verifyPassword(cleanPass, matched.credential);
+      if (!isValid) {
+        recordFailure();
+        return { success: false, error: 'رمز عبور وارد شده نادرست است.' };
+      }
+    } else if (matched.mustChangePassword) {
+      // P1-7: A credential-less account is never claimable by whoever types
+      // first. Enrolment is an explicit action (enrollCredential) and, for the
+      // OWNER account, requires the install code printed by the local server.
+      return {
+        success: false,
+        requiresEnrollment: true,
+        enrollmentRequiresSetupCode: matched.role === 'OWNER',
+        error:
+          matched.role === 'OWNER'
+            ? 'این حساب هنوز رمز ندارد. برای تعریف رمز مالک، کد راه‌اندازی را از کنسول سرور بردارید.'
+            : 'این حساب هنوز رمز ندارد. ابتدا حساب مالک باید راه‌اندازی شود.',
+      };
+    } else {
+      return {
+        success: false,
+        requiresEnrollment: true,
+        enrollmentRequiresSetupCode: matched.role === 'OWNER',
+        error: 'این حساب هنوز رمز ندارد. ابتدا حساب مالک باید راه‌اندازی شود.',
+      };
     }
 
+    loginThrottles.delete(trimmed);
     this.setActiveUserId(matched.id);
     try {
       window.sessionStorage?.setItem('smartorders_session_active_v1', 'true');
     } catch {}
-    save(STORAGE_KEYS.IS_LOGGED_IN, true);
+    try {
+      save(STORAGE_KEYS.IS_LOGGED_IN, true);
+    } catch (err) {
+      console.error('[storage] login flag could not be persisted', err);
+    }
     this.addAuditLog('USER_LOGIN', 'User', matched.id, `ورود موفق کاربر ${matched.fullName} (${matched.username}) با نقش ${matched.role}`);
 
     return { success: true, user: matched };
@@ -1210,7 +1451,11 @@ export class SmartOrdersStore {
     try {
       window.sessionStorage?.removeItem('smartorders_session_active_v1');
     } catch {}
-    save(STORAGE_KEYS.IS_LOGGED_IN, false);
+    try {
+      save(STORAGE_KEYS.IS_LOGGED_IN, false);
+    } catch (err) {
+      console.error('[storage] logout flag could not be persisted', err);
+    }
     this.addAuditLog('USER_LOGOUT', 'User', user.id, `خروج کاربر ${user.fullName}`);
   }
 
@@ -1250,7 +1495,12 @@ export class SmartOrdersStore {
     });
 
     if (modified) {
-      save(STORAGE_KEYS.MENU_ITEMS, items);
+      try {
+        save(STORAGE_KEYS.MENU_ITEMS, items);
+      } catch (err) {
+        // Self-healing defaults only; never block the cashier UI for this.
+        console.error('[storage] could not persist self-healed menu defaults', err);
+      }
     }
     return items;
   }
@@ -1412,12 +1662,69 @@ export class SmartOrdersStore {
   }
 
   static saveOrders(orders: Order[]): void {
+    // localStorage stays the primary (synchronous) ledger for the cashier UI.
+    // If this throws, the caller must block the sale — no fake receipt.
     save(STORAGE_KEYS.ORDERS, orders);
+    // P0-2: write-through mirror AFTER the localStorage commit succeeded, so a
+    // blocked sale never appears later as a phantom order from IndexedDB.
+    mirrorOrdersToDexie(orders);
+  }
+
+  /**
+   * P0-2 boot merge: reads the Dexie `posOrders` mirror and merges it with the
+   * localStorage ledger by order id (localStorage wins for ids it still has,
+   * because it is written first and is therefore at least as fresh).
+   *
+   * Returns the merged list so the caller can render it even when the
+   * localStorage rewrite itself fails. Never throws: a broken mirror must not
+   * prevent the POS from starting.
+   */
+  static async hydrateOrdersFromDexie(): Promise<Order[]> {
+    const local = this.getOrders();
+    let mirrored: Order[] = [];
+    try {
+      mirrored = await readMirroredOrders();
+    } catch (err) {
+      console.error('[storage] reading the Dexie order mirror failed; keeping localStorage ledger only', err);
+      return local;
+    }
+
+    if (mirrored.length === 0) {
+      // First boot after the P0-2 upgrade: seed the mirror from the existing
+      // localStorage ledger so future losses are recoverable.
+      if (local.length > 0) mirrorOrdersToDexie(local);
+      return local;
+    }
+
+    const byId = new Map<string, Order>();
+    for (const order of mirrored) {
+      if (order && order.id) byId.set(order.id, order);
+    }
+    for (const order of local) {
+      if (order && order.id) byId.set(order.id, order);
+    }
+
+    const merged = Array.from(byId.values()).sort((a, b) =>
+      String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
+    );
+
+    if (merged.length > local.length) {
+      try {
+        save(STORAGE_KEYS.ORDERS, merged);
+      } catch (err) {
+        // Serve the recovered orders from memory; the next manual backup will
+        // still include them. Blocking the whole POS here would be worse.
+        console.error('[storage] orders recovered from Dexie but localStorage write failed', err);
+      }
+    }
+
+    return merged;
   }
 
   static createOrder(order: Omit<Order, 'id' | 'createdAt' | 'updatedAt' | 'orderNumber'>): Order {
     const orders = this.getOrders();
-    const nextOrderNumber = orders.length + 1;
+    const tenantId = order.tenantId || this.getTenant().id;
+    const nextOrderNumber = InvoiceSequenceService.nextOrderNumber(tenantId, orders);
     const now = new Date().toISOString();
 
     const newOrder: Order = {
@@ -1442,7 +1749,14 @@ export class SmartOrdersStore {
       }
     }
     if (stockChanged) {
-      this.saveMenuItems(menuItems);
+      try {
+        this.saveMenuItems(menuItems);
+      } catch (err) {
+        // The order itself is the ledger record and is already persisted.
+        // Stock drift is flagged in the console instead of pretending the
+        // whole sale failed (which would invite a duplicate order).
+        console.error('[storage] order persisted but stock deduction could not be saved', err);
+      }
     }
 
     this.addAuditLog(
@@ -1549,10 +1863,17 @@ export class SmartOrdersStore {
     };
 
     payments.unshift(newPayment);
+    // Money record first: if this throws, no payment exists and the POS keeps
+    // the checkout modal open with an error.
     save(STORAGE_KEYS.PAYMENTS, payments);
 
-    // Also mark order as COMPLETED
-    this.updateOrderStatus(payment.orderId, 'COMPLETED');
+    // Also mark order as COMPLETED. A failure here must not fail the payment
+    // that is already committed (that would invite a duplicate charge).
+    try {
+      this.updateOrderStatus(payment.orderId, 'COMPLETED');
+    } catch (err) {
+      console.error('[storage] payment persisted but order status could not be marked COMPLETED', err);
+    }
 
     this.addAuditLog(
       'ORDER_PAID',
@@ -1615,8 +1936,13 @@ export class SmartOrdersStore {
     };
 
     logs.unshift(newLog);
-    // Keep last 300 logs
-    save(STORAGE_KEYS.AUDIT_LOGS, logs.slice(0, 300));
+    // Keep last 300 logs. Audit logging is secondary to the money path: a
+    // quota failure here must not abort an already-persisted order/payment.
+    try {
+      save(STORAGE_KEYS.AUDIT_LOGS, logs.slice(0, 300));
+    } catch (err) {
+      console.error(`[storage] audit log "${action}" could not be persisted`, err);
+    }
   }
 
   // Seed sample initial shift and history if fresh install
@@ -1628,18 +1954,21 @@ export class SmartOrdersStore {
       this.saveMenuItems(DEFAULT_MENU_ITEMS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-      save(STORAGE_KEYS.USERS, DEFAULT_USERS);
+      this.saveUsers(DEFAULT_USERS);
     } else {
       const users = this.getUsers();
       let updated = false;
       const patched = users.map((u) => {
         const def = DEFAULT_USERS.find((du) => du.id === u.id);
-        if (!u.username || !u.password) {
+        const hasLegacyPass = !!(u as any).password;
+        if (!u.username || hasLegacyPass) {
           updated = true;
+          const copy = { ...u };
+          delete (copy as any).password;
           return {
-            ...u,
+            ...copy,
             username: u.username || def?.username || u.phoneNumber,
-            password: u.password || def?.password || '123',
+            mustChangePassword: u.mustChangePassword ?? true,
           };
         }
         return u;
@@ -1656,6 +1985,8 @@ export class SmartOrdersStore {
     const shifts = this.getShifts();
     if (shifts.length === 0) {
       const initialShift = this.openShift(500000, 'شیفت صبح آزمایشی کافه نارنج');
+
+      InvoiceSequenceService.reconcile(this.getTenant().id, this.getOrders());
 
       // Create two sample completed orders
       const user = this.getActiveUser();
@@ -1767,7 +2098,11 @@ export class SmartOrdersStore {
       version: '1.0.0',
       exportedAt: new Date().toISOString(),
       tenant: this.getTenant(),
-      users: this.getUsers(),
+      users: this.getUsers().map((u) => {
+        const { credential, ...rest } = u;
+        delete (rest as any).password;
+        return rest;
+      }),
       categories: this.getCategories(),
       menuItems: this.getMenuItems(),
       shifts: this.getShifts(),
@@ -1796,11 +2131,32 @@ export class SmartOrdersStore {
       }
 
       save(STORAGE_KEYS.TENANT, parsed.tenant);
-      if (Array.isArray(parsed.users)) save(STORAGE_KEYS.USERS, parsed.users);
+      if (Array.isArray(parsed.users)) {
+        // P1-7: a backup must never erase an established credential. Clearing
+        // hashes on restore re-opened enrolment on every account (OWNER
+        // included), which let the next person to touch the device claim it.
+        const priorCredentials = new Map(
+          this.getUsers().map((u) => [u.id, u.credential] as const)
+        );
+        const imported = parsed.users.map((u: any) => {
+          const { credential, password, ...rest } = u;
+          const prior = priorCredentials.get(rest.id);
+          if (prior) {
+            return { ...rest, credential: prior, mustChangePassword: false };
+          }
+          return { ...rest, mustChangePassword: true };
+        });
+        this.saveUsers(imported);
+      }
       if (Array.isArray(parsed.categories)) save(STORAGE_KEYS.CATEGORIES, parsed.categories);
       if (Array.isArray(parsed.menuItems)) save(STORAGE_KEYS.MENU_ITEMS, parsed.menuItems);
       if (Array.isArray(parsed.shifts)) save(STORAGE_KEYS.SHIFTS, parsed.shifts);
-      if (Array.isArray(parsed.orders)) save(STORAGE_KEYS.ORDERS, parsed.orders);
+      if (Array.isArray(parsed.orders)) {
+        // Keep the Dexie mirror in sync with a restored backup (clear+bulkPut
+        // also removes orders that are absent from the backup).
+        this.saveOrders(parsed.orders);
+        InvoiceSequenceService.reconcile(parsed.tenant?.id || this.getTenant().id, parsed.orders);
+      }
       if (Array.isArray(parsed.payments)) save(STORAGE_KEYS.PAYMENTS, parsed.payments);
       if (Array.isArray(parsed.expenses)) save(STORAGE_KEYS.EXPENSES, parsed.expenses);
       if (Array.isArray(parsed.auditLogs)) save(STORAGE_KEYS.AUDIT_LOGS, parsed.auditLogs);
@@ -1822,5 +2178,8 @@ export class SmartOrdersStore {
   static resetDatabaseToSeed(): void {
     Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
     this.initSeedData();
+    // P0-2: make the Dexie mirror reflect the reset ledger (clear+bulkPut), so
+    // old orders cannot be resurrected by the boot merge.
+    mirrorOrdersToDexie(this.getOrders());
   }
 }

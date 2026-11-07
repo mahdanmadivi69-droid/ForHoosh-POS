@@ -49,6 +49,13 @@ export interface SmartTicket {
   paymentMethod?: string;
   terminalName?: string;
   notes?: string;
+  /**
+   * P0-1: id of the persisted `Order` (SmartOrdersStore) backing this ticket.
+   * Set only after `createOrder` succeeded; settlement hard-fails without it.
+   */
+  persistedOrderId?: string;
+  /** P0-1: id of the persisted `Payment` recorded when this ticket was settled. */
+  persistedPaymentId?: string;
 }
 
 export interface TelemetryStats {

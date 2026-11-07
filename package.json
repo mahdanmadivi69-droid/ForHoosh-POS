@@ -12,11 +12,10 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts"
+    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/invoiceSequence.test.ts && tsx tests/credentials.test.ts && tsx tests/auth.test.ts"
   },
   "dependencies": {
     "@ark-ui/react": "^5.39.3",
-    "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "clsx": "^2.1.1",

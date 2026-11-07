@@ -8,6 +8,7 @@ process.env.DISABLE_HMR = 'true';
 
 import express, { Request, Response } from 'express';
 import http from 'http';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { insertOrderAggregateAtomic } from './src/services/dbOrderService';
@@ -31,6 +32,69 @@ async function startServer() {
 
   // In-memory Barista Queue for backend webhook storage
   const baristaWebhookTickets: any[] = [];
+
+  // -------------------------------------------------------------
+  // P1-7: Owner enrolment gate.
+  // A 6-digit install code is generated once, stored next to the server and
+  // printed to the local console. It is required to set the OWNER password,
+  // so nobody who merely walks up to the terminal can claim the owner account.
+  // -------------------------------------------------------------
+  const OWNER_CODE_FILE = path.resolve(__dirname, '.kw-owner-code.txt');
+  let ownerSetupCode: string | null = null;
+  let ownerVerifyFailures = 0;
+  let ownerVerifyLockedUntil = 0;
+
+  function loadOrCreateOwnerSetupCode(): string | null {
+    try {
+      if (fs.existsSync(OWNER_CODE_FILE)) {
+        const existing = fs.readFileSync(OWNER_CODE_FILE, 'utf8').trim();
+        if (existing) return existing;
+      }
+      const code = String(Math.floor(100000 + Math.random() * 900000));
+      fs.writeFileSync(OWNER_CODE_FILE, code, { encoding: 'utf8', mode: 0o600 });
+      console.log('------------------------------------------------------------');
+      console.log('[SECURITY] OWNER setup code generated. Keep it private.');
+      console.log(`[SECURITY] Code: ${code}`);
+      console.log(`[SECURITY] Stored at: ${OWNER_CODE_FILE}`);
+      console.log('------------------------------------------------------------');
+      return code;
+    } catch (err) {
+      console.error('[SECURITY] Could not initialise the owner setup code:', err);
+      return null;
+    }
+  }
+
+  ownerSetupCode = loadOrCreateOwnerSetupCode();
+
+  app.get('/api/v1/setup/status', (_req: Request, res: Response) => {
+    res.json({ setupAvailable: ownerSetupCode !== null });
+  });
+
+  app.post('/api/v1/setup/verify-owner', (req: Request, res: Response) => {
+    if (!ownerSetupCode) {
+      res.status(503).json({ ok: false, error: 'SETUP_UNAVAILABLE' });
+      return;
+    }
+    const now = Date.now();
+    if (ownerVerifyLockedUntil > now) {
+      res.status(429).json({ ok: false, error: 'TOO_MANY_ATTEMPTS' });
+      return;
+    }
+    const code = String(req.body?.code ?? '').trim();
+    if (code.length === ownerSetupCode.length && code === ownerSetupCode) {
+      ownerVerifyFailures = 0;
+      res.json({ ok: true });
+      return;
+    }
+    ownerVerifyFailures += 1;
+    if (ownerVerifyFailures >= 5) {
+      ownerVerifyFailures = 0;
+      ownerVerifyLockedUntil = Date.now() + 60000;
+      res.status(429).json({ ok: false, error: 'TOO_MANY_ATTEMPTS' });
+      return;
+    }
+    res.status(403).json({ ok: false, error: 'INVALID_CODE' });
+  });
 
   // -------------------------------------------------------------
   // API Route: Idempotent Orders Sync (Phase 4 Task 1)
@@ -210,7 +274,14 @@ async function startServer() {
   });
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`☕ CAFE OS Server running on port ${PORT} [Mode: ${isProduction ? 'Production' : 'Dev'}]`);
+    const url = `http://localhost:${PORT}`;
+    console.log(`☕ CAFE OS Server running on ${url} [Mode: ${isProduction ? 'Production' : 'Dev'}]`);
+    if (isProduction && process.env.AUTO_OPEN !== 'false') {
+      import('child_process').then(({ exec }) => {
+        const cmd = process.platform === 'win32' ? `start ${url}` : process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;
+        exec(cmd, () => {});
+      }).catch(() => {});
+    }
   });
 }
 

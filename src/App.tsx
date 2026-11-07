@@ -81,10 +81,35 @@ export default function App() {
     return () => unsub();
   }, []);
 
-  // Initialize seed data on startup
+  // Initialize seed data on startup, then recover the order ledger from the
+  // P0-2 Dexie mirror (IndexedDB) so orders survive a localStorage loss/refresh.
   useEffect(() => {
-    SmartOrdersStore.initSeedData();
+    let cancelled = false;
+
+    try {
+      SmartOrdersStore.initSeedData();
+      SmartOrdersStore.migrateLegacyUserPasswords().catch((err) => {
+        console.error('[App] User credential migration failed', err);
+      });
+    } catch (err: any) {
+      // Seed failure must not blank the app; the cashier can still log in and
+      // the payment path will surface any further persistence failure loudly.
+      console.error('[App] seed data initialization failed', err);
+      showToast(`راه‌اندازی داده‌های اولیه ناقص ماند: ${err?.message || 'خطای ذخیره‌سازی'}`);
+    }
     refreshState();
+
+    SmartOrdersStore.hydrateOrdersFromDexie()
+      .then((recoveredOrders) => {
+        if (!cancelled) setOrders(recoveredOrders);
+      })
+      .catch((err) => {
+        console.error('[App] Dexie order recovery failed', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const refreshState = () => {
@@ -104,11 +129,24 @@ export default function App() {
 
   // RBAC Tab Protection Guard
   useEffect(() => {
-    if (!isManagerOrOwner(activeUser.role) && (currentTab === 'menu' || currentTab === 'audit')) {
+    // P1-8: financial reports were reachable by every role; the tab is now
+    // manager/owner-only, matching the menu and audit guards.
+    if (
+      !isManagerOrOwner(activeUser.role) &&
+      (currentTab === 'menu' || currentTab === 'audit' || currentTab === 'reports')
+    ) {
       setCurrentTab('pos');
-      showToast('دسترسی به بخش مدیریت منو و حسابرسی فقط برای مدیر و مالک مجاز است.');
+      showToast('دسترسی به بخش مدیریت منو، حسابرسی و گزارش مالی فقط برای مدیر و مالک مجاز است.');
     }
   }, [activeUser.role, currentTab]);
+
+  // P0-1: hard lockdown — if the Zero-G flag is off, force the real POS view
+  // even for a stale tab value in memory/storage.
+  useEffect(() => {
+    if (!FEATURES.ENABLE_ZERO_G_SMART_ORDERS && currentTab === 'zero-g') {
+      setCurrentTab('pos');
+    }
+  }, [currentTab]);
 
   // User Authentication Handlers
   const handleLogout = () => {
@@ -119,10 +157,11 @@ export default function App() {
 
   // User Switching
   const handleUserChange = (userId: string) => {
+    // Role/user switching requires re-authenticating with password
+    SmartOrdersStore.logout();
     SmartOrdersStore.setActiveUserId(userId);
-    const user = SmartOrdersStore.getActiveUser();
-    setActiveUser(user);
-    showToast(`کاربر فعال تغییر یافت: ${user.fullName}`);
+    setIsAuthenticated(false);
+    refreshState();
   };
 
   // Shift Management Handlers
@@ -204,8 +243,13 @@ export default function App() {
       showToast(`سفارش #${createdOrder.orderNumber} با موفقیت تسویه شد.`);
       return { order: createdOrder, payment: newPayment };
     } catch (err: any) {
-      alert(err.message);
-      return null;
+      // P0-2: persistence failed. Re-sync the UI with what is actually stored
+      // and re-throw so PosView can keep the checkout modal open, disable the
+      // payment button and show the real error — never a fake receipt.
+      refreshState();
+      const message = err?.message || 'خطای نامشخص در ذخیره سفارش یا پرداخت';
+      showToast(`ثبت فاکتور انجام نشد — وجهی دریافت نکنید: ${message}`);
+      throw err instanceof Error ? err : new Error(message);
     }
   };
 
