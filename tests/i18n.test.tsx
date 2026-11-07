@@ -20,7 +20,7 @@ const TestConsumerComponent: React.FC = () => {
   );
 };
 
-describe('KarWand i18n System', () => {
+describe('KarWand i18n System (EN / FA Dual Architecture)', () => {
   beforeEach(() => {
     localStorage.clear();
   });
@@ -37,26 +37,6 @@ describe('KarWand i18n System', () => {
     expect(screen.getByTestId('pos-subtotal').textContent).toBe('Total Amount');
     expect(screen.getByTestId('interpolated').textContent).toBe(
       'Table T5 attached via hardware scanner'
-    );
-  });
-
-  it('switches dynamically to German (DE) upon selector interaction', () => {
-    render(
-      <I18nProvider defaultLocale="en">
-        <TestConsumerComponent />
-      </I18nProvider>
-    );
-
-    const deButton = screen.getByTitle('German');
-    act(() => {
-      deButton.click();
-    });
-
-    expect(screen.getByTestId('current-locale').textContent).toBe('de');
-    expect(screen.getByTestId('current-dir').textContent).toBe('ltr');
-    expect(screen.getByTestId('pos-subtotal').textContent).toBe('Gesamtbetrag');
-    expect(screen.getByTestId('interpolated').textContent).toBe(
-      'Tisch T5 per Hardware-Scanner erfasst'
     );
   });
 
@@ -79,5 +59,26 @@ describe('KarWand i18n System', () => {
       'میز T5 با اسکنر سختافزاری انتخاب شد'
     );
     expect(document.documentElement.dir).toBe('rtl');
+  });
+
+  it('switches back from Persian (FA) to English (EN) and restores LTR direction', () => {
+    render(
+      <I18nProvider defaultLocale="fa">
+        <TestConsumerComponent />
+      </I18nProvider>
+    );
+
+    expect(screen.getByTestId('current-locale').textContent).toBe('fa');
+    expect(screen.getByTestId('current-dir').textContent).toBe('rtl');
+
+    const enButton = screen.getByTitle('English');
+    act(() => {
+      enButton.click();
+    });
+
+    expect(screen.getByTestId('current-locale').textContent).toBe('en');
+    expect(screen.getByTestId('current-dir').textContent).toBe('ltr');
+    expect(screen.getByTestId('pos-subtotal').textContent).toBe('Total Amount');
+    expect(document.documentElement.dir).toBe('ltr');
   });
 });

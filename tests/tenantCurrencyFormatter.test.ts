@@ -2,15 +2,14 @@
 import { describe, it, expect } from 'vitest';
 import { formatTenantMoney } from '../src/utils/tenantCurrencyFormatter';
 
-describe('formatTenantMoney Multi-Currency Engine', () => {
+describe('formatTenantMoney Multi-Currency Engine (Dual EN/FA Architecture)', () => {
   describe('European / Vienna Tenant (EUR)', () => {
-    it('formats 1050 cents into Austrian German locale (de-AT)', () => {
-      const result = formatTenantMoney(1050, 'tenant-vienna-bistro-01', { locale: 'de' });
-      // Non-breaking space or standard space before €
-      expect(result).toMatch(/10,50\s*€/);
+    it('formats 1050 cents into default English locale (en) for Vienna venue', () => {
+      const result = formatTenantMoney(1050, 'tenant-vienna-bistro-01');
+      expect(result).toMatch(/10\.50\s*€/);
     });
 
-    it('formats 1050 cents into English locale (en)', () => {
+    it('formats 1050 cents into explicit English locale (en)', () => {
       const result = formatTenantMoney(1050, 'tenant-vienna-bistro-01', { locale: 'en' });
       expect(result).toMatch(/10\.50\s*€/);
     });
@@ -49,8 +48,8 @@ describe('formatTenantMoney Multi-Currency Engine', () => {
     });
 
     it('handles zero minor amount correctly', () => {
-      const result = formatTenantMoney(0, 'tenant-vienna-bistro-01', { locale: 'de' });
-      expect(result).toMatch(/0,00\s*€/);
+      const result = formatTenantMoney(0, 'tenant-vienna-bistro-01', { locale: 'en' });
+      expect(result).toMatch(/0\.00\s*€/);
     });
 
     it('formats explicit currency code if tenantId is omitted', () => {

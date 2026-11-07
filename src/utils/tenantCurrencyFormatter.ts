@@ -23,7 +23,6 @@ export const CURRENCY_REGISTRY: Record<string, CurrencyRule> = {
     fractionDigits: 2,
     symbol: {
       en: '€',
-      de: '€',
       fa: 'یورو',
     },
     symbolPosition: 'suffix',
@@ -34,7 +33,6 @@ export const CURRENCY_REGISTRY: Record<string, CurrencyRule> = {
     fractionDigits: 2,
     symbol: {
       en: '$',
-      de: '$',
       fa: 'دلار',
     },
     symbolPosition: 'prefix',
@@ -45,7 +43,6 @@ export const CURRENCY_REGISTRY: Record<string, CurrencyRule> = {
     fractionDigits: 0,
     symbol: {
       en: 'Toman',
-      de: 'Toman',
       fa: 'تومان',
     },
     symbolPosition: 'suffix',
@@ -56,7 +53,7 @@ export const CURRENCY_REGISTRY: Record<string, CurrencyRule> = {
 export const TENANT_FINANCE_REGISTRY: Record<string, TenantFinanceProfile> = {
   'tenant-vienna-bistro-01': {
     currencyCode: 'EUR',
-    defaultLocale: 'de',
+    defaultLocale: 'en', // English UI with EUR currency for international venue
     taxRegistrationNumber: 'ATU78912345',
   },
   'tenant-100hich-01': {
@@ -81,8 +78,6 @@ export interface FormatMoneyOptions {
  */
 function resolveBcp47Locale(locale: SupportedLocale, currencyCode: string): string {
   switch (locale) {
-    case 'de':
-      return currencyCode === 'EUR' ? 'de-AT' : 'de-DE';
     case 'fa':
       return 'fa-IR';
     case 'en':
