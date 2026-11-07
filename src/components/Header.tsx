@@ -172,20 +172,31 @@ export const Header: React.FC<HeaderProps> = ({
               <span>نقشه سالن (Floor Plan)</span>
             </button>
 
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('reports');
-              }}
-              className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                currentTab === 'reports'
-                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>شیفت و گزارش مالی</span>
-            </button>
+            {isManager ? (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('reports');
+                }}
+                className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
+                  currentTab === 'reports'
+                    ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                    : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>شیفت و گزارش مالی</span>
+              </button>
+            ) : (
+              <button
+                disabled
+                title="گزارش مالی و شیفت فقط برای مدیر و مالک مجاز است"
+                className="px-3 py-1.5 rounded flex items-center gap-1.5 text-[#526071] bg-[#121417]/50 cursor-not-allowed opacity-60 border border-transparent"
+              >
+                <Lock className="w-3 h-3 text-amber-500/70" />
+                <span>گزارش مالی (قفل)</span>
+              </button>
+            )}
 
             {/* Menu tab: Accessible only to Owner & Manager */}
             {isManager ? (
@@ -525,18 +536,29 @@ export const Header: React.FC<HeaderProps> = ({
           <span>نقشه سالن</span>
         </button>
 
-        <button
-          onClick={() => {
-            playPosBeep('click');
-            onTabChange('reports');
-          }}
-          className={`px-2.5 py-1 rounded flex items-center gap-1 ${
-            currentTab === 'reports' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
-          }`}
-        >
-          <FileText className="w-3 h-3" />
-          <span>گزارشات</span>
-        </button>
+        {isManager ? (
+          <button
+            onClick={() => {
+              playPosBeep('click');
+              onTabChange('reports');
+            }}
+            className={`px-2.5 py-1 rounded flex items-center gap-1 ${
+              currentTab === 'reports' ? 'bg-[#D71921] text-white' : 'text-[#9EACB8]'
+            }`}
+          >
+            <FileText className="w-3 h-3" />
+            <span>گزارشات</span>
+          </button>
+        ) : (
+          <button
+            disabled
+            title="گزارش مالی فقط برای مدیر و مالک مجاز است"
+            className="px-2.5 py-1 rounded flex items-center gap-1 text-[#526071] bg-[#121417]/50 cursor-not-allowed opacity-60"
+          >
+            <Lock className="w-2.5 h-2.5 text-amber-500/70" />
+            <span>گزارشات (قفل)</span>
+          </button>
+        )}
 
         {/* Menu Tab (Mobile) */}
         {isManager ? (

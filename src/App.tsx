@@ -119,9 +119,12 @@ export default function App() {
 
   // RBAC Tab Protection Guard
   useEffect(() => {
-    if (!isManagerOrOwner(activeUser.role) && (currentTab === 'menu' || currentTab === 'audit' || currentTab === 'inventory')) {
+    if (
+      !isManagerOrOwner(activeUser.role) &&
+      (currentTab === 'menu' || currentTab === 'audit' || currentTab === 'inventory' || currentTab === 'reports')
+    ) {
       setCurrentTab('pos');
-      showToast('دسترسی به بخش مدیریت منو، انبارداری و حسابرسی فقط برای مدیر و مالک مجاز است.');
+      showToast('دسترسی به بخش مدیریت منو، انبارداری، حسابرسی و گزارش مالی فقط برای مدیر و مالک مجاز است.');
     }
   }, [activeUser.role, currentTab]);
 
