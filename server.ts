@@ -210,7 +210,14 @@ async function startServer() {
   });
 
   server.listen(PORT, '0.0.0.0', () => {
-    console.log(`☕ CAFE OS Server running on port ${PORT} [Mode: ${isProduction ? 'Production' : 'Dev'}]`);
+    const url = `http://localhost:${PORT}`;
+    console.log(`☕ CAFE OS Server running on ${url} [Mode: ${isProduction ? 'Production' : 'Dev'}]`);
+    if (isProduction && process.env.AUTO_OPEN !== 'false') {
+      import('child_process').then(({ exec }) => {
+        const cmd = process.platform === 'win32' ? `start ${url}` : process.platform === 'darwin' ? `open ${url}` : `xdg-open ${url}`;
+        exec(cmd, () => {});
+      }).catch(() => {});
+    }
   });
 }
 

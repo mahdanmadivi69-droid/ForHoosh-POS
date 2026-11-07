@@ -27,7 +27,7 @@ import {
 } from '../services/escposThermalPrinter';
 
 const syncQueue = new OfflineSyncQueue({
-  apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3001',
   maxRetries: 3,
 });
 
