@@ -1,3 +1,4 @@
+import { SecureCredential } from '../services/credentials';
 /**
  * Domain entities and types for SmartOrders
  * All monetary amounts are in Toman as exact integers (BigInt or number without fractional decimals)
@@ -15,7 +16,8 @@ export interface User {
   fullName: string;
   phoneNumber: string;
   username: string;
-  password?: string;
+  credential?: SecureCredential;
+  mustChangePassword?: boolean;
   role: UserRole;
   isActive: boolean;
 }

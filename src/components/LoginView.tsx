@@ -29,40 +29,31 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
 
   const allUsers = SmartOrdersStore.getUsers();
 
-  const handleLogin = (e?: React.FormEvent) => {
+  const handleLogin = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     playPosBeep('click');
     setErrorMessage(null);
     setIsLoading(true);
 
-    setTimeout(() => {
-      const res = SmartOrdersStore.login(usernameOrPhone, password);
+    try {
+      const res = await SmartOrdersStore.login(usernameOrPhone, password);
       setIsLoading(false);
       if (res.success && res.user) {
         onLoginSuccess(res.user);
       } else {
         setErrorMessage(res.error || 'خطا در ورود به سامانه');
       }
-    }, 250);
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMessage(err?.message || 'خطا در برقراری ارتباط');
+    }
   };
 
   const handleQuickSelect = (u: User) => {
     playPosBeep('click');
     setUsernameOrPhone(u.username || u.phoneNumber);
-    setPassword(u.password || '123');
+    setPassword('');
     setErrorMessage(null);
-
-    // Auto-login on quick select for high-speed POS workflow
-    setIsLoading(true);
-    setTimeout(() => {
-      const res = SmartOrdersStore.login(u.username || u.phoneNumber, u.password || '123');
-      setIsLoading(false);
-      if (res.success && res.user) {
-        onLoginSuccess(res.user);
-      } else {
-        setErrorMessage(res.error || 'خطا در ورود');
-      }
-    }, 200);
   };
 
   return (
@@ -190,7 +181,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
               <Shield className="w-3.5 h-3.5 text-[#F3E9DD]" />
               <span>ورود سریع پرسنل (لمسی):</span>
             </span>
-            <span className="text-[10px] text-[#9EACB8]">رمز پیش‌فرض: 123</span>
+            <span className="text-[10px] text-[#9EACB8]">انتخاب سریع نام کاربری (رمز را وارد نمایید)</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">

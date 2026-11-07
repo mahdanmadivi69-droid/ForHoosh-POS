@@ -88,6 +88,9 @@ export default function App() {
 
     try {
       SmartOrdersStore.initSeedData();
+      SmartOrdersStore.migrateLegacyUserPasswords().catch((err) => {
+        console.error('[App] User credential migration failed', err);
+      });
     } catch (err: any) {
       // Seed failure must not blank the app; the cashier can still log in and
       // the payment path will surface any further persistence failure loudly.
@@ -149,10 +152,11 @@ export default function App() {
 
   // User Switching
   const handleUserChange = (userId: string) => {
+    // Role/user switching requires re-authenticating with password
+    SmartOrdersStore.logout();
     SmartOrdersStore.setActiveUserId(userId);
-    const user = SmartOrdersStore.getActiveUser();
-    setActiveUser(user);
-    showToast(`کاربر فعال تغییر یافت: ${user.fullName}`);
+    setIsAuthenticated(false);
+    refreshState();
   };
 
   // Shift Management Handlers

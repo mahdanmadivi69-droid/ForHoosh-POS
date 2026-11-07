@@ -1,3 +1,4 @@
+import { SecureCredential, hashPassword, verifyPassword } from './credentials';
 /**
  * Storage and State Management Service for SmartOrders
  * Implements Multi-Tenant Data Isolation, Local Persistence, and Initial Realistic Seed Data.
@@ -51,7 +52,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'مهدان مددی (مدیر و مالک)',
     phoneNumber: '09120000001',
     username: 'admin',
-    password: '123',
+    mustChangePassword: true,
     role: 'OWNER',
     isActive: true,
   },
@@ -61,7 +62,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'سارا رضایی (سرپرست شیفت)',
     phoneNumber: '09120000002',
     username: 'sara',
-    password: '123',
+    mustChangePassword: true,
     role: 'MANAGER',
     isActive: true,
   },
@@ -71,7 +72,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'علی مرادی (صندوق‌دار)',
     phoneNumber: '09120000003',
     username: 'ali',
-    password: '123',
+    mustChangePassword: true,
     role: 'CASHIER',
     isActive: true,
   },
@@ -81,7 +82,7 @@ const DEFAULT_USERS: User[] = [
     fullName: 'نیما کمالی (باریستا)',
     phoneNumber: '09120000004',
     username: 'nima',
-    password: '123',
+    mustChangePassword: true,
     role: 'BARISTA',
     isActive: true,
   },
@@ -1174,6 +1175,13 @@ function save<T>(key: string, data: T): void {
   }
 }
 
+
+interface ThrottleState {
+  attempts: number;
+  lockedUntil?: number;
+}
+const loginThrottles = new Map<string, ThrottleState>();
+
 export class SmartOrdersStore {
   // Tenant
   static getTenant(): Tenant {
@@ -1188,6 +1196,53 @@ export class SmartOrdersStore {
   }
 
   // Users & Authentication
+
+  static saveUsers(users: User[]): void {
+    const clean = users.map((u) => {
+      const copy = { ...u };
+      delete (copy as any).password;
+      return copy;
+    });
+    save(STORAGE_KEYS.USERS, clean);
+  }
+
+  static updateUser(updated: User): void {
+    const users = this.getUsers().map((u) => (u.id === updated.id ? updated : u));
+    this.saveUsers(users);
+  }
+
+  static async migrateLegacyUserPasswords(): Promise<void> {
+    try {
+      const users = this.getUsers();
+      let modified = false;
+      const cleanUsers: User[] = [];
+
+      for (const u of users) {
+        const legacyPass = (u as any).password;
+        if (legacyPass && typeof legacyPass === 'string') {
+          modified = true;
+          const cred = await hashPassword(legacyPass);
+          const copy = { ...u };
+          delete (copy as any).password;
+          copy.credential = cred;
+          copy.mustChangePassword = true;
+          cleanUsers.push(copy);
+        } else {
+          const copy = { ...u };
+          delete (copy as any).password;
+          cleanUsers.push(copy);
+        }
+      }
+
+      if (modified) {
+        this.saveUsers(cleanUsers);
+        console.log('[Security] Legacy plaintext passwords migrated to PBKDF2-SHA256 credentials.');
+      }
+    } catch (err) {
+      console.error('[Security] Legacy password migration failed:', err);
+    }
+  }
+
   static getUsers(): User[] {
     return load(STORAGE_KEYS.USERS, DEFAULT_USERS);
   }
@@ -1217,12 +1272,32 @@ export class SmartOrdersStore {
     }
   }
 
-  static login(usernameOrPhone: string, password: string): { success: boolean; user?: User; error?: string } {
+  static async login(usernameOrPhone: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
     const trimmed = (usernameOrPhone || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
     if (!trimmed || !cleanPass) {
       return { success: false, error: 'لطفاً نام کاربری و رمز عبور را وارد نمایید.' };
     }
+
+    const now = Date.now();
+    const throttle = loginThrottles.get(trimmed);
+    if (throttle?.lockedUntil && throttle.lockedUntil > now) {
+      const remainingSec = Math.ceil((throttle.lockedUntil - now) / 1000);
+      return {
+        success: false,
+        error: `تعداد تلاش‌های ناموفق بیش از حد مجاز است. لطفاً ${remainingSec} ثانیه صبر کنید.`,
+      };
+    }
+
+    const recordFailure = () => {
+      const record = loginThrottles.get(trimmed) || { attempts: 0 };
+      record.attempts += 1;
+      if (record.attempts >= 5) {
+        record.lockedUntil = Date.now() + 30000;
+        record.attempts = 0;
+      }
+      loginThrottles.set(trimmed, record);
+    };
 
     const users = this.getUsers();
     const matched = users.find(
@@ -1234,13 +1309,28 @@ export class SmartOrdersStore {
     );
 
     if (!matched) {
+      recordFailure();
       return { success: false, error: 'کاربری با این مشخصات یافت نشد یا حساب غیرفعال است.' };
     }
 
-    if (matched.password && matched.password !== cleanPass) {
-      return { success: false, error: 'رمز عبور وارد شده نادرست است.' };
+    if (matched.credential) {
+      const isValid = await verifyPassword(cleanPass, matched.credential);
+      if (!isValid) {
+        recordFailure();
+        return { success: false, error: 'رمز عبور وارد شده نادرست است.' };
+      }
+    } else if (matched.mustChangePassword) {
+      // First-run credential setup
+      const initialCred = await hashPassword(cleanPass);
+      matched.credential = initialCred;
+      matched.mustChangePassword = false;
+      this.updateUser(matched);
+    } else {
+      recordFailure();
+      return { success: false, error: 'حساب کاربری نیازمند تنظیم رمز عبور اولیه است.' };
     }
 
+    loginThrottles.delete(trimmed);
     this.setActiveUserId(matched.id);
     try {
       window.sessionStorage?.setItem('smartorders_session_active_v1', 'true');
@@ -1248,7 +1338,6 @@ export class SmartOrdersStore {
     try {
       save(STORAGE_KEYS.IS_LOGGED_IN, true);
     } catch (err) {
-      // sessionStorage already carries the session; this flag is legacy only.
       console.error('[storage] login flag could not be persisted', err);
     }
     this.addAuditLog('USER_LOGIN', 'User', matched.id, `ورود موفق کاربر ${matched.fullName} (${matched.username}) با نقش ${matched.role}`);
@@ -1764,18 +1853,21 @@ export class SmartOrdersStore {
       this.saveMenuItems(DEFAULT_MENU_ITEMS);
     }
     if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
-      save(STORAGE_KEYS.USERS, DEFAULT_USERS);
+      this.saveUsers(DEFAULT_USERS);
     } else {
       const users = this.getUsers();
       let updated = false;
       const patched = users.map((u) => {
         const def = DEFAULT_USERS.find((du) => du.id === u.id);
-        if (!u.username || !u.password) {
+        const hasLegacyPass = !!(u as any).password;
+        if (!u.username || hasLegacyPass) {
           updated = true;
+          const copy = { ...u };
+          delete (copy as any).password;
           return {
-            ...u,
+            ...copy,
             username: u.username || def?.username || u.phoneNumber,
-            password: u.password || def?.password || '123',
+            mustChangePassword: u.mustChangePassword ?? true,
           };
         }
         return u;
@@ -1905,7 +1997,11 @@ export class SmartOrdersStore {
       version: '1.0.0',
       exportedAt: new Date().toISOString(),
       tenant: this.getTenant(),
-      users: this.getUsers(),
+      users: this.getUsers().map((u) => {
+        const { credential, ...rest } = u;
+        delete (rest as any).password;
+        return rest;
+      }),
       categories: this.getCategories(),
       menuItems: this.getMenuItems(),
       shifts: this.getShifts(),
@@ -1934,7 +2030,16 @@ export class SmartOrdersStore {
       }
 
       save(STORAGE_KEYS.TENANT, parsed.tenant);
-      if (Array.isArray(parsed.users)) save(STORAGE_KEYS.USERS, parsed.users);
+      if (Array.isArray(parsed.users)) {
+        const imported = parsed.users.map((u: any) => {
+          const { credential, password, ...rest } = u;
+          return {
+            ...rest,
+            mustChangePassword: true,
+          };
+        });
+        this.saveUsers(imported);
+      }
       if (Array.isArray(parsed.categories)) save(STORAGE_KEYS.CATEGORIES, parsed.categories);
       if (Array.isArray(parsed.menuItems)) save(STORAGE_KEYS.MENU_ITEMS, parsed.menuItems);
       if (Array.isArray(parsed.shifts)) save(STORAGE_KEYS.SHIFTS, parsed.shifts);
