@@ -1,4 +1,5 @@
 import React from "react";
+import { escapeHtml } from "../lib/escapeHtml";
 
 export interface ReceiptItem {
   name: string;
@@ -198,13 +199,13 @@ export function renderReceiptTemplateHtml(
   tenantInfo: { name?: string; address?: string; phone?: string; tagline?: string; website?: string } = {}
 ): string {
   const isModendo = !tenantInfo.name || tenantInfo.name.includes('مودندو') || !tenantInfo.name.includes('۱۰۰');
-  const brandName = tenantInfo.name || (isModendo ? "کافه بردگیم و گیمینگ مودندو" : "100 HICH");
-  const subBrand = isModendo ? "MODENDO BOARDGAME & GAMING CAFE" : "COFFEE ROASTERS";
-  const address = tenantInfo.address || (isModendo ? "تهران، خیابان شریعتی، مجتمع تجاری مودندو، منفی ۱" : "اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس");
-  const phone = tenantInfo.phone || (isModendo ? "۰۲۱-۸۸۹۹۷۷۶۶" : "۰۲۱-۴۴۶۶۸۰۹۰");
-  const tagline = tenantInfo.tagline || (isModendo ? "«کافه مودندو؛ دنیای بردگیم و هیجان کنسول PS5»" : "«صد هیچ؛ تمرکز محض روی اصالت قهوه»");
-  const website = tenantInfo.website || (isModendo ? "MODENDO.CAFE" : "100HICH.IR");
-  const cashier = order.cashier || (isModendo ? "مهدان مددی - مدیر کل" : "مهدان مددی - مدیر و مالک");
+  const brandName = escapeHtml(tenantInfo.name || (isModendo ? "کافه بردگیم و گیمینگ مودندو" : "100 HICH"));
+  const subBrand = escapeHtml(isModendo ? "MODENDO BOARDGAME & GAMING CAFE" : "COFFEE ROASTERS");
+  const address = escapeHtml(tenantInfo.address || (isModendo ? "تهران، خیابان شریعتی، مجتمع تجاری مودندو، منفی ۱" : "اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس"));
+  const phone = escapeHtml(tenantInfo.phone || (isModendo ? "۰۲۱-۸۸۹۹۷۷۶۶" : "۰۲۱-۴۴۶۶۸۰۹۰"));
+  const tagline = escapeHtml(tenantInfo.tagline || (isModendo ? "«کافه مودندو؛ دنیای بردگیم و هیجان کنسول PS5»" : "«صد هیچ؛ تمرکز محض روی اصالت قهوه»"));
+  const website = escapeHtml(tenantInfo.website || (isModendo ? "MODENDO.CAFE" : "100HICH.IR"));
+  const cashier = escapeHtml(order.cashier || (isModendo ? "مهدان مددی - مدیر کل" : "مهدان مددی - مدیر و مالک"));
   const subtotal = (order.subtotalAmount ?? order.totalAmount).toLocaleString("fa-IR");
   const total = order.totalAmount.toLocaleString("fa-IR");
 
@@ -213,11 +214,11 @@ export function renderReceiptTemplateHtml(
       (item) => `
       <tr style="border-bottom: 1px solid #eee;">
         <td style="padding: 4px 0; font-weight: 600; text-align: right; color: #000;">
-          <div>${item.name}</div>
-          ${item.modifiers && item.modifiers.length > 0 ? `<div style="font-size: 8px; color: #666;">${item.modifiers.join("، ")}</div>` : ""}
-          ${item.notes ? `<div style="font-size: 8px; color: #666; font-style: italic;">*${item.notes}</div>` : ""}
+          <div>${escapeHtml(item.name)}</div>
+          ${item.modifiers && item.modifiers.length > 0 ? `<div style="font-size: 8px; color: #666;">${item.modifiers.map(escapeHtml).join("، ")}</div>` : ""}
+          ${item.notes ? `<div style="font-size: 8px; color: #666; font-style: italic;">*${escapeHtml(item.notes)}</div>` : ""}
         </td>
-        <td style="padding: 4px 0; text-align: center; font-weight: 700; font-family: monospace; color: #000;">${item.qty}×</td>
+        <td style="padding: 4px 0; text-align: center; font-weight: 700; font-family: monospace; color: #000;">${escapeHtml(item.qty)}×</td>
         <td style="padding: 4px 0; text-align: left; font-family: monospace; font-weight: 700; color: #000;">${item.price.toLocaleString("fa-IR")}</td>
       </tr>
     `
@@ -243,20 +244,20 @@ export function renderReceiptTemplateHtml(
       <div style="font-size: 11px; line-height: 1.5;">
         <div style="display: flex; justify-content: space-between; font-weight: 700;">
           <span>شماره فاکتور:</span>
-          <span style="font-family: monospace;">#${order.invoiceNo}</span>
+          <span style="font-family: monospace;">#${escapeHtml(order.invoiceNo)}</span>
         </div>
         <div style="display: flex; justify-content: space-between; color: #333;">
           <span>تاریخ و ساعت:</span>
-          <span>${order.dateTime}</span>
+          <span>${escapeHtml(order.dateTime)}</span>
         </div>
         <div style="display: flex; justify-content: space-between;">
           <span>نوع سفارش:</span>
-          <span style="font-weight: 700;">${order.orderType}</span>
+          <span style="font-weight: 700;">${escapeHtml(order.orderType)}</span>
         </div>
         ${order.customerName ? `
         <div style="display: flex; justify-content: space-between;">
           <span>مشتری:</span>
-          <span style="font-weight: 700;">${order.customerName}</span>
+          <span style="font-weight: 700;">${escapeHtml(order.customerName)}</span>
         </div>` : ""}
         <div style="display: flex; justify-content: space-between; color: #444;">
           <span>صندوقدار / باریستا:</span>
@@ -302,12 +303,12 @@ export function renderReceiptTemplateHtml(
       <div style="font-size: 11px; line-height: 1.5; color: #333;">
         <div style="display: flex; justify-content: space-between; font-weight: 700; color: #000;">
           <span>روش تسویه:</span>
-          <span>${order.paymentMethod}</span>
+          <span>${escapeHtml(order.paymentMethod)}</span>
         </div>
         ${order.referenceCode ? `
         <div style="display: flex; justify-content: space-between; font-family: monospace;" dir="ltr">
           <span dir="rtl">شماره پیگیری (RRN):</span>
-          <span style="font-weight: 700; color: #000;">${order.referenceCode}</span>
+          <span style="font-weight: 700; color: #000;">${escapeHtml(order.referenceCode)}</span>
         </div>` : ""}
         ${order.cashTendered && order.cashTendered > 0 ? `
         <div style="display: flex; justify-content: space-between;">
