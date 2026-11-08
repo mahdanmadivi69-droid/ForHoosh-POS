@@ -1,0 +1,8 @@
+{
+  "platform": "node",
+  "app": "karwand-smartorders",
+  "port": 3001,
+  "node": {
+    "version": "22"
+  }
+}

@@ -19,6 +19,7 @@
     "package:100hich": "vite build --mode 100hich",
     "package:modendo": "vite build --mode modendo",
     "package:all": "npm run package:100hich && npm run package:modendo",
+    "package:liara": "powershell -ExecutionPolicy Bypass -File scripts/package-liara.ps1",
     "package": "npm run package:all",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
