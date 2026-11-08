@@ -23,6 +23,7 @@ import {
 import { handleOrderSync } from './src/services/sync-controller';
 import { getKdsService } from './server/kdsService';
 import { createAuthRouter } from './server/authRoutes';
+import { createCloudTelemetryRouter } from './server/cloudTelemetryRoutes';
 import { createCentralOfficeRouter } from './central-framework';
 import {
   requireAuth,
@@ -442,6 +443,11 @@ export function createServerApp() {
       res.status(400).json({ success: false, error: err?.message || 'Error fetching active counts' });
     }
   });
+
+  // -------------------------------------------------------------
+  // API Route: Cloud Telemetry & License Service (Phase 2 Stage B)
+  // -------------------------------------------------------------
+  app.use('/api/v1', createCloudTelemetryRouter());
 
   return app;
 }
