@@ -288,7 +288,7 @@ export const PinAuthModal: React.FC<PinAuthModalProps> = ({
 
           {/* Keypad Grid (3x4) */}
           <div className="p-4 pt-1">
-            <div className="grid grid-cols-3 gap-2.5">
+            <div dir="ltr" style={{ direction: 'ltr' }} className="grid grid-cols-3 gap-2.5">
               {KEYPAD_KEYS.map((key) => {
                 const isClear = key === 'CLR';
                 const isEsc = key === 'ESC';

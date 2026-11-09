@@ -1,3 +1,4 @@
+import { normalizeDigits } from '../../utils/digitNormalizer';
 /**
  * src/components/auth/PinLockScreen.tsx
  * 
@@ -42,16 +43,24 @@ interface PinLockScreenProps {
   onUnlockSuccess: (user: AuthUserRecord) => void;
   venueTitle?: string;
   deviceId?: string;
+  initialUserId?: string | null;
 }
 
 export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   onUnlockSuccess,
   venueTitle = 'قهوه‌فروشی ۱۰۰ هیچ (شعبه یوسف‌آباد)',
   deviceId = 'TERM-01-MAIN',
+  initialUserId,
 }) => {
   const [pin, setPin] = useState<string>('');
   const [activeUsers, setActiveUsers] = useState<AuthUserRecord[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>('auth-user-owner');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId || 'auth-user-owner');
+
+  useEffect(() => {
+    if (initialUserId) {
+      setSelectedUserId(initialUserId);
+    }
+  }, [initialUserId]);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isShaking, setIsShaking] = useState<boolean>(false);
@@ -131,9 +140,10 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
       if (isRecoveryModalOpen) return;
       if (lockoutCooldown > 0) return;
 
-      if (/^[0-9]$/.test(e.key)) {
+      const normalizedChar = normalizeDigits(e.key);
+      if (/^[0-9]$/.test(normalizedChar)) {
         e.preventDefault();
-        handleDigit(e.key);
+        handleDigit(normalizedChar);
       } else if (e.key === 'Backspace') {
         e.preventDefault();
         handleBackspace();
@@ -185,10 +195,11 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   const handleVerifyPin = async (pinAttempt: string) => {
     setIsVerifying(true);
     setErrorMessage(null);
+    const cleanAttempt = normalizeDigits(pinAttempt);
 
     try {
       const res = await RBACService.verifyLoginPin(
-        pinAttempt,
+        cleanAttempt,
         selectedUserId || undefined
       );
 
@@ -367,7 +378,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
         )}
 
         {/* International Standard 12-Key Numpad */}
-        <div className="w-full max-w-[290px] grid grid-cols-3 gap-2.5 mb-4">
+        <div dir="ltr" style={{ direction: 'ltr' }} className="w-full max-w-[290px] grid grid-cols-3 gap-2.5 mb-4">
           {KEYPAD_ROWS.flat().map((key) => {
             const isClear = key === 'C';
             const isBackspace = key === '⌫';

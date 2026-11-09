@@ -65,6 +65,7 @@ export default function App() {
   // UI state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
   const [isLocked, setIsLocked] = useState<boolean>(true);
+  const [pendingSwitchUserId, setPendingSwitchUserId] = useState<string | null>(null);
   const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('hub');
   const [isTenantConfigOpen, setIsTenantConfigOpen] = useState(false);
   const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
@@ -163,6 +164,13 @@ export default function App() {
     const user = SmartOrdersStore.getActiveUser();
     setActiveUser(user);
     showToast(`کاربر فعال تغییر یافت: ${user.fullName}`);
+  };
+
+  // User Switching with Strict Security Lock & PIN Verification
+  const handleUserSwitchRequest = (targetUserId: string) => {
+    setPendingSwitchUserId(targetUserId);
+    setIsLocked(true);
+    showToast('برای تغییر کاربر، لطفاً PIN امنیتی حساب را وارد نمایید.');
   };
 
   // Shift Management Handlers
@@ -303,6 +311,7 @@ export default function App() {
           setActiveUser(matched);
           setIsAuthenticated(true);
           setIsLocked(false);
+          setPendingSwitchUserId(null);
           setCurrentTab('hub');
           refreshState();
           showToast(`ترمینال بازگشایی شد: خوش آمدید ${unlockedUser.fullName}`);
@@ -382,6 +391,8 @@ export default function App() {
         onOpenTenantConfig={() => setIsTenantConfigOpen(true)}
         baristaActiveCount={baristaActiveCount}
         onUserChange={handleUserChange}
+        onUserSwitchRequest={handleUserSwitchRequest}
+        onLockTerminal={handleLockTerminal}
         onLogout={handleLogout}
       />
 

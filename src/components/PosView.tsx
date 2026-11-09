@@ -1204,7 +1204,7 @@ export const PosView: React.FC<PosViewProps> = ({
         className="hidden xl:flex flex-col w-[420px] bg-[#1B222C] border border-[#293444] rounded-xl sticky top-[72px] h-[calc(100vh-90px)] shadow-2xl transition-all"
       >
         {/* Cart Header & Order Type Toggle */}
-        <div className="p-3.5 border-b border-[#293444] bg-[#0F223D] rounded-t-xl flex flex-col gap-2.5">
+        <div className="p-3.5 border-b border-white/10 bg-[rgba(12,25,48,0.7)] backdrop-blur-xl flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-[#D71921] animate-ping"></span>
@@ -1585,7 +1585,7 @@ export const PosView: React.FC<PosViewProps> = ({
               type="button"
               onClick={handleStartCheckout}
               disabled={cartItems.length === 0}
-              className="col-span-4 bg-[#D71921] hover:bg-[#B8141B] disabled:bg-stone-700 disabled:opacity-50 text-white font-black py-3 px-4 rounded-lg flex items-center justify-center gap-2 shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)] transition transform active:scale-[0.98] cursor-pointer"
+              className="col-span-4 bg-gradient-to-r from-[#8C1318] to-[#6E0D12] hover:from-[#A8171E] hover:to-[#8C1318] disabled:bg-stone-800 disabled:opacity-40 text-white font-black py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-[#90D2ED]/40 shadow-[0_0_25px_rgba(140,19,24,0.6)] transition transform active:scale-[0.98] cursor-pointer"
             >
               <CreditCard className="w-5 h-5" />
               <span>ثبت نهایی و تسویه فاکتور</span>

@@ -42,6 +42,7 @@ interface HeaderProps {
   onOpenTenantConfig?: () => void;
   baristaActiveCount?: number;
   onUserChange: (userId: string) => void;
+  onUserSwitchRequest?: (userId: string) => void;
   onLogout: () => void;
 }
 
@@ -60,6 +61,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenTenantConfig,
   baristaActiveCount = 0,
   onUserChange,
+  onUserSwitchRequest,
+  onLockTerminal,
   onLogout,
 }) => {
   const activeTenant = getActiveTenant();
@@ -360,7 +363,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
 
           {/* Live Clock & Cashier Info */}
-          <div className="hidden md:flex flex-col text-left pl-1">
+          <div onClick={() => onUserSwitchRequest ? onUserSwitchRequest(activeUser.id) : onLockTerminal?.()} title="کلیک جهت قفل یا تغییر کاربر" className="hidden md:flex flex-col text-left pl-1 cursor-pointer hover:opacity-80 transition">
             <span className="text-xs font-mono font-bold text-white num-heavy leading-tight">
               {liveClock || '00:00:00'}
             </span>
