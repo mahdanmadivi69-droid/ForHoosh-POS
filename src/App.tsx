@@ -66,7 +66,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [pendingSwitchUserId, setPendingSwitchUserId] = useState<string | null>(null);
-  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('hub');
+  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('pos');
   const [isTenantConfigOpen, setIsTenantConfigOpen] = useState(false);
   const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -145,6 +145,13 @@ export default function App() {
       showToast('دسترسی به بخش مدیریت منو، انبارداری، حسابرسی و گزارش مالی فقط برای مدیر و مالک مجاز است.');
     }
   }, [activeUser.role, currentTab]);
+  // 100 HICH Route Guard: strictly forbid floor-plan or executive-pl
+  useEffect(() => {
+    if (currentTab === 'floor-plan' || currentTab === 'executive-pl' || currentTab === 'zero-g') {
+      setCurrentTab('pos');
+    }
+  }, [currentTab]);
+
 
   // User Authentication Handlers
   const handleLockTerminal = () => {
@@ -312,7 +319,7 @@ export default function App() {
           setIsAuthenticated(true);
           setIsLocked(false);
           setPendingSwitchUserId(null);
-          setCurrentTab('hub');
+          setCurrentTab('pos');
           refreshState();
           showToast(`ترمینال بازگشایی شد: خوش آمدید ${unlockedUser.fullName}`);
         }}
@@ -388,7 +395,6 @@ export default function App() {
         onOpenExpenseModal={() => setIsExpenseModalOpen(true)}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
         onOpenBaristaKds={() => setIsBaristaKdsOpen(true)}
-        onOpenTenantConfig={() => setIsTenantConfigOpen(true)}
         baristaActiveCount={baristaActiveCount}
         onUserChange={handleUserChange}
         onUserSwitchRequest={handleUserSwitchRequest}
@@ -432,16 +438,7 @@ export default function App() {
           />
         )}
 
-        {currentTab === 'floor-plan' && (
-          <FloorPlanView
-            onBackToPos={() => setCurrentTab('pos')}
-            onSelectTableForOrder={(tableLabel) => {
-              setPreselectedTableLabel(tableLabel);
-              setCurrentTab('pos');
-              showToast(`میز ${tableLabel} انتخاب شد.`);
-            }}
-          />
-        )}
+
 
         {currentTab === 'reports' && (
           <ReportsView
@@ -475,11 +472,7 @@ export default function App() {
           />
         )}
 
-        {currentTab === 'executive-pl' && (
-          <div className="p-4 max-w-7xl mx-auto">
-            <ExecutivePLBoard />
-          </div>
-        )}
+
 
         {currentTab === 'settings' && (
           <SettingsView

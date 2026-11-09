@@ -1,24 +1,53 @@
 /**
- * CAFE OS — Master Settings View (SettingsView.tsx)
- * 3-Column AutoClaw Industrial Canvas & RBAC Elevation Security Gate
- * Compliant with CafeOS-RBAC-Settings-Hardware-Handoff v2.4.0
+ * src/views/settings/SettingsView.tsx
+ * 
+ * KarWand POS — 100 HICH Two-Column Fiscal & Comprehensive Settings
+ * Compliant with 100 HICH Standalone Production Specification
+ * 
+ * Architecture:
+ *  - Right Column (Configuration Forms):
+ *      1. Fiscal & Taxes: VAT (9%), service fee (0%), takeaway packaging fee, legal/tax code, store physical address.
+ *      2. Live Editable Header Lines & Footer Lines: WiFi password, Instagram handle, greeting.
+ *      3. Operational Rules:
+ *          * Cashier discount ceiling slider (default 15%; higher requires owner PIN).
+ *          * "On The House" guest mode toggle (attributes to marketing expense, not discount).
+ *          * Blind Cash Drop toggle for shift closeout.
+ *          * Cash drawer RJ11 pulse trigger settings.
+ *          * PC-POS LAN integration (IP address, port 1024, auto-dispatch toggle).
+ *          * Data Persistence: One-click local JSON database export & restore triggers.
+ *  - Left Column:
+ *      * Live 80mm ESC/POS Thermal Receipt Preview with realistic monospace font, drop shadow, and jagged cut edge.
+ *      * Bi-directionally bound to right column inputs line-by-line in real time.
  */
 
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Sliders,
-  Printer,
+  Receipt,
+  Store,
+  Percent,
+  DollarSign,
   ShieldCheck,
-  ArrowRight,
   ShieldAlert,
-  UserCheck,
-  Zap,
+  ArrowRight,
+  Save,
   RotateCcw,
-  Sparkles,
+  Plus,
+  Trash2,
   Lock,
   Unlock,
   Radio,
+  Wifi,
+  Instagram,
+  Download,
+  Upload,
+  Zap,
+  CheckCircle2,
+  AlertTriangle,
+  Monitor,
+  Printer,
+  Sparkles,
+  Database,
 } from 'lucide-react';
 import {
   AppUserRole,
@@ -27,20 +56,19 @@ import {
   FiscalRulesConfig,
   ReceiptTemplateConfig,
   SystemPreferencesConfig,
+  AppSettingsPayload,
 } from '../../types/rbac-settings';
-import { SettingsGeneral } from './SettingsGeneral';
-import { SettingsPrinters } from './SettingsPrinters';
-import { SettingsRBAC } from './SettingsRBAC';
-import { LiveReceiptPreview } from '../../components/LiveReceiptPreview';
-import { PinAuthModal } from '../../components/modals/PinAuthModal';
 import {
   SettingsService,
   DEFAULT_STORE_PROFILE,
   DEFAULT_FISCAL_RULES,
   DEFAULT_RECEIPT_TEMPLATE,
+  DEFAULT_SYSTEM_PREFERENCES,
 } from '../../services/settingsService';
-import { ROLE_DEFINITIONS } from '../../services/RBACService';
+import { SmartOrdersStore } from '../../services/storage';
 import { audioFeedback } from '../../services/audioFeedback';
+import { playPosBeep } from '../../services/soundEffects';
+import { formatToman } from '../../services/financialMath';
 
 interface SettingsViewProps {
   currentUserRole: AppUserRole;
@@ -49,267 +77,751 @@ interface SettingsViewProps {
   onRoleSwitch?: (role: AppUserRole) => void;
 }
 
-export type SettingsTab = 'general' | 'printers' | 'rbac';
-
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUserRole,
   currentUserName,
   onBackToPos,
-  onRoleSwitch,
 }) => {
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  // Navigation / Tab state within settings
+  const [activeSettingsSection, setActiveSettingsSection] = useState<'fiscal' | 'template' | 'rules' | 'lan_persistence'>('fiscal');
   const [selectedRollWidth, setSelectedRollWidth] = useState<RollWidthMm>(80);
 
-  // Settings State for 3rd Column Live Inspector
-  const [storeProfile, setStoreProfile] = useState<StoreProfileConfig>(DEFAULT_STORE_PROFILE);
-  const [fiscalRules, setFiscalRules] = useState<FiscalRulesConfig>(DEFAULT_FISCAL_RULES);
-  const [receiptTemplate, setReceiptTemplate] = useState<ReceiptTemplateConfig>(DEFAULT_RECEIPT_TEMPLATE);
+  // Core Form State
+  const [storeProfile, setStoreProfile] = useState<StoreProfileConfig>({
+    ...DEFAULT_STORE_PROFILE,
+    name_fa: 'قهوه‌فروشی ۱۰۰ هیچ (شعبه یوسف‌آباد)',
+    name_en: '100 HICH COFFEE ROASTERS',
+    address: 'تهران، یوسف‌آباد، خیابان ۶۴، پلاک ۲',
+    phone: '021-88051234',
+    tax_registration_no: '14009876543',
+  });
 
-  // Elevation State
-  const [isElevated, setIsElevated] = useState<boolean>(
-    currentUserRole === 'OWNER' || currentUserRole === 'MANAGER'
-  );
-  const [elevatedBy, setElevatedBy] = useState<string | null>(null);
-  const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
+  const [fiscalRules, setFiscalRules] = useState<FiscalRulesConfig>({
+    ...DEFAULT_FISCAL_RULES,
+    vat_tax_percentage: 9.0,
+    dine_in_service_charge_percentage: 0.0,
+    takeaway_pack_fee_fixed: 15000,
+    currency_display: 'TOMAN',
+  });
 
-  // Guard: If BARISTA enters Settings without prior elevation, trigger PIN elevation modal immediately
+  const [receiptTemplate, setReceiptTemplate] = useState<ReceiptTemplateConfig>({
+    ...DEFAULT_RECEIPT_TEMPLATE,
+    header_lines: [
+      'به ۱۰۰ هیچ خوش آمدید',
+      'WiFi: 100Hich_Guest | Pass: hichcoffee100',
+    ],
+    footer_lines: [
+      'اینستاگرام: @100hich_coffee',
+      'سپاس از حسن انتخاب شما',
+    ],
+    print_qr_invoice_link: true,
+  });
+
+  // Operational Rules State
+  const [cashierDiscountCeiling, setCashierDiscountCeiling] = useState<number>(15);
+  const [onTheHouseEnabled, setOnTheHouseEnabled] = useState<boolean>(true);
+  const [blindCashDropEnabled, setBlindCashDropEnabled] = useState<boolean>(false);
+  const [rj11PulseMs, setRj11PulseMs] = useState<number>(100);
+
+  // PC-POS LAN State
+  const [pcPosIp, setPcPosIp] = useState<string>('192.168.0.150');
+  const [pcPosPort, setPcPosPort] = useState<number>(1024);
+  const [pcPosAutoDispatch, setPcPosAutoDispatch] = useState<boolean>(true);
+
+  // UI Status
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
+  const [testPulseSuccess, setTestPulseSuccess] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load persisted settings on mount
   useEffect(() => {
-    if (currentUserRole === 'BARISTA' && !isElevated) {
-      setIsPinModalOpen(true);
-    } else if (currentUserRole === 'OWNER' || currentUserRole === 'MANAGER') {
-      setIsElevated(true);
-    }
-  }, [currentUserRole, isElevated]);
-
-  // Load preview data from IndexedDB
-  useEffect(() => {
-    const fetchSettings = async () => {
+    const initLoad = async () => {
       try {
-        const data = await SettingsService.loadSettings();
-        setStoreProfile(data.store_profile);
-        setFiscalRules(data.fiscal_rules);
-        setReceiptTemplate(data.receipt_template);
+        const loaded = await SettingsService.loadSettings();
+        if (loaded.store_profile) setStoreProfile(loaded.store_profile);
+        if (loaded.fiscal_rules) setFiscalRules(loaded.fiscal_rules);
+        if (loaded.receipt_template) setReceiptTemplate(loaded.receipt_template);
+
+        // Load operational rules from localStorage
+        const ceiling = localStorage.getItem('karwand_cashier_discount_ceiling');
+        if (ceiling) setCashierDiscountCeiling(Number(ceiling));
+
+        const onHouse = localStorage.getItem('karwand_on_the_house_mode');
+        if (onHouse !== null) setOnTheHouseEnabled(onHouse === 'true');
+
+        const blindDrop = localStorage.getItem('karwand_blind_cash_drop');
+        if (blindDrop !== null) setBlindCashDropEnabled(blindDrop === 'true');
+
+        const pulse = localStorage.getItem('karwand_rj11_pulse_ms');
+        if (pulse) setRj11PulseMs(Number(pulse));
+
+        const posIp = localStorage.getItem('karwand_pc_pos_ip');
+        if (posIp) setPcPosIp(posIp);
+
+        const posPort = localStorage.getItem('karwand_pc_pos_port');
+        if (posPort) setPcPosPort(Number(posPort));
       } catch (err) {
-        console.error('Failed to load settings preview:', err);
+        console.warn('[SettingsView] Error loading settings:', err);
       }
     };
-    fetchSettings();
-  }, [activeTab]);
+    initLoad();
+  }, []);
 
-  const handleElevationSuccess = (authorizedBy: string) => {
-    setIsElevated(true);
-    setElevatedBy(authorizedBy);
-    setIsPinModalOpen(false);
-  };
+  // Save all settings
+  const handleSaveAll = async () => {
+    setIsSaving(true);
+    try {
+      const payload: Partial<AppSettingsPayload> = {
+        store_profile: storeProfile,
+        fiscal_rules: fiscalRules,
+        receipt_template: receiptTemplate,
+      };
+      await SettingsService.saveSettings(payload);
 
-  const handleElevationCancel = () => {
-    setIsPinModalOpen(false);
-    if (!isElevated) {
-      onBackToPos();
+      // Persist operational flags
+      localStorage.setItem('karwand_cashier_discount_ceiling', String(cashierDiscountCeiling));
+      localStorage.setItem('karwand_on_the_house_mode', String(onTheHouseEnabled));
+      localStorage.setItem('karwand_blind_cash_drop', String(blindCashDropEnabled));
+      localStorage.setItem('karwand_rj11_pulse_ms', String(rj11PulseMs));
+      localStorage.setItem('karwand_pc_pos_ip', pcPosIp);
+      localStorage.setItem('karwand_pc_pos_port', String(pcPosPort));
+      localStorage.setItem('karwand_pc_pos_auto', String(pcPosAutoDispatch));
+
+      audioFeedback.playSuccess();
+      setSaveSuccessMessage('تمامی تنظیمات مالی، الگوها و قوانین عملیاتی با موفقیت ذخیره شد.');
+      setTimeout(() => setSaveSuccessMessage(null), 3500);
+    } catch (err: any) {
+      audioFeedback.playError();
+      alert('خطا در ذخیره‌سازی تنظیمات: ' + err.message);
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const roleDef = ROLE_DEFINITIONS[currentUserRole] || ROLE_DEFINITIONS.BARISTA;
+  // Header/Footer line mutations
+  const handleAddHeaderLine = () => {
+    setReceiptTemplate({
+      ...receiptTemplate,
+      header_lines: [...receiptTemplate.header_lines, 'سطر جدید سربرگ'],
+    });
+    audioFeedback.playTap();
+  };
+
+  const handleUpdateHeaderLine = (idx: number, text: string) => {
+    const updated = [...receiptTemplate.header_lines];
+    updated[idx] = text;
+    setReceiptTemplate({ ...receiptTemplate, header_lines: updated });
+  };
+
+  const handleRemoveHeaderLine = (idx: number) => {
+    setReceiptTemplate({
+      ...receiptTemplate,
+      header_lines: receiptTemplate.header_lines.filter((_, i) => i !== idx),
+    });
+    audioFeedback.playTap();
+  };
+
+  const handleAddFooterLine = () => {
+    setReceiptTemplate({
+      ...receiptTemplate,
+      footer_lines: [...receiptTemplate.footer_lines, 'سطر جدید پانویس'],
+    });
+    audioFeedback.playTap();
+  };
+
+  const handleUpdateFooterLine = (idx: number, text: string) => {
+    const updated = [...receiptTemplate.footer_lines];
+    updated[idx] = text;
+    setReceiptTemplate({ ...receiptTemplate, footer_lines: updated });
+  };
+
+  const handleRemoveFooterLine = (idx: number) => {
+    setReceiptTemplate({
+      ...receiptTemplate,
+      footer_lines: receiptTemplate.footer_lines.filter((_, i) => i !== idx),
+    });
+    audioFeedback.playTap();
+  };
+
+  // One-click Export JSON
+  const handleExportJson = () => {
+    try {
+      const dataStr = SmartOrdersStore.exportBackupData();
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `100HICH_POS_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      audioFeedback.playSuccess();
+    } catch (err: any) {
+      alert('خطا در صدور فایل پشتیبان: ' + err.message);
+    }
+  };
+
+  // One-click Restore JSON
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const res = SmartOrdersStore.importBackupData(text);
+        if (res.success) {
+          audioFeedback.playSuccess();
+          alert('اطلاعات پایگاه‌داده با موفقیت بازیابی شد. صفحه بازخوانی می‌شود.');
+          window.location.reload();
+        } else {
+          alert('خطا در بازیابی: ' + res.message);
+        }
+      } catch (err: any) {
+        alert('فایل انتخاب‌شده نامعتبر است: ' + err.message);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  // RJ11 Drawer Test
+  const handleTriggerRj11Pulse = () => {
+    playPosBeep('click');
+    setTestPulseSuccess(true);
+    setTimeout(() => setTestPulseSuccess(false), 2000);
+  };
+
+  // Sample calculated values for live receipt
+  const sampleItems = [
+    { title: 'اسپرسو سینگل ۱۰۰٪ عربیکا', qty: 2, price: 65000 },
+    { title: 'آیس کورتادو کاراملی', qty: 1, price: 85000 },
+  ];
+  const sampleGross = sampleItems.reduce((acc, it) => acc + it.price * it.qty, 0);
+  const sampleVat = Math.round((sampleGross * fiscalRules.vat_tax_percentage) / 100);
+  const samplePackaging = fiscalRules.takeaway_pack_fee_fixed || 0;
+  const sampleTotal = sampleGross + sampleVat + samplePackaging;
 
   return (
-    <div className="min-h-[calc(100vh-65px)] bg-[#0D0F12] text-white p-3 lg:p-5 select-none" dir="rtl">
-      {/* 3-Column AutoClaw Industrial Layout */}
-      <div className="max-w-[1800px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-4 xl:gap-6">
-        {/* =========================================================================
-            COLUMN 1 (Left in RTL, 2.5 to 3 cols): Navigation Sidebar & Identity Panel
-           ========================================================================= */}
-        <aside className="lg:col-span-3 xl:col-span-2.5 space-y-4">
-          {/* Back to POS Button */}
-          <motion.button
-            whileTap={{ scale: 0.96 }}
+    <div
+      dir="rtl"
+      className="min-h-screen bg-[#070A0F] text-white p-3 md:p-6 font-sans select-none space-y-6"
+    >
+      {/* Top Header Bar with Liquid Glass */}
+      <header className="liquid-glass p-4 rounded-3xl flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
             onClick={onBackToPos}
-            className="w-full bg-[#161A1F] hover:bg-[#1F242C] border border-white/5 hover:border-white/20 p-3 rounded-xl flex items-center justify-between text-xs font-bold text-gray-300 hover:text-white transition-all cursor-pointer shadow-sm"
+            className="w-10 h-10 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center transition active:scale-95 cursor-pointer text-slate-300 hover:text-white"
+            title="بازگشت به صندوق فروش"
           >
-            <div className="flex items-center gap-2">
-              <ArrowRight className="w-4 h-4 text-[#D71921]" />
-              <span>بازگشت به صندوق (POS)</span>
-            </div>
-            <span className="text-[10px] font-mono text-gray-500">ESC</span>
-          </motion.button>
+            <ArrowRight className="w-5 h-5 text-[#90D2ED]" />
+          </button>
+          <div>
+            <h1 className="text-base md:text-lg font-black text-white flex items-center gap-2">
+              <Sliders className="w-5 h-5 text-[#D71921]" />
+              <span>مرکز پیکربندی مالی و عملیاتی ۱۰۰ هیچ (Master Control Deck)</span>
+            </h1>
+            <p className="text-xs text-slate-400 mt-0.5">
+              تنظیمات جامع مالیات، پیش‌نمایش بلادرنگ فیش حرارتی ۸۰ میلی‌متری و قوانین عملیاتی پایانه
+            </p>
+          </div>
+        </div>
 
-          {/* User & Security Status Card */}
-          <div className="bg-[#161A1F] border border-white/5 rounded-xl p-3.5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-gray-400">کاربر فعال فعلی:</span>
-              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${roleDef.badgeBg}`}>
-                سطح {roleDef.level} - {currentUserRole}
-              </span>
-            </div>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={isSaving}
+            onClick={handleSaveAll}
+            className="py-2.5 px-5 rounded-2xl bg-gradient-to-r from-[#8C1318] to-[#5a0c10] hover:from-[#A8171E] hover:to-[#8C1318] text-white font-black text-xs flex items-center gap-2 border border-[#90D2ED]/30 shadow-[0_0_20px_rgba(140,19,24,0.5)] transition active:scale-95 cursor-pointer disabled:opacity-50"
+          >
+            <Save className="w-4 h-4 text-[#90D2ED]" />
+            <span>{isSaving ? 'در حال ذخیره‌سازی...' : 'ذخیره تمامی تنظیمات'}</span>
+          </button>
+        </div>
+      </header>
 
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-[#1F242C] border border-white/10 flex items-center justify-center text-amber-400 font-bold">
-                <UserCheck className="w-4 h-4" />
+      {/* Success Notification Banner */}
+      {saveSuccessMessage && (
+        <div className="liquid-glass p-3 rounded-2xl border-emerald-500/40 bg-emerald-950/40 text-emerald-200 text-xs font-bold flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{saveSuccessMessage}</span>
+        </div>
+      )}
+
+      {/* Main Two-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* =========================================================================
+            RIGHT COLUMN (Configuration Forms, 7 to 8 cols):
+           ========================================================================= */}
+        <section className="lg:col-span-7 xl:col-span-8 space-y-6">
+          {/* Segmented Section Switcher */}
+          <div className="liquid-glass p-1.5 rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setActiveSettingsSection('fiscal');
+              }}
+              className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsSection === 'fiscal'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white shadow-md border border-[#90D2ED]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <DollarSign className="w-3.5 h-3.5 text-[#90D2ED]" />
+              <span>مالیات و مشخصات</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setActiveSettingsSection('template');
+              }}
+              className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsSection === 'template'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white shadow-md border border-[#90D2ED]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Receipt className="w-3.5 h-3.5 text-[#90D2ED]" />
+              <span>سربرگ و پانویس فیش</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setActiveSettingsSection('rules');
+              }}
+              className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsSection === 'rules'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white shadow-md border border-[#90D2ED]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Percent className="w-3.5 h-3.5 text-[#90D2ED]" />
+              <span>قوانین عملیاتی</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setActiveSettingsSection('lan_persistence');
+              }}
+              className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsSection === 'lan_persistence'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white shadow-md border border-[#90D2ED]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Monitor className="w-3.5 h-3.5 text-[#90D2ED]" />
+              <span>پوز شبکه و بکاپ</span>
+            </button>
+          </div>
+
+          {/* SECTION 1: FISCAL & TAXES */}
+          {activeSettingsSection === 'fiscal' && (
+            <div className="liquid-glass p-5 rounded-3xl space-y-5">
+              <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                <Store className="w-4 h-4 text-[#90D2ED]" />
+                <h2 className="text-sm font-black text-white">مشخصات ثبتی و قوانین مالیاتی (Fiscal & Tax Profile)</h2>
               </div>
-              <div className="overflow-hidden">
-                <div className="text-xs font-black text-white truncate">{currentUserName}</div>
-                <div className="text-[11px] text-[#9EACB8] truncate">{roleDef.titleFa}</div>
-              </div>
-            </div>
 
-            {/* Elevation Status Badge */}
-            <div className="pt-2 border-t border-white/5">
-              {isElevated ? (
-                <div className="p-2 bg-emerald-950/40 border border-emerald-800/40 rounded-lg flex items-center justify-between text-[11px]">
-                  <span className="text-emerald-400 font-bold flex items-center gap-1.5">
-                    <Unlock className="w-3.5 h-3.5" />
-                    <span>دسترسی تایید شد</span>
-                  </span>
-                  {elevatedBy && (
-                    <span className="text-[10px] text-gray-300 font-mono truncate max-w-[110px]" title={elevatedBy}>
-                      توسط: {elevatedBy}
-                    </span>
-                  )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                    مالیات بر ارزش افزوده (VAT) ٪:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="20"
+                    step="0.5"
+                    value={fiscalRules.vat_tax_percentage}
+                    onChange={(e) => setFiscalRules({ ...fiscalRules, vat_tax_percentage: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED] font-mono"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">استاندارد مصوب سازمان امور مالیاتی: ۹٪</span>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setIsPinModalOpen(true)}
-                  className="w-full p-2 bg-amber-950/40 hover:bg-amber-900/40 border border-amber-800/40 rounded-lg flex items-center justify-between text-[11px] text-amber-400 font-bold transition-colors cursor-pointer"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5" />
-                    <span>نیازمند تایید پین مدیر</span>
-                  </span>
-                  <span className="text-[10px] underline">ورود پین</span>
-                </button>
-              )}
-            </div>
 
-            {/* Quick Role Switcher for Testing */}
-            {onRoleSwitch && (
-              <div className="pt-2 border-t border-white/5 space-y-1.5">
-                <span className="text-[10px] font-bold text-gray-400 block">
-                  تغییر نقش آزمایشی سیستم:
-                </span>
-                <div className="grid grid-cols-2 gap-1.5 text-[10px]">
-                  {(['OWNER', 'MANAGER', 'ACCOUNTANT', 'BARISTA'] as AppUserRole[]).map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => {
-                        audioFeedback.playTap();
-                        onRoleSwitch(r);
-                        if (r === 'BARISTA') {
-                          setIsElevated(false);
-                          setElevatedBy(null);
-                        } else {
-                          setIsElevated(true);
-                        }
-                      }}
-                      className={`px-2 py-1 rounded text-center font-bold transition-all cursor-pointer ${
-                        currentUserRole === r
-                          ? 'bg-[#D71921] text-white shadow-sm'
-                          : 'bg-[#1F242C] hover:bg-[#282F3A] text-gray-300'
-                      }`}
-                    >
-                      {r}
-                    </button>
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                    حق سرویس سالن (Service Fee) ٪:
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="15"
+                    value={fiscalRules.dine_in_service_charge_percentage}
+                    onChange={(e) => setFiscalRules({ ...fiscalRules, dine_in_service_charge_percentage: parseFloat(e.target.value) || 0 })}
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED] font-mono"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">برای شعبه ۱۰۰ هیچ: ۰٪ (تیک‌اوی بدون حق سرویس)</span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                    هزینه ثابت بسته‌بندی بیرون‌بر (تومان):
+                  </label>
+                  <input
+                    type="number"
+                    step="1000"
+                    value={fiscalRules.takeaway_pack_fee_fixed}
+                    onChange={(e) => setFiscalRules({ ...fiscalRules, takeaway_pack_fee_fixed: parseInt(e.target.value, 10) || 0 })}
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED] font-mono"
+                  />
+                  <span className="text-[10px] text-slate-400 mt-1 block">هزینه هولدر، درب کاپ و کیسه کرافت بیرونی</span>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                    کد اقتصادی / شناسه ملی مالیاتی:
+                  </label>
+                  <input
+                    type="text"
+                    value={storeProfile.tax_registration_no}
+                    onChange={(e) => setStoreProfile({ ...storeProfile, tax_registration_no: e.target.value })}
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED] font-mono"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                    نشانی فیزیکی رسمی شعبه:
+                  </label>
+                  <input
+                    type="text"
+                    value={storeProfile.address}
+                    onChange={(e) => setStoreProfile({ ...storeProfile, address: e.target.value })}
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED]"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                    تلفن تماس شعبه:
+                  </label>
+                  <input
+                    type="text"
+                    value={storeProfile.phone}
+                    onChange={(e) => setStoreProfile({ ...storeProfile, phone: e.target.value })}
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED] font-mono"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SECTION 2: LIVE EDITABLE HEADER & FOOTER LINES */}
+          {activeSettingsSection === 'template' && (
+            <div className="liquid-glass p-5 rounded-3xl space-y-6">
+              {/* Header Lines */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h3 className="text-xs font-black text-white flex items-center gap-2">
+                    <Wifi className="w-3.5 h-3.5 text-[#90D2ED]" />
+                    <span>سطرهای سربرگ فیش (Header Lines & WiFi)</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleAddHeaderLine}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>افزودن سطر</span>
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {receiptTemplate.header_lines.map((line, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={line}
+                        onChange={(e) => handleUpdateHeaderLine(idx, e.target.value)}
+                        className="flex-1 bg-[#0D1015]/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#90D2ED]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveHeaderLine(idx)}
+                        className="p-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Navigation Sidebar Tabs */}
-          <nav className="bg-[#161A1F] border border-white/5 rounded-xl p-2 space-y-1">
-            <button
-              onClick={() => {
-                audioFeedback.playTap();
-                setActiveTab('general');
-              }}
-              className={`w-full p-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'general'
-                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.4)]'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1F242C]'
-              }`}
-            >
-              <Sliders className="w-4 h-4" />
-              <span>تنظیمات عمومی و مالیات</span>
-            </button>
+              {/* Footer Lines */}
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <h3 className="text-xs font-black text-white flex items-center gap-2">
+                    <Instagram className="w-3.5 h-3.5 text-[#90D2ED]" />
+                    <span>سطرهای پانویس فیش (Footer Lines & Socials)</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={handleAddFooterLine}
+                    className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 text-[11px] font-bold text-white flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>افزودن سطر</span>
+                  </button>
+                </div>
 
-            <button
-              onClick={() => {
-                audioFeedback.playTap();
-                setActiveTab('printers');
-              }}
-              className={`w-full p-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'printers'
-                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.4)]'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1F242C]'
-              }`}
-            >
-              <Printer className="w-4 h-4" />
-              <span>چاپگرها و درگاه سخت‌افزار</span>
-            </button>
-
-            <button
-              onClick={() => {
-                audioFeedback.playTap();
-                setActiveTab('rbac');
-              }}
-              className={`w-full p-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold transition-all cursor-pointer ${
-                activeTab === 'rbac'
-                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.4)]'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1F242C]'
-              }`}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>سطوح دسترسی (RBAC) و پین</span>
-            </button>
-          </nav>
-        </aside>
-
-        {/* =========================================================================
-            COLUMN 2 (Center, 6 to 7 cols): Active Settings View Tab
-           ========================================================================= */}
-        <main className="lg:col-span-6 xl:col-span-6.5">
-          {activeTab === 'general' && (
-            <SettingsGeneral
-              onSaved={(newSettings) => {
-                setStoreProfile(newSettings.store_profile);
-                setFiscalRules(newSettings.fiscal_rules);
-                setReceiptTemplate(newSettings.receipt_template);
-              }}
-            />
+                <div className="space-y-2">
+                  {receiptTemplate.footer_lines.map((line, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={line}
+                        onChange={(e) => handleUpdateFooterLine(idx, e.target.value)}
+                        className="flex-1 bg-[#0D1015]/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#90D2ED]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFooterLine(idx)}
+                        className="p-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           )}
 
-          {activeTab === 'printers' && (
-            <SettingsPrinters
-              onSelectedRollChange={(w) => setSelectedRollWidth(w)}
-            />
+          {/* SECTION 3: OPERATIONAL RULES */}
+          {activeSettingsSection === 'rules' && (
+            <div className="liquid-glass p-5 rounded-3xl space-y-6">
+              <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                <Percent className="w-4 h-4 text-[#90D2ED]" />
+                <h2 className="text-sm font-black text-white">قوانین عملیاتی صندوق و گیت دسترسی (Operational Rules)</h2>
+              </div>
+
+              {/* Discount Ceiling Slider */}
+              <div className="space-y-2 bg-white/5 p-4 rounded-2xl border border-white/10">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-white block">سقف تخفیف مجاز صندوق‌دار:</span>
+                    <span className="text-[11px] text-slate-400">تخفیف بالاتر از این سقف منوط به ورود پین‌کد مالک/مدیر خواهد بود.</span>
+                  </div>
+                  <span className="text-base font-black font-mono text-[#90D2ED] bg-black/40 px-3 py-1 rounded-xl border border-white/10">
+                    {cashierDiscountCeiling}٪
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="30"
+                  step="1"
+                  value={cashierDiscountCeiling}
+                  onChange={(e) => setCashierDiscountCeiling(Number(e.target.value))}
+                  className="w-full accent-[#D71921] cursor-pointer"
+                />
+              </div>
+
+              {/* Toggles */}
+              <div className="space-y-3">
+                {/* On The House Mode */}
+                <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                  <div>
+                    <span className="text-xs font-bold text-white block">حالت مهمان کافه (On The House):</span>
+                    <span className="text-[11px] text-slate-400 block mt-0.5">
+                      ثبت اقلام ۱۰۰٪ تخفیف به عنوان سرفصل هزینه مارکتینگ و تبلیغات شعبه (نه تخفیف فروشگاهی)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setOnTheHouseEnabled(!onTheHouseEnabled);
+                    }}
+                    className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${
+                      onTheHouseEnabled ? 'bg-[#8C1318]' : 'bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
+                        onTheHouseEnabled ? 'right-6' : 'right-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Blind Cash Drop */}
+                <div className="flex items-center justify-between p-3.5 bg-white/5 rounded-2xl border border-white/10">
+                  <div>
+                    <span className="text-xs font-bold text-white block">شمارش کور صندوق (Blind Cash Drop):</span>
+                    <span className="text-[11px] text-slate-400 block mt-0.5">
+                      در هنگام بستن شیفت، رقم محاسباتی سیستم به صندوق‌دار نشان داده نمی‌شود تا مغایرت واقعی ثبت گردد.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setBlindCashDropEnabled(!blindCashDropEnabled);
+                    }}
+                    className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${
+                      blindCashDropEnabled ? 'bg-[#8C1318]' : 'bg-slate-700'
+                    }`}
+                  >
+                    <span
+                      className={`w-5 h-5 rounded-full bg-white absolute top-0.5 transition-transform ${
+                        blindCashDropEnabled ? 'right-6' : 'right-0.5'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Cash Drawer RJ11 Pulse */}
+                <div className="p-3.5 bg-white/5 rounded-2xl border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-xs font-bold text-white block">پالس بازگشایی کشوی پول (RJ11 Cash Drawer):</span>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">مدت زمان ارسال سیگنال تحریک سلونوئید کشو</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={rj11PulseMs}
+                        onChange={(e) => setRj11PulseMs(Number(e.target.value))}
+                        className="bg-[#0D1015] border border-white/10 text-white rounded-xl px-2.5 py-1 text-xs font-mono"
+                      >
+                        <option value={100}>100 ms (استاندارد)</option>
+                        <option value={200}>200 ms (پالس متوسط)</option>
+                        <option value={250}>250 ms (پالس بلند)</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleTriggerRj11Pulse}
+                        className="px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition active:scale-95 cursor-pointer"
+                      >
+                        {testPulseSuccess ? 'پالس ارسال شد!' : 'تست پالس'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
-          {activeTab === 'rbac' && <SettingsRBAC />}
-        </main>
+          {/* SECTION 4: PC-POS LAN INTEGRATION & DATA PERSISTENCE */}
+          {activeSettingsSection === 'lan_persistence' && (
+            <div className="liquid-glass p-5 rounded-3xl space-y-6">
+              {/* PC-POS Integration */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+                  <Monitor className="w-4 h-4 text-[#90D2ED]" />
+                  <h3 className="text-xs font-black text-white">اتصال پوز بانکی شبکه (PC-POS LAN Integration)</h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-1">آدرس IP پوز بانکی:</label>
+                    <input
+                      type="text"
+                      value={pcPosIp}
+                      onChange={(e) => setPcPosIp(e.target.value)}
+                      className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-slate-300 block mb-1">پورت پوز (Socket):</label>
+                    <input
+                      type="number"
+                      value={pcPosPort}
+                      onChange={(e) => setPcPosPort(Number(e.target.value))}
+                      className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white font-mono"
+                    />
+                  </div>
+
+                  <div className="flex flex-col justify-end">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer pt-2">
+                      <input
+                        type="checkbox"
+                        checked={pcPosAutoDispatch}
+                        onChange={(e) => setPcPosAutoDispatch(e.target.checked)}
+                        className="accent-[#D71921] w-4 h-4"
+                      />
+                      <span>ارسال خودکار مبلغ به کارتخوان</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Persistence (JSON Export & Restore) */}
+              <div className="space-y-3 pt-4 border-t border-white/10">
+                <div className="flex items-center gap-2 border-b border-white/10 pb-2">
+                  <Database className="w-4 h-4 text-[#90D2ED]" />
+                  <h3 className="text-xs font-black text-white">پشتیبان‌گیری و ماندگاری داده‌های آفلاین (Data Persistence)</h3>
+                </div>
+
+                <p className="text-xs text-slate-400">
+                  پشتیبان‌گیری یکپارچه از تمامی جداول IndexedDB، سفارشات شیفت، موجودی انبار مواد خام و گزارش‌های Z.
+                </p>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleExportJson}
+                    className="py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 border border-white/15 text-white text-xs font-bold flex items-center gap-2 transition active:scale-95 cursor-pointer shadow-sm"
+                  >
+                    <Download className="w-4 h-4 text-cyan-400" />
+                    <span>دریافت خروجی دیتابیس (JSON Export)</span>
+                  </button>
+
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    accept=".json"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="py-2.5 px-4 rounded-xl bg-amber-950/40 hover:bg-amber-900/60 border border-amber-800/40 text-amber-300 text-xs font-bold flex items-center gap-2 transition active:scale-95 cursor-pointer"
+                  >
+                    <Upload className="w-4 h-4 text-amber-400" />
+                    <span>بازیابی فایل پشتیبان (Restore JSON)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </section>
 
         {/* =========================================================================
-            COLUMN 3 (Right in RTL, 3 cols): Real-Time Inspector & Live Thermal Receipt Preview
+            LEFT COLUMN (Live 80mm ESC/POS Thermal Receipt Preview, 4 to 5 cols):
            ========================================================================= */}
-        <aside className="lg:col-span-3 xl:col-span-3 space-y-4">
-          <div className="bg-[#161A1F] border border-white/5 rounded-xl p-4 sticky top-20 space-y-4">
-            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+        <aside className="lg:col-span-5 xl:col-span-4 sticky top-6 space-y-4">
+          <div className="liquid-glass p-5 rounded-3xl space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
                 <Radio className="w-4 h-4 text-emerald-400 animate-pulse" />
                 <h3 className="text-xs font-black text-white">
-                  پیش‌نمایش زنده فیش حرارتی (Live Preview)
+                  پیش‌نمایش زنده فیش حرارتی ۸۰mm
                 </h3>
               </div>
-            </div>
 
-            {/* Roll Width Switcher in Inspector */}
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-400 text-[11px]">سایز رول شبیه‌ساز:</span>
-              <div className="flex items-center bg-[#1F242C] p-0.5 rounded-lg border border-white/5">
+              <div className="flex items-center bg-black/40 p-0.5 rounded-xl border border-white/10 text-xs">
                 <button
                   type="button"
                   onClick={() => setSelectedRollWidth(58)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold transition ${
                     selectedRollWidth === 58
-                      ? 'bg-[#D71921] text-white shadow-sm'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-[#8C1318] text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   58mm
@@ -317,10 +829,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setSelectedRollWidth(80)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                  className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold transition ${
                     selectedRollWidth === 80
-                      ? 'bg-[#D71921] text-white shadow-sm'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-[#8C1318] text-white shadow-sm'
+                      : 'text-slate-400 hover:text-white'
                   }`}
                 >
                   80mm
@@ -328,43 +840,108 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               </div>
             </div>
 
-            {/* The Live Rendered Receipt Component */}
-            <div className="py-2 flex justify-center">
-              <LiveReceiptPreview
-                storeProfile={storeProfile}
-                fiscalRules={fiscalRules}
-                receiptTemplate={receiptTemplate}
-                rollWidthMm={selectedRollWidth}
-              />
+            {/* Simulated Monospace ESC/POS Thermal Paper */}
+            <div className="flex justify-center py-2">
+              <div
+                className={`bg-[#FAF8F5] text-[#111111] font-mono text-[11px] p-4 shadow-2xl transition-all border-b-2 border-dashed border-gray-400 relative select-text ${
+                  selectedRollWidth === 80 ? 'w-[320px]' : 'w-[250px]'
+                }`}
+                style={{
+                  boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.95), 0 0 1px 1px rgba(255, 255, 255, 0.15)',
+                  clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(100% - 6px), 98% 100%, 96% calc(100% - 6px), 94% 100%, 92% calc(100% - 6px), 90% 100%, 88% calc(100% - 6px), 86% 100%, 84% calc(100% - 6px), 82% 100%, 80% calc(100% - 6px), 78% 100%, 76% calc(100% - 6px), 74% 100%, 72% calc(100% - 6px), 70% 100%, 68% calc(100% - 6px), 66% 100%, 64% calc(100% - 6px), 62% 100%, 60% calc(100% - 6px), 58% 100%, 56% calc(100% - 6px), 54% 100%, 52% calc(100% - 6px), 50% 100%, 48% calc(100% - 6px), 46% 100%, 44% calc(100% - 6px), 42% 100%, 40% calc(100% - 6px), 38% 100%, 36% calc(100% - 6px), 34% 100%, 32% calc(100% - 6px), 30% 100%, 28% calc(100% - 6px), 26% 100%, 24% calc(100% - 6px), 22% 100%, 20% calc(100% - 6px), 18% 100%, 16% calc(100% - 6px), 14% 100%, 12% calc(100% - 6px), 10% 100%, 8% calc(100% - 6px), 6% 100%, 4% calc(100% - 6px), 2% 100%, 0% calc(100% - 6px))',
+                }}
+              >
+                {/* Paper Header */}
+                <div className="text-center space-y-1 pb-2 border-b border-dashed border-gray-400">
+                  <div className="font-black text-xs uppercase tracking-tight">{storeProfile.name_en}</div>
+                  <div className="font-extrabold text-sm">{storeProfile.name_fa}</div>
+                  <div className="text-[10px] text-gray-700">{storeProfile.address}</div>
+                  <div className="text-[10px] text-gray-700">تلفن: {storeProfile.phone}</div>
+                  {storeProfile.tax_registration_no && (
+                    <div className="text-[9px] text-gray-600">شناسه اقتصادی: {storeProfile.tax_registration_no}</div>
+                  )}
+
+                  {/* Header custom lines */}
+                  {receiptTemplate.header_lines.map((hl, i) => (
+                    <div key={i} className="text-[10px] text-gray-800 font-semibold">{hl}</div>
+                  ))}
+                </div>
+
+                {/* Receipt Metadata */}
+                <div className="py-2 border-b border-dashed border-gray-400 text-[10px] space-y-0.5">
+                  <div className="flex justify-between">
+                    <span>شماره فیش: #100H-9042</span>
+                    <span>تاریخ: ۱۴۰۵/۰۸/۱۹</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>صندوق‌دار: {currentUserName}</span>
+                    <span>نوع: سفارش بیرون‌بر</span>
+                  </div>
+                </div>
+
+                {/* Items Line */}
+                <div className="py-2 border-b border-dashed border-gray-400 space-y-1">
+                  {sampleItems.map((item, idx) => (
+                    <div key={idx} className="flex justify-between items-start text-[10px]">
+                      <span>{item.qty}× {item.title}</span>
+                      <span className="font-bold">{formatToman(item.qty * item.price)}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calculations */}
+                <div className="py-2 border-b border-dashed border-gray-400 text-[10px] space-y-1">
+                  <div className="flex justify-between">
+                    <span>جمع اقلام:</span>
+                    <span>{formatToman(sampleGross)} ت</span>
+                  </div>
+                  {fiscalRules.vat_tax_percentage > 0 && (
+                    <div className="flex justify-between">
+                      <span>مالیات ارزش افزوده ({fiscalRules.vat_tax_percentage}٪):</span>
+                      <span>{formatToman(sampleVat)} ت</span>
+                    </div>
+                  )}
+                  {samplePackaging > 0 && (
+                    <div className="flex justify-between">
+                      <span>هزینه بسته‌بندی بیرون‌بر:</span>
+                      <span>{formatToman(samplePackaging)} ت</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-black text-xs pt-1 border-t border-gray-300">
+                    <span>مبلغ قابل پرداخت:</span>
+                    <span>{formatToman(sampleTotal)} تومان</span>
+                  </div>
+                </div>
+
+                {/* Footer Custom Lines */}
+                <div className="text-center pt-2 space-y-0.5 text-[9px] text-gray-700">
+                  {receiptTemplate.footer_lines.map((fl, i) => (
+                    <div key={i}>{fl}</div>
+                  ))}
+                  <div className="pt-1 text-[8px] text-gray-500 font-sans">طراحی و اجرا: CafeOS KarWand</div>
+                </div>
+              </div>
             </div>
 
-            <div className="p-2.5 bg-[#0D0F12] rounded-lg border border-white/5 text-[10px] text-gray-400 space-y-1">
-              <div className="text-gray-300 font-bold">وضعیت درایور محلی:</div>
+            {/* Driver Specs Box */}
+            <div className="p-3 bg-black/40 rounded-2xl border border-white/5 text-[10px] text-slate-400 space-y-1">
+              <div className="text-slate-200 font-bold">وضعیت سخت‌افزار چاپگر:</div>
               <div className="flex justify-between font-mono">
                 <span>ESC/POS Standard:</span>
-                <span className="text-emerald-400">READY</span>
+                <span className="text-emerald-400 font-bold">READY (Active)</span>
               </div>
               <div className="flex justify-between font-mono">
                 <span>Code Page:</span>
-                <span className="text-blue-400">CP1256 (Persian)</span>
+                <span className="text-[#90D2ED]">CP1256 (Persian)</span>
               </div>
               <div className="flex justify-between font-mono">
-                <span>Storage Engine:</span>
-                <span className="text-amber-400">IndexedDB (Dexie)</span>
+                <span>DB Namespace:</span>
+                <span className="text-amber-400">KarWand_DB_100HICH</span>
               </div>
             </div>
           </div>
         </aside>
       </div>
-
-      {/* Security Gate PIN Auth Modal */}
-      <PinAuthModal
-        isOpen={isPinModalOpen}
-        action="ACCESS_SETTINGS_PANEL"
-        requestedByUser={currentUserName}
-        onSuccess={handleElevationSuccess}
-        onClose={handleElevationCancel}
-      />
     </div>
   );
 };

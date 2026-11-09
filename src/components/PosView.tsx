@@ -883,10 +883,10 @@ export const PosView: React.FC<PosViewProps> = ({
               playPosBeep('click');
               setSelectedCategoryId('all');
             }}
-            className={`px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-2 border cursor-pointer ${
+            className={`px-4 py-2 rounded-2xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-2 border cursor-pointer backdrop-blur-xl ${
               selectedCategoryId === 'all'
-                ? 'bg-[#D71921] border-[#D71921] text-white shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
-                : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white hover:border-[#9EACB8]'
+                ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border-[#9E8A5E]/60 text-white shadow-[0_0_20px_rgba(140,19,24,0.6)]'
+                : 'bg-[rgba(15,22,34,0.65)] border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
             }`}
           >
             <span>⚡</span>
@@ -910,10 +910,10 @@ export const PosView: React.FC<PosViewProps> = ({
                   playPosBeep('click');
                   setSelectedCategoryId(cat.id);
                 }}
-                className={`px-3.5 py-2 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-2 border cursor-pointer ${
+                className={`px-4 py-2 rounded-2xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-2 border cursor-pointer backdrop-blur-xl ${
                   isActive
-                    ? 'bg-[#D71921] border-[#D71921] text-white shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
-                    : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white hover:border-[#9EACB8]'
+                    ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border-[#9E8A5E]/60 text-white shadow-[0_0_20px_rgba(140,19,24,0.6)]'
+                    : 'bg-[rgba(15,22,34,0.65)] border-white/10 text-slate-300 hover:text-white hover:bg-white/10'
                 }`}
               >
                 <span>{icon}</span>
@@ -1036,7 +1036,7 @@ export const PosView: React.FC<PosViewProps> = ({
               const bomStock = inventoryBomService.evaluateMenuItemStock(item.id);
               const isOutOfStock = stockStatus.isOutOfStock || bomStock.isOutOfStock;
               const isLow = (stockStatus.isLowStock || bomStock.hasLowStockIngredients) && !isOutOfStock;
-              const isSensoryCard = Boolean(item.hasDualBean || (activeTenant.id.includes('100hich') && (item.isBean || item.categoryId === 'cat-coffee')));
+              const isSensoryCard = true; // In 100 HICH standalone target, all items render as 3D Liquid Glass CatalogCard
               if (isSensoryCard) {
                 return (
                   <CatalogCard
@@ -1201,7 +1201,7 @@ export const PosView: React.FC<PosViewProps> = ({
       {/* ================= RIGHT / SIDEBAR: ORDER & POS CART ================= */}
       <aside
         id="pos-cart-panel"
-        className="hidden xl:flex flex-col w-[420px] bg-[#1B222C] border border-[#293444] rounded-xl sticky top-[72px] h-[calc(100vh-90px)] shadow-2xl transition-all"
+        className="hidden xl:flex flex-col w-[420px] vision-glass-slab rounded-3xl sticky top-[72px] h-[calc(100vh-90px)] shadow-2xl transition-all overflow-hidden border border-white/15"
       >
         {/* Cart Header & Order Type Toggle */}
         <div className="p-3.5 border-b border-white/10 bg-[rgba(12,25,48,0.7)] backdrop-blur-xl flex flex-col gap-2.5">
@@ -1263,7 +1263,7 @@ export const PosView: React.FC<PosViewProps> = ({
               }}
               className={`py-1.5 rounded flex items-center justify-center gap-1 transition-all cursor-pointer ${
                 orderType === 'TAKEAWAY'
-                  ? 'bg-[#D71921] text-white shadow-sm'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-md'
                   : 'text-[#9EACB8] hover:text-white'
               }`}
             >

@@ -311,9 +311,12 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
           </div>
         </div>
 
-        {/* User Profile Selector Chips */}
+        {/* User Profile Selector Chips - Strictly 2 Authorized Glass Pills */}
         <div className="w-full flex items-center justify-center gap-2 mb-4">
-          {activeUsers.map((u) => {
+          {(activeUsers.length > 0 ? activeUsers.filter(u => u.role === 'OWNER' || u.role === 'CASHIER') : [
+            { id: 'auth-user-owner', fullName: 'مهدان مهدوی', role: 'OWNER' },
+            { id: 'auth-user-cashier', fullName: 'صندوقدار شیفت', role: 'CASHIER' }
+          ]).slice(0, 2).map((u: any) => {
             const isSelected = selectedUserId === u.id;
             const isOwner = u.role === 'OWNER';
             return (

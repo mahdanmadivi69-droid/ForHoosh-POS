@@ -516,7 +516,10 @@ const posDbRegistry = new Map<string, DexiePOSDatabase>();
  * Parameterized by tenantId to combine physical partitioning with compound indexing.
  */
 export function getDexiePOSDatabase(tenantId: string = 'tenant-100hich-01'): DexiePOSDatabase {
-  const dbName = `CafeOS_POS_${tenantId.trim()}`;
+  const resolved = tenantId.trim();
+  const dbName = (resolved === 'tenant-100hich-01' || resolved === '100hich')
+    ? 'KarWand_DB_100HICH'
+    : `CafeOS_POS_${resolved}`;
   if (!posDbRegistry.has(dbName)) {
     posDbRegistry.set(dbName, new DexiePOSDatabase(dbName));
   }
