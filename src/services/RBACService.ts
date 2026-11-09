@@ -169,27 +169,6 @@ export class RBACService {
             role: 'CASHIER',
             pin: '2222',
           },
-          {
-            id: 'auth-user-accountant',
-            username: 'accountant',
-            fullName: 'حسابدار ارشد (دفتر مالی و انبار)',
-            role: 'ACCOUNTANT',
-            pin: '5678',
-          },
-          {
-            id: 'auth-user-manager',
-            username: 'manager',
-            fullName: 'سارا رضایی (سرپرست شیفت و مدیر)',
-            role: 'MANAGER',
-            pin: '1111',
-          },
-          {
-            id: 'auth-user-barista',
-            username: 'barista',
-            fullName: 'نیما کمالی (باریستا ارشد)',
-            role: 'BARISTA',
-            pin: '0000',
-          },
         ];
 
         for (const user of seedUsers) {
