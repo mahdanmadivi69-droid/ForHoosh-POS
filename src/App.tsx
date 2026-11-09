@@ -1,3 +1,7 @@
+import { PinLockScreen } from './components/auth/PinLockScreen';
+import { AppLauncherHub } from './components/hub/AppLauncherHub';
+import { HichSettingsControlDeck } from './views/settings/HichSettingsControlDeck';
+import { AuthUserRecord } from './types/rbac-settings';
 /**
  * SmartOrders - Point of Sale (POS) and Operational Management System
  * Core Application Entrypoint
@@ -142,6 +146,11 @@ export default function App() {
   }, [activeUser.role, currentTab]);
 
   // User Authentication Handlers
+  const handleLockTerminal = () => {
+    setIsLocked(true);
+    showToast('ترمینال قفل شد.');
+  };
+
   const handleLogout = () => {
     SmartOrdersStore.logout();
     setIsAuthenticated(false);
@@ -274,18 +283,46 @@ export default function App() {
     }
   };
 
-  // Unauthenticated Barrier: Must log in with username & password before entering POS
-  if (!isAuthenticated) {
+  // 1. Initial Authentication & PIN Gate: Default entry point when app starts or when locked
+  if (isLocked || !isAuthenticated) {
     return (
-      <LoginView
-        tenant={tenant}
-        onLoginSuccess={(loggedInUser) => {
-          SmartOrdersStore.setActiveUserId(loggedInUser.id);
-          setActiveUser(loggedInUser);
+      <PinLockScreen
+        onUnlockSuccess={(unlockedUser: AuthUserRecord) => {
+          const matched: User = allUsers.find(
+            (u) => u.username === unlockedUser.username || u.fullName === unlockedUser.fullName
+          ) || {
+            id: unlockedUser.id,
+            tenantId: 'tenant-100hich-01',
+            fullName: unlockedUser.fullName,
+            username: unlockedUser.username,
+            phoneNumber: unlockedUser.phoneNumber || '09120000000',
+            role: unlockedUser.role as any,
+            isActive: true,
+          };
+          SmartOrdersStore.setActiveUserId(matched.id);
+          setActiveUser(matched);
           setIsAuthenticated(true);
+          setIsLocked(false);
+          setCurrentTab('hub');
           refreshState();
-          showToast(`خوش آمدید، ${loggedInUser.fullName}`);
+          showToast(`ترمینال بازگشایی شد: خوش آمدید ${unlockedUser.fullName}`);
         }}
+        venueTitle="قهوه‌فروشی ۱۰۰ هیچ (شعبه یوسف‌آباد)"
+        deviceId="TERM-01-MAIN"
+      />
+    );
+  }
+
+  // 2. 4-Way App Launcher Hub
+  if (currentTab === 'hub') {
+    return (
+      <AppLauncherHub
+        activeUser={activeUser}
+        onSelectApp={(tab: any) => setCurrentTab(tab)}
+        onLock={handleLockTerminal}
+        activeShift={activeShift}
+        venueTitle="قهوه‌فروشی ۱۰۰ هیچ (شعبه یوسف‌آباد)"
+        deviceId="TERM-01-MAIN"
       />
     );
   }
