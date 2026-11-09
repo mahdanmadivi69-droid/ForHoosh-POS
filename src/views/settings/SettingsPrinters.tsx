@@ -43,6 +43,7 @@ import {
   EscPosBinaryOutput,
 } from '../../services/escposGenerator';
 import { audioFeedback } from '../../services/audioFeedback';
+import { StationRoutingSettings } from './StationRoutingSettings';
 
 interface SettingsPrintersProps {
   onSelectedRollChange?: (rollWidth: RollWidthMm) => void;
@@ -52,6 +53,7 @@ export const SettingsPrinters: React.FC<SettingsPrintersProps> = ({ onSelectedRo
   const [profiles, setProfiles] = useState<HardwareDeviceProfile[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [printerSubTab, setPrinterSubTab] = useState<'routing' | 'hardware'>('routing');
 
   // Diagnostic State
   const [diagnosticLog, setDiagnosticLog] = useState<string[]>([]);
@@ -265,6 +267,42 @@ export const SettingsPrinters: React.FC<SettingsPrintersProps> = ({ onSelectedRo
 
   return (
     <div className="space-y-6 select-none" dir="rtl">
+      {/* Sub-navigation Pill between Station Routing and Hardware Hub */}
+      <div className="flex items-center gap-2 bg-[#0F223D]/80 p-1.5 rounded-2xl border border-white/10 w-fit backdrop-blur-md">
+        <button
+          onClick={() => {
+            setPrinterSubTab('routing');
+            audioFeedback.playTap();
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+            printerSubTab === 'routing'
+              ? 'bg-[#005A3E] text-[#F8EED9] border border-emerald-400 shadow-[0_0_15px_-3px_rgba(0,90,62,0.6)]'
+              : 'text-[#9EACB8] hover:text-white'
+          }`}
+        >
+          <Layers className="w-4 h-4 text-[#5cdbb5]" />
+          <span>مسیریابی ایستگاه‌ها و آشپزخانه (Station Routing)</span>
+        </button>
+        <button
+          onClick={() => {
+            setPrinterSubTab('hardware');
+            audioFeedback.playTap();
+          }}
+          className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+            printerSubTab === 'hardware'
+              ? 'bg-[#1F242C] text-white border border-[#D71921] shadow-[0_0_15px_-3px_rgba(215,25,33,0.5)]'
+              : 'text-[#9EACB8] hover:text-white'
+          }`}
+        >
+          <Printer className="w-4 h-4 text-cyan-400" />
+          <span>درگاه‌های سخت‌افزاری و عیب‌یابی (Hardware Hub)</span>
+        </button>
+      </div>
+
+      {printerSubTab === 'routing' ? (
+        <StationRoutingSettings />
+      ) : (
+        <>
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#161A1F] p-4 rounded-xl border border-white/5">
         <div>
@@ -833,6 +871,8 @@ export const SettingsPrinters: React.FC<SettingsPrintersProps> = ({ onSelectedRo
           </div>
         )}
       </AnimatePresence>
+        </>
+      )}
     </div>
   );
 };
