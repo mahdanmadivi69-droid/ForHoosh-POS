@@ -72,6 +72,7 @@ import { OpenTabsModal } from './OpenTabsModal';
 import { LiquidGlassPaymentSheet, SettlementResult } from './LiquidGlassPaymentSheet';
 import { CatalogService } from '../services/catalog/catalogService';
 import { OpenTabRecord } from '../db/schema';
+import { usePrinterStore } from '../stores/usePrinterStore';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -196,6 +197,13 @@ export const PosView: React.FC<PosViewProps> = ({
     });
     return () => unsubscribe();
   }, []);
+
+  // Initialize station printer routing configuration for active tenant
+  useEffect(() => {
+    if (activeShift?.tenantId) {
+      usePrinterStore.getState().initialize(activeShift.tenantId).catch(() => {});
+    }
+  }, [activeShift?.tenantId]);
 
   const stockAlertStats = countStockAlerts(menuItems, globalThreshold);
 
@@ -710,6 +718,11 @@ export const PosView: React.FC<PosViewProps> = ({
       // 2. Dispatch to Barista Bar in real time
       baristaDispatcher.dispatchPaidOrder(orderAggregate).catch((err) => {
         console.warn('Dispatching to barista bar failed:', err);
+      });
+
+      // 3. Station Printing & Routing (Bypassed when printer.enabled = false for 100 HICH)
+      usePrinterStore.getState().dispatchOrder(orderAggregate).catch((err) => {
+        console.warn('[PosView] Station printer routing dispatch:', err);
       });
 
       setCompletedReceiptOrder(result.order);
