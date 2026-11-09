@@ -31,8 +31,9 @@ interface HeaderProps {
   activeShift: Shift | null;
   activeUser: User;
   allUsers: User[];
-  currentTab: 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl';
-  onTabChange: (tab: 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl') => void;
+  currentTab: 'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl';
+  onTabChange: (tab: 'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl') => void;
+  onLockTerminal?: () => void;
   onOpenShiftModal: () => void;
   onOpenZReportModal?: () => void;
   onOpenExpenseModal: () => void;

@@ -157,9 +157,16 @@ export class RBACService {
           {
             id: 'auth-user-owner',
             username: 'admin',
-            fullName: 'مهدان مددی (مالک و ادمین کل)',
+            fullName: 'مهدان مهدوی',
             role: 'OWNER',
             pin: '1234',
+          },
+          {
+            id: 'auth-user-cashier',
+            username: 'cashier',
+            fullName: 'صندوقدار شیفت',
+            role: 'CASHIER',
+            pin: '2222',
           },
           {
             id: 'auth-user-accountant',
@@ -366,5 +373,96 @@ export class RBACService {
     } catch {
       return db.elevationAuditLogs.toArray();
     }
+  }
+  /**
+   * Verifies an entered PIN for initial terminal unlock / login.
+   * Can check against a specific userId or iterate across all active users.
+   */
+  public static async verifyLoginPin(
+    enteredPin: string,
+    selectedUserId?: string
+  ): Promise<{
+    success: boolean;
+    user?: AuthUserRecord;
+    error?: string;
+  }> {
+    await this.initDefaultUsers();
+
+    if (!enteredPin || enteredPin.trim().length < 4) {
+      return { success: false, error: 'پین‌کد باید حداقل ۴ رقم باشد.' };
+    }
+
+    try {
+      const activeUsers = await db.authUsers.filter((u) => u.isActive).toArray();
+
+      if (selectedUserId) {
+        const targetUser = activeUsers.find((u) => u.id === selectedUserId);
+        if (!targetUser) {
+          return { success: false, error: 'کاربر مورد نظر یافت نشد.' };
+        }
+        const isMatch = await CryptoSecurity.verifyPin(enteredPin, targetUser.pinHash, targetUser.salt);
+        if (isMatch) {
+          return { success: true, user: targetUser };
+        }
+        return { success: false, error: 'پین‌کد وارد شده صحیح نمی‌باشد.' };
+      }
+
+      // Check all active users
+      for (const user of activeUsers) {
+        const isMatch = await CryptoSecurity.verifyPin(enteredPin, user.pinHash, user.salt);
+        if (isMatch) {
+          return { success: true, user };
+        }
+      }
+
+      return { success: false, error: 'پین‌کد نامعتبر است.' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'خطا در اعتبارسنجی پین‌کد' };
+    }
+  }
+
+  /**
+   * Adds a new staff user with custom PIN and hashed salt
+   */
+  public static async addStaffUser(params: {
+    fullName: string;
+    username: string;
+    role: AppUserRole;
+    pin: string;
+    phoneNumber?: string;
+  }): Promise<AuthUserRecord> {
+    await this.initDefaultUsers();
+
+    if (!params.pin || params.pin.length < 4) {
+      throw new Error('پین‌کد باید حداقل ۴ رقم باشد.');
+    }
+
+    const { hash, salt } = await CryptoSecurity.hashPin(params.pin);
+    const newRecord: AuthUserRecord = {
+      id: `user-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      tenantId: 'tenant-100hich-01',
+      username: params.username.trim().toLowerCase(),
+      fullName: params.fullName.trim(),
+      role: params.role,
+      phoneNumber: params.phoneNumber?.trim(),
+      pinHash: hash,
+      salt,
+      isActive: true,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    await db.authUsers.put(newRecord);
+    return newRecord;
+  }
+
+  /**
+   * Toggles active state of a staff user
+   */
+  public static async toggleUserStatus(userId: string, isActive: boolean): Promise<void> {
+    await db.authUsers.update(userId, {
+      isActive,
+      updatedAt: Date.now(),
+    });
   }
 }

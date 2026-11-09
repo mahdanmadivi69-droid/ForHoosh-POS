@@ -60,7 +60,8 @@ export default function App() {
 
   // UI state
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
-  const [currentTab, setCurrentTab] = useState<'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('pos');
+  const [isLocked, setIsLocked] = useState<boolean>(true);
+  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('hub');
   const [isTenantConfigOpen, setIsTenantConfigOpen] = useState(false);
   const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);

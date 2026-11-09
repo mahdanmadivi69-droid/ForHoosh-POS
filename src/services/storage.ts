@@ -420,7 +420,7 @@ const DEFAULT_USERS: User[] = [
   {
     id: 'user-01',
     tenantId: 'tenant-100hich-01',
-    fullName: 'مهدان مددی (مدیر و مالک)',
+    fullName: 'مهدان مهدوی',
     phoneNumber: '09120000001',
     username: 'admin',
     mustChangePassword: true,
@@ -440,7 +440,7 @@ const DEFAULT_USERS: User[] = [
   {
     id: 'user-03',
     tenantId: 'tenant-100hich-01',
-    fullName: 'علی مرادی (صندوق‌دار)',
+    fullName: 'صندوقدار شیفت',
     phoneNumber: '09120000003',
     username: 'ali',
     mustChangePassword: true,
