@@ -219,6 +219,154 @@ export class CatalogService {
   }
 
   /**
+   * Recalls an open tab into the active cart for real-time additions/modifications
+   * without closing the tab (retains active tab identity).
+   */
+  public static recallTabForEditing(
+    tabOrId: string | OpenTabRecord,
+    tenantId: string = 'tenant-100hich-01'
+  ): { cart: CatalogCartItem[]; tab: OpenTabRecord } {
+    let tab: OpenTabRecord | undefined;
+
+    if (typeof tabOrId === 'string') {
+      tab = memoryTabs.get(tabOrId);
+    } else {
+      tab = memoryTabs.get(tabOrId.tab_id) || tabOrId;
+    }
+
+    if (!tab) {
+      throw new Error(`[CatalogService] Tab not found`);
+    }
+
+    if (tab.status !== 'OPEN') {
+      throw new Error(`[CatalogService] Cannot recall tab with status: ${tab.status}`);
+    }
+
+    const cart: CatalogCartItem[] = JSON.parse(tab.raw_cart_json);
+    return { cart, tab };
+  }
+
+  /**
+   * Updates an existing open tab in place (mutates rather than duplicating).
+   */
+  public static updateOpenTab(
+    tabId: string,
+    cart: CatalogCartItem[],
+    tableOrCustomer?: string,
+    tenantId: string = 'tenant-100hich-01'
+  ): OpenTabRecord {
+    const existing = memoryTabs.get(tabId);
+    if (!existing) {
+      throw new Error(`[CatalogService] Tab "${tabId}" not found for update`);
+    }
+    if (existing.status !== 'OPEN') {
+      throw new Error(`[CatalogService] Cannot update tab "${tabId}" with status ${existing.status}`);
+    }
+    if (!cart || cart.length === 0) {
+      throw new Error('[CatalogService] Cannot update tab with an empty cart');
+    }
+
+    const totalToman = cart.reduce((acc, item) => acc + item.subtotalToman, 0);
+    assertIntegerToman(totalToman, 'Tab Total');
+
+    const updatedTab: OpenTabRecord = {
+      ...existing,
+      table_or_customer: tableOrCustomer?.trim() || existing.table_or_customer,
+      tableOrCustomer: tableOrCustomer?.trim() || existing.table_or_customer,
+      raw_cart_json: JSON.stringify(cart),
+      total_toman: totalToman,
+      totalToman,
+      updated_at: Date.now(),
+    };
+
+    memoryTabs.set(tabId, updatedTab);
+
+    try {
+      const db = getCafeDatabase(tenantId);
+      db.appSettings.put({
+        key: `tab_${tabId}`,
+        value: updatedTab,
+        updatedAt: Date.now(),
+      }).catch(() => {});
+    } catch {
+      // Non-blocking
+    }
+
+    return updatedTab;
+  }
+
+  /**
+   * Settles and closes an active tab when an order is completed.
+   */
+  public static settleAndCloseTab(
+    tabId: string,
+    orderId?: string,
+    tenantId: string = 'tenant-100hich-01'
+  ): OpenTabRecord {
+    const existing = memoryTabs.get(tabId);
+    if (!existing) {
+      throw new Error(`[CatalogService] Tab "${tabId}" not found to settle`);
+    }
+
+    const closedTab: OpenTabRecord = {
+      ...existing,
+      status: 'CLOSED',
+      closed_at: Date.now(),
+      updated_at: Date.now(),
+    };
+
+    memoryTabs.set(tabId, closedTab);
+
+    try {
+      const db = getCafeDatabase(tenantId);
+      db.appSettings.put({
+        key: `tab_${tabId}`,
+        value: closedTab,
+        updatedAt: Date.now(),
+      }).catch(() => {});
+    } catch {
+      // Non-blocking
+    }
+
+    return closedTab;
+  }
+
+  /**
+   * Voids an open tab.
+   */
+  public static voidOpenTab(
+    tabId: string,
+    tenantId: string = 'tenant-100hich-01'
+  ): OpenTabRecord {
+    const existing = memoryTabs.get(tabId);
+    if (!existing) {
+      throw new Error(`[CatalogService] Tab "${tabId}" not found to void`);
+    }
+
+    const voidedTab: OpenTabRecord = {
+      ...existing,
+      status: 'VOID',
+      closed_at: Date.now(),
+      updated_at: Date.now(),
+    };
+
+    memoryTabs.set(tabId, voidedTab);
+
+    try {
+      const db = getCafeDatabase(tenantId);
+      db.appSettings.put({
+        key: `tab_${tabId}`,
+        value: voidedTab,
+        updatedAt: Date.now(),
+      }).catch(() => {});
+    } catch {
+      // Non-blocking
+    }
+
+    return voidedTab;
+  }
+
+  /**
    * Calculates the exact BOM grain deductions by silo for an order.
    * Differentiates 100% Arabica vs 50/50 Signature Blend.
    */
@@ -364,5 +512,10 @@ export class CatalogService {
 export const addItemToCart = CatalogService.addItemToCart;
 export const holdCurrentCartAsTab = CatalogService.holdCurrentCartAsTab;
 export const recallTabToCart = CatalogService.recallTabToCart;
+export const recallTabForEditing = CatalogService.recallTabForEditing;
+export const updateOpenTab = CatalogService.updateOpenTab;
+export const settleAndCloseTab = CatalogService.settleAndCloseTab;
+export const voidOpenTab = CatalogService.voidOpenTab;
+export const getOpenTabs = CatalogService.getOpenTabs;
 export const calculateOrderBom = CatalogService.calculateOrderBom;
 export const recordGrainDeductions = CatalogService.recordGrainDeductions;

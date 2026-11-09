@@ -26,6 +26,7 @@ import {
   Lock,
   FileText,
   LayoutGrid,
+  RotateCcw,
 } from 'lucide-react';
 import { TablePickerModal } from './floorplan/TablePickerModal';
 import { floorPlanService } from '../services/floorPlanService';
@@ -66,7 +67,11 @@ import { inventoryBomService } from '../services/inventoryBomService';
 import { openTabService } from '../services/openTabService';
 import { getActiveTenant } from '../config/tenantConfig';
 import { CatalogCard } from './CatalogCard';
-import { CatalogMenuItem, SelectedBean } from '../types/catalog';
+import { CatalogMenuItem, SelectedBean, CatalogCartItem } from '../types/catalog';
+import { OpenTabsModal } from './OpenTabsModal';
+import { LiquidGlassPaymentSheet, SettlementResult } from './LiquidGlassPaymentSheet';
+import { CatalogService } from '../services/catalog/catalogService';
+import { OpenTabRecord } from '../db/schema';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -159,6 +164,15 @@ export const PosView: React.FC<PosViewProps> = ({
 
   // Checkout Modal State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isOpenTabsModalOpen, setIsOpenTabsModalOpen] = useState(false);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [openTabsCount, setOpenTabsCount] = useState<number>(() => {
+    try {
+      return CatalogService.getOpenTabs().length;
+    } catch {
+      return 0;
+    }
+  });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD_MANUAL');
   const [terminalName, setTerminalName] = useState<string>('پوز ۱ (بانک سامان)');
   const [referenceCode, setReferenceCode] = useState<string>('');
@@ -454,6 +468,102 @@ export const PosView: React.FC<PosViewProps> = ({
     }
   };
 
+  // Open Tabs Handlers
+  const handleRecallTabForEditing = (tab: OpenTabRecord) => {
+    try {
+      const recalled = CatalogService.recallTabForEditing(tab.tab_id, activeShift?.tenantId);
+      const mappedItems: OrderItem[] = recalled.cart.map((c) => ({
+        id: c.cartItemId || `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        menuItemId: c.menuItemId,
+        itemNameSnapshot: c.title,
+        unitPriceSnapshotToman: c.unitPriceToman || c.unitPriceSnapshotToman || 0,
+        quantity: c.quantity,
+        subtotalToman: c.subtotalToman,
+        modifiers: [],
+        notes: c.notes,
+      }));
+
+      setCartItems(mappedItems);
+      setTableLabel(tab.table_or_customer || '');
+      setActiveTabId(tab.tab_id);
+      showTableToast(`تب "${tab.table_or_customer}" در سبد فعال بازیابی شد`);
+    } catch (e: any) {
+      alert(`خطا در بازیابی تب: ${e?.message || e}`);
+    }
+  };
+
+  const handleHoldOrUpdateTab = () => {
+    if (cartItems.length === 0) {
+      playPosBeep('delete');
+      showTableToast('سبد سفارش برای ثبت تب خالی است');
+      return;
+    }
+
+    playPosBeep('click');
+    const catalogCart: CatalogCartItem[] = cartItems.map((it) => ({
+      cartItemId: it.id,
+      menuItemId: it.menuItemId,
+      title: it.itemNameSnapshot,
+      unitPriceToman: it.unitPriceSnapshotToman,
+      unitPriceSnapshotToman: it.unitPriceSnapshotToman,
+      quantity: it.quantity,
+      subtotalToman: it.subtotalToman,
+      bomGramsPerCup: 18.0,
+      selectedBean: it.notes?.includes('۵۰/۵۰') ? 'blend' : 'arabica',
+      notes: it.notes,
+    }));
+
+    const label = (orderType === 'DINE_IN' ? tableLabel : customerName) || 'میز موقت';
+
+    if (activeTabId) {
+      // In-place mutation of existing tab
+      try {
+        CatalogService.updateOpenTab(activeTabId, catalogCart, label, activeShift?.tenantId);
+        showTableToast(`تغییرات تب "${label}" با موفقیت ذخیره شد`);
+        setCartItems([]);
+        setActiveTabId(null);
+        setOpenTabsCount(CatalogService.getOpenTabs().length);
+      } catch (e: any) {
+        alert(`خطا در بروزرسانی تب: ${e?.message || e}`);
+      }
+    } else {
+      // Creation of new tab
+      try {
+        CatalogService.holdCurrentCartAsTab(catalogCart, label, activeShift?.tenantId);
+        showTableToast(`سفارش در تب جدید "${label}" نگهداری شد`);
+        setCartItems([]);
+        setOpenTabsCount(CatalogService.getOpenTabs().length);
+      } catch (e: any) {
+        alert(`خطا در نگهداری تب: ${e?.message || e}`);
+      }
+    }
+  };
+
+  const handleCancelTabEditing = () => {
+    playPosBeep('delete');
+    setActiveTabId(null);
+    showTableToast('از حالت ویرایش تب خارج شدید');
+  };
+
+  const handleConfirmSettlement = (settleResult: SettlementResult) => {
+    const domainPayMethod: PaymentMethod =
+      settleResult.paymentMethod === 'CASH'
+        ? 'CASH'
+        : settleResult.paymentMethod === 'POS'
+        ? 'CARD_MANUAL'
+        : 'OTHER';
+
+    setPaymentMethod(domainPayMethod);
+    setTerminalName(settleResult.terminalName);
+    if (settleResult.referenceCode) {
+      setReferenceCode(settleResult.referenceCode);
+    }
+    if (settleResult.cashTendered !== undefined) {
+      setCashTendered(settleResult.cashTendered);
+    }
+    handleConfirmPayment(false, settleResult);
+  };
+
   // Checkout submission
   const handleStartCheckout = () => {
     playPosBeep('click');
@@ -471,7 +581,7 @@ export const PosView: React.FC<PosViewProps> = ({
     setIsCheckoutOpen(true);
   };
 
-  const handleConfirmPayment = (autoPrint = false) => {
+  const handleConfirmPayment = (autoPrint = false, settleResult?: SettlementResult) => {
     if (!activeShift) return;
 
     playPosBeep('success');
@@ -510,6 +620,17 @@ export const PosView: React.FC<PosViewProps> = ({
 
     if (result) {
       // Automatically deduct raw BOM materials upon order settlement
+      // If completing a recalled open tab, settle and close it in place!
+      if (activeTabId) {
+        try {
+          CatalogService.settleAndCloseTab(activeTabId, result.order.id, activeShift.tenantId);
+          setOpenTabsCount(CatalogService.getOpenTabs().length);
+        } catch (e) {
+          console.warn('[PosView] Failed to settle tab:', e);
+        }
+        setActiveTabId(null);
+      }
+
       inventoryBomService.deductForItems(
         cartItems.map((it) => ({
           id: it.id,
@@ -1078,10 +1199,46 @@ export const PosView: React.FC<PosViewProps> = ({
                 سفارش جاری بار (فاکتور)
               </h2>
             </div>
-            <span className="font-mono text-xs bg-[#081425] px-2 py-0.5 rounded text-[#F3E9DD] border border-[#293444] font-bold">
-              #100H-{activeShift ? activeShift.id.slice(-4) : 'POS'}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  playPosBeep('click');
+                  setIsOpenTabsModalOpen(true);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-[rgba(140,19,24,0.3)] hover:bg-[rgba(140,19,24,0.5)] border border-[rgba(144,210,237,0.3)] text-[#90D2ED] hover:text-white text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+                title="مشاهده و بازیابی تب‌های باز سالن"
+              >
+                <Layers className="w-3 h-3" />
+                <span>تب‌های باز</span>
+                <span className="w-4 h-4 rounded-full bg-[#8C1318] text-white flex items-center justify-center text-[10px] font-mono">
+                  {openTabsCount}
+                </span>
+              </button>
+              <span className="font-mono text-xs bg-[#081425] px-2 py-0.5 rounded text-[#F3E9DD] border border-[#293444] font-bold">
+                #100H-{activeShift ? activeShift.id.slice(-4) : 'POS'}
+              </span>
+            </div>
           </div>
+
+          {/* Active Recalled Tab Notice Banner */}
+          {activeTabId && (
+            <div className="bg-gradient-to-r from-[rgba(140,19,24,0.45)] to-[rgba(15,34,61,0.7)] border border-[rgba(144,210,237,0.45)] p-2 rounded-xl flex items-center justify-between text-xs">
+              <div className="flex items-center gap-1.5">
+                <RotateCcw className="w-3.5 h-3.5 text-[#90D2ED]" />
+                <span className="font-bold text-white">
+                  در حال ویرایش تب: <span className="text-[#F5E8D0]">{tableLabel || 'میز فعال'}</span>
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelTabEditing}
+                className="text-[10px] text-rose-300 hover:text-white px-2 py-0.5 rounded bg-black/40 border border-white/10 cursor-pointer"
+              >
+                خروج از ویرایش
+              </button>
+            </div>
+          )}
 
           {/* Dine-in vs Takeaway Toggle */}
           <div className="grid grid-cols-2 gap-1.5 bg-[#121417]/80 p-1 rounded-lg border border-[#293444] text-xs font-bold">
@@ -1520,232 +1677,25 @@ export const PosView: React.FC<PosViewProps> = ({
         onConfirm={handleAddWithModifiers}
       />
 
-      {/* ================= PAYMENT & CHECKOUT MODAL ================= */}
-      {isCheckoutOpen && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-3 overflow-y-auto">
-          <div className="max-w-xl w-full my-auto bg-[#1B222C] border border-[#293444] rounded-2xl p-5 flex flex-col justify-between shadow-2xl text-right">
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-[#293444]">
-                <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                  <span className="w-3 h-3 rounded bg-[#D71921]"></span>
-                  روش تسویه حساب بار
-                </h3>
-                <div className="flex items-center gap-2">
-                  {onOpenZReport && activeShift && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsCheckoutOpen(false);
-                        onOpenZReport();
-                      }}
-                      className="px-2.5 py-1 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-700/60 text-rose-300 text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
-                      title="بستن شیفت کاری جاری و صدور Z-Report"
-                    >
-                      <FileText className="w-3 h-3" />
-                      <span>بستن شیفت / Z-Report</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setIsCheckoutOpen(false)}
-                    className="text-[#9EACB8] hover:text-white p-1 cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
+      {/* ================= LIQUID GLASS PAYMENT SHEET ================= */}
+      <LiquidGlassPaymentSheet
+        isOpen={isCheckoutOpen}
+        totalBalanceToman={netTotalToman}
+        onClose={() => setIsCheckoutOpen(false)}
+        onConfirm={handleConfirmSettlement}
+        tableOrCustomerLabel={orderType === 'DINE_IN' ? tableLabel : customerName || 'مشتری بیرون‌بر'}
+      />
 
-              {/* Payment Methods */}
-              <div className="py-4 space-y-3">
-                <label className="text-xs text-[#9EACB8] block">
-                  دستگاه پوز یا روش پرداخت را انتخاب کنید:
-                </label>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playPosBeep('click');
-                      setPaymentMethod('CARD_MANUAL');
-                      setTerminalName('پوز ۱ (بانک سامان)');
-                    }}
-                    className={`p-3 rounded-xl border text-right text-xs transition cursor-pointer ${
-                      paymentMethod === 'CARD_MANUAL' && terminalName === 'پوز ۱ (بانک سامان)'
-                        ? 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
-                        : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white'
-                    }`}
-                  >
-                    <span className="text-white block mb-0.5">پوز ۱ (بانک سامان)</span>
-                    <span className="text-[10px] text-emerald-400 font-mono">متصل به بار اصلی</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playPosBeep('click');
-                      setPaymentMethod('CARD_MANUAL');
-                      setTerminalName('پوز ۲ (بانک ملت)');
-                    }}
-                    className={`p-3 rounded-xl border text-right text-xs transition cursor-pointer ${
-                      paymentMethod === 'CARD_MANUAL' && terminalName === 'پوز ۲ (بانک ملت)'
-                        ? 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
-                        : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white'
-                    }`}
-                  >
-                    <span className="text-white block mb-0.5">پوز ۲ (بانک ملت)</span>
-                    <span className="text-[10px] text-[#9EACB8] font-mono">پوز سیار سالن</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playPosBeep('click');
-                      setPaymentMethod('CASH');
-                      setTerminalName('کش دراور نقدی');
-                    }}
-                    className={`p-3 rounded-xl border text-right text-xs transition cursor-pointer ${
-                      paymentMethod === 'CASH'
-                        ? 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
-                        : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white'
-                    }`}
-                  >
-                    <span className="text-white block mb-0.5">نقدی / کش دراور</span>
-                    <span className="text-[10px] text-[#9EACB8]">دریافت وجه نقد اسکناس</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playPosBeep('click');
-                      setPaymentMethod('CARD_MANUAL');
-                      setTerminalName('کارت به کارت');
-                    }}
-                    className={`p-3 rounded-xl border text-right text-xs transition cursor-pointer ${
-                      paymentMethod === 'CARD_MANUAL' && terminalName === 'کارت به کارت'
-                        ? 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
-                        : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white'
-                    }`}
-                  >
-                    <span className="text-white block mb-0.5">کارت به کارت</span>
-                    <span className="text-[10px] text-[#9EACB8]">تایید فیش همراه مشتری</span>
-                  </button>
-                </div>
-
-                {/* Cash Tendered & Iranian Banknote Chips (If Cash) */}
-                {paymentMethod === 'CASH' && (
-                  <div className="bg-[#121417] p-3 rounded-xl border border-[#293444] space-y-2 mt-2">
-                    <label className="text-xs text-[#9EACB8] block">
-                      مبلغ وجه نقد دریافتی از مشتری (تومان):
-                    </label>
-                    <input
-                      type="number"
-                      value={cashTendered || ''}
-                      onChange={(e) => setCashTendered(safeInt(e.target.value))}
-                      className="w-full bg-[#1B222C] border border-[#293444] rounded-lg p-2 text-white font-bold text-center text-sm focus:outline-none focus:border-[#D71921]"
-                    />
-
-                    {/* Iranian Banknotes Suggestion Chips */}
-                    <div>
-                      <span className="text-[11px] text-[#9EACB8] block mb-1">
-                        پیشنهاد اسکناس‌های رایج تومانی:
-                      </span>
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            playPosBeep('click');
-                            setCashTendered(netTotalToman);
-                          }}
-                          className="px-2 py-1 rounded bg-[#1B222C] hover:bg-[#222B38] text-[#F3E9DD] text-[10px] font-semibold border border-[#293444] cursor-pointer"
-                        >
-                          دقیقاً {formatToman(netTotalToman)}
-                        </button>
-                        {IRANIAN_BANKNOTES_TOMAN.map((note) => (
-                          <button
-                            key={note}
-                            type="button"
-                            onClick={() => {
-                              playPosBeep('click');
-                              setCashTendered(note);
-                            }}
-                            className="px-2 py-1 rounded bg-[#1B222C] hover:bg-[#222B38] text-white text-[10px] font-mono border border-[#293444] cursor-pointer"
-                          >
-                            {formatToman(note)} ت
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-center pt-2 border-t border-[#293444] text-xs">
-                      <span className="text-[#9EACB8]">باقیمانده پرداختی به مشتری (Change):</span>
-                      <span
-                        className={`font-bold num-heavy ${
-                          cashTendered >= netTotalToman ? 'text-emerald-400' : 'text-rose-400'
-                        }`}
-                      >
-                        {cashTendered >= netTotalToman
-                          ? `${formatToman(cashTendered - netTotalToman)} تومان`
-                          : 'مبلغ کمتر از فاکتور است'}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Card Terminal Reference / Trace ID */}
-                {paymentMethod !== 'CASH' && (
-                  <div className="bg-[#121417] p-2.5 rounded-lg border border-[#293444] text-xs flex justify-between items-center">
-                    <span className="text-[#9EACB8]">شناسه پیگیری فیش کارتخوان (اختیاری):</span>
-                    <input
-                      type="text"
-                      placeholder="مثلاً: ۷۴۸۲۹۱"
-                      value={referenceCode}
-                      onChange={(e) => setReferenceCode(e.target.value)}
-                      className="bg-transparent text-white font-mono font-bold text-left focus:outline-none placeholder:text-[#9EACB8]/40"
-                    />
-                  </div>
-                )}
-
-                {/* Total Summary */}
-                <div className="pt-2 flex justify-between items-center text-xs">
-                  <span className="text-[#9EACB8]">مبلغ کل قابل تسویه:</span>
-                  <span className="font-black text-[#D71921] text-base num-heavy">
-                    {formatToman(netTotalToman)} تومان
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-3 border-t border-[#293444] flex flex-col gap-2">
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsCheckoutOpen(false)}
-                  className="w-1/3 bg-[#121417] hover:bg-[#222B38] border border-[#293444] text-[#9EACB8] hover:text-white py-3 rounded-lg font-bold text-xs cursor-pointer"
-                >
-                  انصراف
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleConfirmPayment(false)}
-                  className="w-2/3 bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-white py-3 rounded-lg font-bold text-xs cursor-pointer"
-                >
-                  ثبت پرداخت و مشاهده فیش
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleConfirmPayment(true)}
-                className="w-full bg-[#D71921] hover:bg-[#B8141B] text-white py-3 rounded-lg font-extrabold flex items-center justify-center gap-2 shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)] cursor-pointer active:scale-95 transition"
-              >
-                <Printer className="w-4 h-4" />
-                <span>تایید تراکنش و چاپ فیش حرارتی (۸۰ میلی‌متری)</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ================= OPEN TABS MODAL ================= */}
+      <OpenTabsModal
+        isOpen={isOpenTabsModalOpen}
+        onClose={() => {
+          setIsOpenTabsModalOpen(false);
+          setOpenTabsCount(CatalogService.getOpenTabs().length);
+        }}
+        onRecallTab={handleRecallTabForEditing}
+        activeTabId={activeTabId}
+      />
 
       {/* ================= COMPLETED RECEIPT PREVIEW MODAL ================= */}
       {completedReceiptOrder && (
