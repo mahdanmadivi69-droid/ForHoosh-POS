@@ -126,7 +126,7 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
       <Portal>
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm transition-opacity" />
         <Dialog.Positioner className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4 overflow-y-auto">
-          <Dialog.Content className="bg-[#1B222C] border border-[#293444] rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl relative text-right text-white select-none">
+          <Dialog.Content className="vision-glass-slab rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative text-right text-white select-none border border-white/20">
             {/* Header */}
             <div className="flex items-start justify-between pb-3 border-b border-[#293444]">
               <div>
@@ -175,8 +175,8 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
                           onClick={() => handleSelectGrind(opt.nameFa)}
                           className={`py-2 px-2.5 rounded-lg border text-center font-medium transition cursor-pointer text-xs ${
                             isSelected
-                              ? 'border-[#D71921] bg-[#D71921]/15 text-white font-bold shadow-[0_0_12px_rgba(215,25,33,0.3)]'
-                              : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white hover:border-[#9EACB8]'
+                              ? 'border-[#9E8A5E] bg-gradient-to-r from-[#8C1318] to-[#6E0D12] text-white font-bold shadow-[0_0_16px_rgba(140,19,24,0.5),0_0_8px_rgba(158,138,94,0.4)]'
+                              : 'border-white/10 bg-[rgba(12,20,35,0.7)] text-[#A0B2C6] hover:text-white hover:border-[#9E8A5E]/40'
                           }`}
                         >
                           {opt.nameFa}
@@ -201,8 +201,8 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
                           onClick={() => handleSelectWeight(wt)}
                           className={`py-2 px-1 rounded-lg border text-center font-medium transition cursor-pointer text-xs ${
                             isSelected
-                              ? 'border-[#D71921] bg-[#D71921]/15 text-white font-bold shadow-[0_0_12px_rgba(215,25,33,0.3)]'
-                              : 'border-[#293444] bg-[#121417] text-[#9EACB8] hover:text-white hover:border-[#9EACB8]'
+                              ? 'border-[#9E8A5E] bg-gradient-to-r from-[#8C1318] to-[#6E0D12] text-white font-bold shadow-[0_0_16px_rgba(140,19,24,0.5),0_0_8px_rgba(158,138,94,0.4)]'
+                              : 'border-white/10 bg-[rgba(12,20,35,0.7)] text-[#A0B2C6] hover:text-white hover:border-[#9E8A5E]/40'
                           }`}
                         >
                           {wt.nameFa}
@@ -292,7 +292,7 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
                 <button
                   type="button"
                   onClick={handleAdd}
-                  className="bg-[#D71921] hover:bg-[#B8141B] text-white font-extrabold px-5 py-2 rounded-lg text-xs shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)] transition transform active:scale-95 cursor-pointer"
+                  className="vision-checkout-cta text-white font-black px-6 py-2.5 rounded-xl text-xs cursor-pointer"
                 >
                   افزودن به فاکتور
                 </button>

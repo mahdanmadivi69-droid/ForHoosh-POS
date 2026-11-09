@@ -304,8 +304,15 @@ export default function App() {
         backgroundColor: activeTenant.palette.primaryBg,
         color: activeTenant.palette.textPrimary,
       } as React.CSSProperties}
-      className="min-h-screen bg-[var(--color-surface-base,#121417)] text-white flex flex-col font-sans selection:bg-[var(--color-brand-primary,#D71921)] selection:text-white"
+      className="min-h-screen bg-[var(--app-bg,#070A0F)] text-white flex flex-col font-sans relative overflow-x-hidden selection:bg-[#8C1318] selection:text-white"
     >
+      {/* Apple VisionOS Ambient Luminous Mesh Underlay */}
+      <div className="vision-ambient-mesh" aria-hidden="true">
+        <div className="vision-ambient-orb vision-orb-carmine" />
+        <div className="vision-ambient-orb vision-orb-navy" />
+        <div className="vision-ambient-orb vision-orb-gold" />
+      </div>
+
       {/* Toast Notification */}
       {feedbackToast && (
         <div className="fixed bottom-5 left-5 z-50 bg-[var(--color-surface-card,#1B222C)] border-r-4 border-[var(--color-brand-primary,#D71921)] border border-[var(--color-surface-border,#293444)] text-white font-bold px-4 py-3 rounded-xl shadow-2xl text-xs flex items-center gap-2.5 animate-fadeIn">

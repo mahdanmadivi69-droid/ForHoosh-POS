@@ -26,10 +26,11 @@
   --font-fa-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono-numbers: 'Fira Code', 'JetBrains Mono', monospace;
 
-  /* AntiGravity Physics Tokens (Matching MotionConfig) */
-  --motion-tactile-scale: 0.97;
-  --motion-drawer-enter-duration: 0.24s;
-  --motion-drawer-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  /* AntiGravity Apple VisionOS Physics Tokens */
+  --motion-tactile-scale: 0.96;
+  --motion-spring-physics: cubic-bezier(0.32, 0.72, 0, 1);
+  --motion-drawer-enter-duration: 0.26s;
+  --motion-drawer-enter-ease: cubic-bezier(0.32, 0.72, 0, 1);
   --motion-drawer-exit-duration: 0.18s;
   --motion-drawer-exit-ease: cubic-bezier(0.7, 0, 0.84, 0);
   --motion-ticket-stiffness: 420;
@@ -42,7 +43,254 @@
   letter-spacing: 0 !important; /* Never use negative tracking in Persian script */
 }
 
-/* Zero-G UI Animations & AntiGravity Physics Profiles */
+/* =========================================================================
+   APPLE VISIONOS LIQUID GLASS SYSTEM & MATERIALITY OVERHAUL
+   ========================================================================= */
+
+/* Typography & Readability Floating Optimization */
+body, button, input, select, textarea {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.text-float-shadow {
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75), 0 0 10px rgba(0, 0, 0, 0.4);
+}
+
+/* Ambient Luminous Underlay Mesh (Reveals Frosted Translucency) */
+.vision-ambient-mesh {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.vision-ambient-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  will-change: transform;
+  pointer-events: none;
+}
+
+.vision-orb-carmine {
+  width: 650px;
+  height: 650px;
+  top: -100px;
+  right: -80px;
+  background: radial-gradient(circle, rgba(140, 19, 24, 0.45) 0%, rgba(140, 19, 24, 0.22) 50%, transparent 75%);
+  opacity: 0.85;
+  animation: floatOrbCarmine 24s ease-in-out infinite alternate;
+}
+
+.vision-orb-navy {
+  width: 720px;
+  height: 720px;
+  bottom: -150px;
+  left: -100px;
+  background: radial-gradient(circle, rgba(15, 34, 61, 0.65) 0%, rgba(12, 28, 51, 0.35) 50%, transparent 75%);
+  opacity: 0.85;
+  animation: floatOrbNavy 28s ease-in-out infinite alternate;
+}
+
+.vision-orb-gold {
+  width: 480px;
+  height: 480px;
+  top: 35%;
+  left: 28%;
+  background: radial-gradient(circle, rgba(158, 138, 94, 0.28) 0%, rgba(158, 138, 94, 0.12) 50%, transparent 70%);
+  opacity: 0.6;
+}
+
+@keyframes floatOrbCarmine {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-40px, 60px) scale(1.1); }
+}
+
+@keyframes floatOrbNavy {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(50px, -50px) scale(1.08); }
+}
+
+/* Deep Glass Slab (Base containers, Header island, Cart ledger) */
+.vision-glass-slab {
+  background: radial-gradient(130% 100% at 50% 0%, rgba(15, 34, 61, 0.72) 0%, rgba(12, 20, 35, 0.78) 50%, rgba(7, 10, 18, 0.85) 100%);
+  backdrop-filter: blur(32px) saturate(210%);
+  -webkit-backdrop-filter: blur(32px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
+    0 20px 48px -10px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 20px -2px rgba(158, 138, 94, 0.2);
+  position: relative;
+}
+
+/* Sculpted Glass Cards (Product Cards, Category Shells, Modals) */
+.vision-glass-card {
+  background: radial-gradient(120% 120% at 50% 0%, rgba(20, 42, 75, 0.65) 0%, rgba(12, 20, 35, 0.75) 55%, rgba(6, 10, 18, 0.82) 100%);
+  backdrop-filter: blur(32px) saturate(210%);
+  -webkit-backdrop-filter: blur(32px) saturate(210%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
+    0 16px 36px -8px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1),
+              box-shadow 0.24s cubic-bezier(0.32, 0.72, 0, 1),
+              border-color 0.2s ease,
+              background 0.24s ease;
+  will-change: transform, box-shadow;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hover elevation: Specular sheen expands & glowing ambient rim illuminates */
+.vision-glass-card:hover {
+  background: radial-gradient(120% 120% at 50% 0%, rgba(28, 58, 102, 0.75) 0%, rgba(15, 26, 46, 0.82) 55%, rgba(8, 14, 24, 0.88) 100%);
+  border-color: rgba(158, 138, 94, 0.45);
+  box-shadow: 
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.5),
+    0 24px 50px -8px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 0 24px -2px rgba(158, 138, 94, 0.35);
+}
+
+/* Haptic Press & Elevation: Instant spring scale down (0.96) + contracting drop-shadow */
+.vision-glass-card:active,
+.vision-haptic-press:active {
+  transform: scale(0.96) !important;
+  box-shadow: 
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.6),
+    0 6px 14px -2px rgba(0, 0, 0, 0.9),
+    0 0 16px -2px rgba(140, 19, 24, 0.5) !important;
+  transition-duration: 80ms !important;
+}
+
+/* VisionOS Glass Navigation Pills (Categories, Filters) */
+.vision-glass-pill {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0.8px 0 rgba(255, 255, 255, 0.25);
+  transition: all 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  will-change: transform, box-shadow;
+}
+
+.vision-glass-pill:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(158, 138, 94, 0.4);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 0 14px rgba(158, 138, 94, 0.2);
+  color: #FFFFFF;
+}
+
+.vision-glass-pill.active,
+.vision-glass-pill-active {
+  background: linear-gradient(135deg, #8C1318 0%, #6E0D12 100%) !important;
+  border-color: #9E8A5E !important;
+  color: #FFFFFF !important;
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
+    0 0 22px rgba(140, 19, 24, 0.65),
+    0 0 12px rgba(158, 138, 94, 0.45) !important;
+  font-weight: 700;
+}
+
+.vision-glass-pill:active {
+  transform: scale(0.96);
+  transition-duration: 80ms;
+}
+
+/* Primary Checkout Trigger Button with Liquid Gold & Velvet Carmine Glow */
+.vision-checkout-cta {
+  background: linear-gradient(135deg, #8C1318 0%, #6E0D12 100%);
+  border: 1px solid rgba(158, 138, 94, 0.55);
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
+    0 0 25px rgba(140, 19, 24, 0.6),
+    0 0 14px rgba(158, 138, 94, 0.4),
+    0 12px 28px -6px rgba(0, 0, 0, 0.75);
+  transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1),
+              box-shadow 0.22s cubic-bezier(0.32, 0.72, 0, 1),
+              filter 0.2s ease;
+  will-change: transform, box-shadow;
+}
+
+.vision-checkout-cta:hover:not(:disabled) {
+  background: linear-gradient(135deg, #A5171D 0%, #7E1015 100%);
+  border-color: #9E8A5E;
+  box-shadow: 
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.55),
+    0 0 32px rgba(140, 19, 24, 0.75),
+    0 0 18px rgba(158, 138, 94, 0.55),
+    0 16px 36px -6px rgba(0, 0, 0, 0.85);
+}
+
+.vision-checkout-cta:active:not(:disabled) {
+  transform: scale(0.96) !important;
+  box-shadow: 
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.6),
+    0 0 18px rgba(140, 19, 24, 0.7),
+    0 4px 12px rgba(0, 0, 0, 0.9) !important;
+  transition-duration: 80ms !important;
+}
+
+/* Retrofit Existing Glass Classes to Liquid VisionOS Specifications */
+.glass-panel {
+  background: radial-gradient(130% 100% at 50% 0%, rgba(15, 34, 61, 0.72) 0%, rgba(12, 20, 35, 0.78) 50%, rgba(7, 10, 18, 0.85) 100%) !important;
+  backdrop-filter: blur(32px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(210%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 16px 40px -8px rgba(0, 0, 0, 0.7) !important;
+}
+
+.glass-card {
+  background: radial-gradient(120% 120% at 50% 0%, rgba(20, 42, 75, 0.65) 0%, rgba(12, 20, 35, 0.75) 55%, rgba(6, 10, 18, 0.82) 100%) !important;
+  backdrop-filter: blur(32px) saturate(210%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(210%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 16px 36px -8px rgba(0, 0, 0, 0.75) !important;
+  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.24s cubic-bezier(0.32, 0.72, 0, 1), border-color 0.2s ease !important;
+}
+
+.glass-card:active {
+  transform: scale(0.96) !important;
+}
+
+/* KarWand Liquid Glass & Sheen Layer (100 HICH Sensory Lab) */
+.liquid-glass {
+  background: radial-gradient(130% 120% at 50% 0%, rgba(12, 30, 60, 0.85) 0%, rgba(8, 16, 32, 0.92) 55%, rgba(6, 10, 20, 0.96) 100%) !important;
+  backdrop-filter: blur(28px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
+  border: 1px solid rgba(144, 210, 237, 0.22) !important;
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 16px 36px -8px rgba(0, 0, 0, 0.75) !important;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.liquid-glass:hover {
+  border-color: rgba(144, 210, 237, 0.45) !important;
+  box-shadow: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.5), 0 20px 42px -6px rgba(140, 19, 24, 0.35), 0 0 20px rgba(144, 210, 237, 0.15) !important;
+}
+
+.glass-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 0%), rgba(144, 210, 237, 0.22) 0%, transparent 65%);
+  opacity: var(--sheen-opacity, 0);
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+/* =========================================================================
+   ANIMATIONS & TRANSITIONS (MOMENTUM & INERTIAL FLUIDITY)
+   ========================================================================= */
+
 @keyframes slideInRight {
   from {
     transform: translateX(100%);
@@ -72,47 +320,47 @@
 
 @keyframes socketFlash {
   0% {
-    border-color: #D71921;
-    box-shadow: 0 0 25px rgba(215, 25, 33, 0.75);
+    border-color: #8C1318;
+    box-shadow: 0 0 25px rgba(140, 19, 24, 0.85);
   }
   50% {
-    border-color: rgba(215, 25, 33, 0.4);
-    box-shadow: 0 0 10px rgba(215, 25, 33, 0.3);
+    border-color: rgba(158, 138, 94, 0.5);
+    box-shadow: 0 0 12px rgba(158, 138, 94, 0.45);
   }
   100% {
-    border-color: #293444;
+    border-color: rgba(255, 255, 255, 0.14);
     box-shadow: 0 0 0px rgba(0, 0, 0, 0);
   }
 }
 
-/* AntiGravity Drawer Enter: Decelerated Enter (0.24s, [0.16, 1, 0.3, 1]) */
+/* AntiGravity Drawer Enter: Decelerated Enter (0.26s, cubic-bezier(0.32, 0.72, 0, 1)) */
 .animate-drawer-enter,
 .animate-slideInRight {
-  animation: slideInRight 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: slideInRight 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards;
 }
 
-/* AntiGravity Drawer Exit: Instant Accelerated Exit (0.18s, [0.7, 0, 0.84, 0]) */
+/* AntiGravity Drawer Exit: Instant Accelerated Exit (0.18s, cubic-bezier(0.7, 0, 0.84, 0)) */
 .animate-drawer-exit {
   animation: slideOutRight 0.18s cubic-bezier(0.7, 0, 0.84, 0) forwards;
 }
 
-/* AntiGravity Micro-Interactions: Tactile Tap (scale 0.97, spring 500/30/0.6) */
+/* Tactile Tap Spring (scale 0.96, cubic-bezier(0.32, 0.72, 0, 1)) */
 .tactile-tap {
-  transition: transform 0.14s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform;
 }
 .tactile-tap:active {
-  transform: scale(0.97);
+  transform: scale(0.96);
 }
 
-/* AntiGravity Ticket Item Spring (stiffness 420, damping 32, mass 0.7) */
+/* Ticket Item Spring (stiffness 420, damping 32, mass 0.7) */
 @keyframes ticketItemSpring {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.97);
+    transform: translateY(12px) scale(0.96);
   }
   70% {
-    transform: translateY(-0.8px) scale(1.004);
+    transform: translateY(-1px) scale(1.006);
   }
   100% {
     opacity: 1;
@@ -121,11 +369,11 @@
 }
 
 .animate-ticket-item-spring {
-  animation: ticketItemSpring 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: ticketItemSpring 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.18s ease-out forwards;
+  animation: fadeIn 0.2s ease-out forwards;
 }
 
 .flash-socket-pulse {
@@ -135,7 +383,7 @@
 @keyframes zeroGCardEnter {
   0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: translateY(10px) scale(0.97);
   }
   100% {
     opacity: 1;
@@ -144,35 +392,20 @@
 }
 
 .animate-card-enter {
-  animation: zeroGCardEnter 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: zeroGCardEnter 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 
 @keyframes zeroGPulseRing {
   0%, 100% {
-    box-shadow: 0 0 20px -3px rgba(215, 25, 33, 0.45);
+    box-shadow: 0 0 20px -3px rgba(140, 19, 24, 0.5), 0 0 10px rgba(158, 138, 94, 0.3);
   }
   50% {
-    box-shadow: 0 0 32px 0px rgba(215, 25, 33, 0.7);
+    box-shadow: 0 0 35px 2px rgba(140, 19, 24, 0.75), 0 0 16px rgba(158, 138, 94, 0.55);
   }
 }
 
 .glow-crimson-pulse {
   animation: zeroGPulseRing 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Zero-G Glass Layers */
-.glass-panel {
-  background: rgba(18, 20, 23, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.glass-card {
-  background: rgba(27, 34, 44, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Mechanical Keycap Badge */
@@ -183,10 +416,10 @@
   font-family: var(--font-mono-numbers);
   font-weight: 800;
   border-radius: 6px;
-  background: linear-gradient(180deg, #1f2733 0%, #121820 100%);
-  border: 1px solid #354254;
-  box-shadow: 0 2px 0 0 #0d1218, inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
-  color: #f3e9dd;
+  background: linear-gradient(180deg, rgba(31, 39, 51, 0.85) 0%, rgba(18, 24, 32, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 0 0 rgba(13, 18, 24, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
+  color: #F5E8D0;
 }
 
 /* Reduced Motion Mode (<120ms linear opacity fades) */
@@ -210,7 +443,9 @@
   .animate-bounce,
   .flash-socket-pulse,
   .animate-card-enter,
-  .glow-crimson-pulse {
+  .glow-crimson-pulse,
+  .vision-glass-card,
+  .vision-checkout-cta {
     animation: reducedLinearFade 0.1s linear !important;
     transform: none !important;
   }
@@ -224,51 +459,52 @@
 @theme {
   --color-brand-navy: #0F223D;
   --color-brand-navyDark: #081425;
-  --color-brand-red: #D71921;
-  --color-brand-redHover: #B8141B;
-  --color-brand-cream: #F3E9DD;
+  --color-brand-red: #8C1318;
+  --color-brand-redHover: #A5171D;
+  --color-brand-cream: #F5E8D0;
 
-  --color-surface-charcoal: #121417;
-  --color-surface-dark: #1B222C;
-  --color-surface-darkElevated: #222B38;
-  --color-surface-border: #293444;
-  --color-surface-muted: #9EACB8;
+  --color-surface-charcoal: #0C1423;
+  --color-surface-dark: #101E35;
+  --color-surface-darkElevated: #162846;
+  --color-surface-border: rgba(255, 255, 255, 0.14);
+  --color-surface-muted: #A0B2C6;
 
-  /* DESIGN.md Engine Protocol Surface Hierarchy */
-  --color-bg-base: #0B0D11;
-  --color-bg-surface-1: #12161D;
-  --color-bg-surface-2: #1A222F;
-  --color-bg-surface-3: #242E3E;
+  /* Engine Protocol Surface Hierarchy */
+  --color-bg-base: #070A0F;
+  --color-bg-surface-1: rgba(12, 20, 35, 0.75);
+  --color-bg-surface-2: rgba(15, 28, 48, 0.78);
+  --color-bg-surface-3: rgba(22, 42, 72, 0.82);
 
-  /* DESIGN.md Hairline & Grid Borders */
-  --color-border-subtle: rgba(255, 255, 255, 0.08);
-  --color-border-grid: #27313F;
+  /* Hairline & Grid Borders */
+  --color-border-subtle: rgba(255, 255, 255, 0.14);
+  --color-border-grid: rgba(255, 255, 255, 0.12);
 
-  /* DESIGN.md Spatial Accents */
+  /* Spatial Accents */
   --color-accent-ps5: #3B82F6;
   --color-accent-lounge: #059669;
   --color-accent-boardgame: #B45309;
   --color-accent-terrace: #78350F;
-  --color-accent-bar: #E11D48;
+  --color-accent-bar: #8C1318;
 
-  /* DESIGN.md State Colors */
+  /* State Colors */
   --color-status-available: #10B981;
   --color-status-occupied: #EF4444;
   --color-status-gaming: #3B82F6;
   --color-status-awaiting: #F59E0B;
 
-  /* DESIGN.md Text Tones */
+  /* Text Tones */
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #E2E8F0;
-  --color-text-muted: #9EACB8;
+  --color-text-muted: #A0B2C6;
   --color-text-dim: #64748B;
 
-  --shadow-crimson-glow: 0 0 20px -3px rgba(215, 25, 33, 0.45);
-  --shadow-navy-glow: 0 0 20px -3px rgba(15, 34, 61, 0.6);
+  --shadow-crimson-glow: 0 0 25px -3px rgba(140, 19, 24, 0.6);
+  --shadow-navy-glow: 0 0 25px -3px rgba(15, 34, 61, 0.65);
+  --shadow-gold-glow: 0 0 20px -2px rgba(158, 138, 94, 0.45);
   --shadow-ps5-glow: 0 0 20px -3px rgba(59, 130, 246, 0.5);
 }
 
-/* DESIGN.md Tracking Discipline Utilities */
+/* Tracking Discipline Utilities */
 .tracking-heading {
   letter-spacing: -0.025em;
 }
@@ -276,20 +512,21 @@
   letter-spacing: +0.035em;
 }
 
-/* Custom Scrollbar for Sleek Industrial Look */
+/* Custom Scrollbar for Sleek VisionOS Look */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #121417;
+  background: rgba(12, 20, 35, 0.5);
+  backdrop-filter: blur(16px);
 }
 ::-webkit-scrollbar-thumb {
-  background: #293444;
+  background: rgba(255, 255, 255, 0.22);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #D71921;
+  background: #9E8A5E;
 }
 
 /* Monospaced punchy numbers */

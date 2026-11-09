@@ -82,14 +82,14 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       data-tenant={tenant.id}
-      className="bg-[var(--color-header-bg,#0F223D)] border-b border-[var(--color-surface-border,#293444)] sticky top-0 z-40 transition-all shadow-md select-none"
+      className="vision-glass-slab border-b border-white/15 sticky top-0 z-40 transition-all select-none shadow-xl"
     >
       {/* Top Main Brand & Control Bar */}
       <div className="max-w-[1720px] mx-auto px-3 md:px-5 py-2.5 flex items-center justify-between gap-3">
         {/* Brand & Branch Identity */}
         <div className="flex items-center gap-3">
           <div
-            className="flex items-center bg-[#081425] border border-[#293444] px-3 py-1.5 rounded-lg"
+            className="flex items-center bg-[rgba(12,20,35,0.7)] border border-white/15 px-3 py-1.5 rounded-xl shadow-inner backdrop-blur-md"
             style={{
               backgroundColor: activeTenant.palette.surfaceBg,
               borderColor: activeTenant.palette.borderHairline,
@@ -147,7 +147,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Navigation Tabs (POS, Reports, Menu, Audit) */}
-          <nav className="hidden lg:flex items-center bg-[#121417] p-1 rounded-lg border border-[#293444] text-xs font-bold gap-1">
+          <nav className="hidden lg:flex items-center bg-[rgba(12,20,35,0.65)] p-1 rounded-xl border border-white/12 text-xs font-bold gap-1 backdrop-blur-xl shadow-inner">
             <button
               onClick={() => {
                 playPosBeep('click');
@@ -155,8 +155,8 @@ export const Header: React.FC<HeaderProps> = ({
               }}
               className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
                 currentTab === 'pos'
-                  ? 'bg-[var(--color-brand-primary,#D71921)] text-white shadow-[0_0_15px_-3px_var(--color-brand-primary-light,rgba(215,25,33,0.45))]'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-[0_0_20px_rgba(140,19,24,0.6),0_0_10px_rgba(158,138,94,0.4)]'
+                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
               }`}
             >
               <UtensilsCrossed className="w-3.5 h-3.5" />
@@ -206,9 +206,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onTabChange('reports');
                 }}
                 className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                  currentTab === 'reports'
-                    ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
-                    : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                  currentTab === 'reports' ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-md' : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
@@ -233,9 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onTabChange('menu');
                 }}
                 className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                  currentTab === 'menu'
-                    ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
-                    : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                  currentTab === 'menu' ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-md' : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
                 }`}
               >
                 <Coffee className="w-3.5 h-3.5" />
@@ -260,9 +256,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onTabChange('audit');
                 }}
                 className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                  currentTab === 'audit'
-                    ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
-                    : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                  currentTab === 'audit' ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-md' : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
                 }`}
               >
                 <Shield className="w-3.5 h-3.5" />
@@ -287,9 +281,7 @@ export const Header: React.FC<HeaderProps> = ({
                   onTabChange('inventory');
                 }}
                 className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                  currentTab === 'inventory'
-                    ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
-                    : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                  currentTab === 'inventory' ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-md' : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
                 }`}
                 title="مدیریت انبارداری و فرمولاسیون رسپی (BOM)"
               >
@@ -314,9 +306,7 @@ export const Header: React.FC<HeaderProps> = ({
                 onTabChange('settings');
               }}
               className={`px-3 py-1.5 rounded flex items-center gap-1.5 transition-all cursor-pointer ${
-                currentTab === 'settings'
-                  ? 'bg-[#D71921] text-white shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-[#1B222C]'
+                currentTab === 'settings' ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-md' : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
               }`}
               title="تنظیمات سیستم، تجهیزات چاپگر و گیت امنیتی RBAC"
             >
@@ -470,7 +460,7 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           {/* User & Role Switcher */}
-          <div className="flex items-center gap-1 bg-[#121417] border border-[#293444] rounded-lg px-2 py-1">
+          <div className="flex items-center gap-1 bg-[rgba(12,20,35,0.75)] border border-white/15 rounded-xl px-2.5 py-1 backdrop-blur-md shadow-inner">
             <UserCheck className="w-3.5 h-3.5 text-[#9EACB8]" />
             <select
               value={activeUser.id}
@@ -491,7 +481,7 @@ export const Header: React.FC<HeaderProps> = ({
               playPosBeep('click');
               onLogout();
             }}
-            className="flex items-center gap-1.5 bg-[#1B222C] hover:bg-rose-950/60 text-[#CAD5E2] hover:text-rose-200 border border-[#293444] hover:border-rose-800/60 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
+            className="flex items-center gap-1.5 bg-[rgba(20,32,54,0.75)] hover:bg-rose-950/70 text-[#CAD5E2] hover:text-rose-200 border border-white/15 hover:border-rose-600/60 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer vision-haptic-press"
             title="خروج از حساب و بازگشت به صفحه لاگین"
           >
             <LogOut className="w-3.5 h-3.5 text-rose-400" />

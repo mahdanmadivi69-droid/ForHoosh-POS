@@ -3,7 +3,7 @@
  * Path: src/styles/theme-tokens.css
  * 
  * Supports:
- * - 100 HICH Coffee Roasters (tenant-100hich-01): Crimson Red (#D71921), Navy Blue (#0F223D), Industrial Dark Slate
+ * - 100 HICH Coffee Roasters (tenant-100hich-01): Ultra-Premium VisionOS Liquid Glass, Carmine Red (#8C1318), Liquid Gold (#9E8A5E), Translucent Deep Obsidian & Navy
  * - Modendo Cafe (tenant-modendo-01): Emerald Velvet (#059669), Deep Canvas Dark (#0B0D11), PS5 Neon Blue (#3B82F6)
  */
 
@@ -20,49 +20,75 @@
     /* App Dynamic Theme Variables */
     --app-bg: #0A0D11;
     --app-surface: #0F223D;
-    --app-accent: #D71921;
+    --app-accent: #8C1318;
     --app-text: #FFFFFF;
-    --app-border: #293444;
+    --app-border: rgba(255, 255, 255, 0.16);
 
-    /* Brand Primary & Secondary Colors */
-    --color-brand-primary: #D71921;
-    --color-brand-primary-rgb: 215, 25, 33;
-    --color-brand-primary-hover: #B9151B;
-    --color-brand-primary-light: rgba(215, 25, 33, 0.12);
-    --color-brand-primary-border: rgba(215, 25, 33, 0.35);
+    /* 100 HICH Brand Signature: Carmine Red (#8C1318) & Liquid Gold (#9E8A5E) */
+    --color-brand-primary: #8C1318;
+    --color-brand-primary-rgb: 140, 19, 24;
+    --color-brand-primary-hover: #A5171D;
+    --color-brand-primary-light: rgba(140, 19, 24, 0.22);
+    --color-brand-primary-border: rgba(140, 19, 24, 0.55);
+
+    --color-brand-gold: #9E8A5E;
+    --color-brand-gold-rgb: 158, 138, 94;
+    --color-brand-gold-glow: rgba(158, 138, 94, 0.45);
+    --color-brand-gold-light: rgba(158, 138, 94, 0.18);
+    --color-brand-gold-border: rgba(158, 138, 94, 0.5);
 
     --color-brand-secondary: #0F223D;
     --color-brand-secondary-rgb: 15, 34, 61;
     --color-brand-secondary-hover: #162E52;
-    --color-brand-secondary-light: rgba(15, 34, 61, 0.2);
+    --color-brand-secondary-light: rgba(15, 34, 61, 0.35);
 
-    --color-brand-accent: #9EACB8;
-    --color-brand-accent-hover: #CBD5E1;
+    --color-brand-accent: #90D2ED;
+    --color-brand-accent-hover: #BEE3F8;
 
-    /* Semantic Surface Colors */
-    --color-surface-base: #0D0F12;
-    --color-surface-card: #161A1F;
-    --color-surface-panel: #1A1F26;
-    --color-surface-hover: #222933;
-    --color-surface-border: #27303D;
-    --color-surface-input: #12151A;
+    /* Apple VisionOS Materiality Tokens (Liquid Glass Surfaces) */
+    --glass-blur-base: blur(32px) saturate(210%);
+    --glass-blur-card: blur(32px) saturate(210%);
+    --glass-specular-edge: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35);
+    --glass-specular-active: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.55);
+    --glass-rim-ambient: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 18px -2px rgba(158, 138, 94, 0.25);
+    --glass-rim-carmine: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 0 24px -2px rgba(140, 19, 24, 0.65);
+    --glass-rim-gold: 0 0 0 1px rgba(255, 255, 255, 0.22), 0 0 20px -2px rgba(158, 138, 94, 0.5);
 
-    /* Text Colors */
-    --color-text-primary: #F8FAFC;
-    --color-text-secondary: #94A3B8;
-    --color-text-muted: #64748B;
-    --color-text-inverse: #0D0F12;
+    --glass-slab-bg: radial-gradient(130% 100% at 50% 0%, rgba(15, 34, 61, 0.72) 0%, rgba(12, 20, 35, 0.78) 50%, rgba(7, 10, 18, 0.85) 100%);
+    --glass-card-bg: radial-gradient(120% 120% at 50% 0%, rgba(20, 42, 75, 0.65) 0%, rgba(12, 20, 35, 0.75) 55%, rgba(6, 10, 18, 0.82) 100%);
+    --glass-card-hover-bg: radial-gradient(120% 120% at 50% 0%, rgba(28, 58, 102, 0.75) 0%, rgba(15, 26, 46, 0.82) 55%, rgba(8, 14, 24, 0.88) 100%);
+
+    --glass-shadow-floating: 0 20px 40px -8px rgba(0, 0, 0, 0.75), 0 4px 12px rgba(0, 0, 0, 0.45);
+    --glass-shadow-pressed: 0 6px 14px -2px rgba(0, 0, 0, 0.85), 0 1px 4px rgba(0, 0, 0, 0.6);
+
+    --spring-physics: cubic-bezier(0.32, 0.72, 0, 1);
+    --spring-scale: 0.96;
+
+    /* Semantic Surface Colors (Upgraded from flat opaque to Translucent Glass Slabs) */
+    --color-surface-base: rgba(10, 13, 17, 0.85);
+    --color-surface-card: rgba(12, 20, 35, 0.75);
+    --color-surface-panel: rgba(15, 28, 48, 0.78);
+    --color-surface-hover: rgba(22, 42, 72, 0.82);
+    --color-surface-border: rgba(255, 255, 255, 0.16);
+    --color-surface-input: rgba(8, 14, 24, 0.78);
+
+    /* Text Colors with High Contrast Antialiased Fidelity */
+    --color-text-primary: #FFFFFF;
+    --color-text-secondary: #E2E8F0;
+    --color-text-muted: #A0B2C6;
+    --color-text-gold: #F5E8D0;
+    --color-text-inverse: #070A0F;
 
     /* Header & Navigation Shell */
-    --color-header-bg: #0F223D;
-    --color-header-border: #D71921;
-    --color-tab-active-bg: rgba(215, 25, 33, 0.15);
-    --color-tab-active-border: #D71921;
+    --color-header-bg: rgba(12, 22, 38, 0.76);
+    --color-header-border: rgba(158, 138, 94, 0.45);
+    --color-tab-active-bg: linear-gradient(135deg, rgba(140, 19, 24, 0.92) 0%, rgba(110, 13, 18, 0.98) 100%);
+    --color-tab-active-border: rgba(158, 138, 94, 0.65);
 
     /* Badges & Indicators */
-    --color-badge-bg: rgba(215, 25, 33, 0.15);
-    --color-badge-text: #F87171;
-    --color-badge-border: rgba(215, 25, 33, 0.3);
+    --color-badge-bg: rgba(140, 19, 24, 0.35);
+    --color-badge-text: #FCA5A5;
+    --color-badge-border: rgba(140, 19, 24, 0.6);
 
     /* Thermal Printing Configuration */
     --printer-dpi: 203;

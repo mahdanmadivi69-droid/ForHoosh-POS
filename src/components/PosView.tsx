@@ -65,6 +65,8 @@ import { printThermalReceipt } from '../services/receiptPrinter';
 import { inventoryBomService } from '../services/inventoryBomService';
 import { openTabService } from '../services/openTabService';
 import { getActiveTenant } from '../config/tenantConfig';
+import { CatalogCard } from './CatalogCard';
+import { CatalogMenuItem, SelectedBean } from '../types/catalog';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -333,6 +335,43 @@ export const PosView: React.FC<PosViewProps> = ({
         notes: notes || undefined,
       },
     ]);
+  };
+
+  const handleAddCatalogCardItem = (catItem: CatalogMenuItem, selectedBean: SelectedBean) => {
+    const isBlend = selectedBean === 'blend';
+    const beanLabel = isBlend ? 'میکس ۵۰/۵۰' : 'عربیکا ۱۰۰٪';
+    const effectivePrice = isBlend ? (catItem.priceBlend ?? catItem.priceToman) : (catItem.priceArabica ?? catItem.priceToman);
+
+    playPosBeep('click');
+    setCartItems((prev) => {
+      const existingIndex = prev.findIndex(
+        (c) => c.menuItemId === catItem.id && c.notes === beanLabel
+      );
+      if (existingIndex > -1) {
+        const updated = [...prev];
+        const existing = updated[existingIndex];
+        const newQty = existing.quantity + 1;
+        updated[existingIndex] = {
+          ...existing,
+          quantity: newQty,
+          subtotalToman: existing.unitPriceSnapshotToman * newQty,
+        };
+        return updated;
+      }
+      return [
+        ...prev,
+        {
+          id: `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          menuItemId: catItem.id,
+          itemNameSnapshot: `${catItem.nameFa} (${beanLabel})`,
+          unitPriceSnapshotToman: effectivePrice,
+          quantity: 1,
+          subtotalToman: effectivePrice,
+          modifiers: [],
+          notes: beanLabel,
+        },
+      ];
+    });
   };
 
   const handleOpenModifierModal = (e: React.MouseEvent, item: MenuItem) => {
@@ -863,6 +902,19 @@ export const PosView: React.FC<PosViewProps> = ({
               const bomStock = inventoryBomService.evaluateMenuItemStock(item.id);
               const isOutOfStock = stockStatus.isOutOfStock || bomStock.isOutOfStock;
               const isLow = (stockStatus.isLowStock || bomStock.hasLowStockIngredients) && !isOutOfStock;
+              const isSensoryCard = Boolean(item.hasDualBean || (activeTenant.id.includes('100hich') && (item.isBean || item.categoryId === 'cat-coffee')));
+              if (isSensoryCard) {
+                return (
+                  <CatalogCard
+                    key={item.id}
+                    item={item as unknown as CatalogMenuItem}
+                    onAddToCart={handleAddCatalogCardItem}
+                    isOutOfStock={isOutOfStock}
+                    isLowStock={isLow}
+                    hotkeyIndex={idx < 9 ? idx + 1 : undefined}
+                  />
+                );
+              }
 
               return (
                 <article

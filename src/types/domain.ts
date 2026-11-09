@@ -65,6 +65,10 @@ export interface MenuItem {
   notes?: string[];
   badge?: string | null;
   isBean?: boolean;
+  hasDualBean?: boolean;
+  priceArabica?: number;
+  priceBlend?: number;
+  bomGramsPerCup?: number;
 }
 
 export type ShiftStatus = 'OPEN' | 'CLOSED';

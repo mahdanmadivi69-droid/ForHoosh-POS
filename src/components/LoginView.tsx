@@ -103,7 +103,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
       <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-[#0F223D] rounded-full blur-[140px] pointer-events-none" />
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md bg-[#0F223D]/90 backdrop-blur-xl border border-[#293444] rounded-2xl shadow-2xl p-6 sm:p-8 z-10 transition-all">
+      <div className="w-full max-w-md vision-glass-slab rounded-3xl shadow-2xl p-6 sm:p-8 z-10 transition-all border border-white/20">
         {/* Brand Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center gap-3 bg-[#081425] border border-[#293444] px-4 py-2.5 rounded-xl shadow-inner mb-4">
@@ -158,7 +158,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
                 onChange={(e) => setUsernameOrPhone(e.target.value)}
                 placeholder="مثلاً: admin یا ali یا 09120000003"
                 dir="ltr"
-                className="w-full bg-[#121417] border border-[#293444] focus:border-[#D71921] focus:ring-1 focus:ring-[#D71921] rounded-xl pr-10 pl-3.5 py-2.5 text-sm text-white placeholder:text-[#526071] outline-none transition font-sans text-left"
+                className="w-full bg-[rgba(12,20,35,0.75)] border border-white/15 focus:border-[#D71921] focus:ring-1 focus:ring-[#D71921] rounded-xl pr-10 pl-3.5 py-2.5 text-sm text-white placeholder:text-[#526071] outline-none transition font-sans text-left"
                 required
                 autoFocus
               />
@@ -180,7 +180,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="رمز عبور حساب"
                 dir="ltr"
-                className="w-full bg-[#121417] border border-[#293444] focus:border-[#D71921] focus:ring-1 focus:ring-[#D71921] rounded-xl pr-10 pl-10 py-2.5 text-sm text-white placeholder:text-[#526071] outline-none transition font-sans text-left"
+                className="w-full bg-[rgba(12,20,35,0.75)] border border-white/15 focus:border-[#D71921] focus:ring-1 focus:ring-[#D71921] rounded-xl pr-10 pl-10 py-2.5 text-sm text-white placeholder:text-[#526071] outline-none transition font-sans text-left"
                 required
               />
               <button
@@ -198,7 +198,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full mt-2 bg-[#D71921] hover:bg-[#b0131a] active:scale-[0.98] text-white font-black py-3 rounded-xl transition shadow-lg shadow-[#D71921]/30 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm"
+            className="vision-checkout-cta w-full mt-2 text-white font-black py-3.5 rounded-xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 text-sm"
           >
             {isLoading ? (
               <span className="flex items-center gap-2">
@@ -292,7 +292,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
                   key={u.id}
                   type="button"
                   onClick={() => handleQuickSelect(u)}
-                  className={`bg-[#121417] hover:bg-[#1B222C] border ${roleColor} rounded-xl p-2.5 text-right transition flex flex-col gap-1 cursor-pointer active:scale-95`}
+                  className={`bg-[rgba(12,20,35,0.75)] hover:bg-[rgba(20,35,60,0.85)] border ${roleColor} rounded-xl p-2.5 text-right transition flex flex-col gap-1 cursor-pointer vision-haptic-press`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-black text-white">{u.fullName.split(' ')[0]}</span>

@@ -88,9 +88,9 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({
   );
 
   return (
-    <div className="flex flex-col h-full bg-[#121417] text-zinc-100 select-none">
+    <div className="flex flex-col h-full vision-glass-slab text-zinc-100 select-none">
       {/* Top Bar: Table Assignment & Hardware Scanner Status */}
-      <div className="flex items-center justify-between px-4 py-3 bg-[#0F223D]/80 border-b border-zinc-800 backdrop-blur-md">
+      <div className="flex items-center justify-between px-4 py-3 bg-[rgba(15,34,61,0.75)] border-b border-white/12 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700">
             <span className="text-xs text-zinc-400 font-medium">میز فعال:</span>
@@ -121,7 +121,7 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({
               }}
               className={`px-2.5 py-1 text-xs rounded transition-all ${
                 activeTable === tbl
-                  ? 'bg-[#D71921] text-white font-bold'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/40 text-white font-bold shadow-[0_0_15px_rgba(140,19,24,0.5)]'
                   : 'bg-zinc-800/80 text-zinc-400 hover:bg-zinc-700'
               }`}
             >

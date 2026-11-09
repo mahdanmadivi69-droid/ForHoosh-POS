@@ -1,19 +1,25 @@
 /**
  * AntiGravity Physics Profiles for CafeOS & Zero-G Ultra-Low Latency UI
+ * Apple VisionOS Translucent Liquid Glass Specification & SmartOrders Engine
  * Includes exact spring curves, decelerated drawers, and prefers-reduced-motion fallback
  * Compliant with Zero-G UI/UX Architecture & Fluid Motion Standards
  */
 
 export const ZERO_G_COLORS = {
-  void: '#07090E',
-  canvas: '#121417',
-  surface: 'rgba(15, 23, 42, 0.75)',
-  surfaceElevated: '#0F223D',
-  surfaceCard: '#1B222C',
-  border: 'rgba(255, 255, 255, 0.08)',
-  borderHover: 'rgba(255, 255, 255, 0.18)',
-  borderActive: 'rgba(215, 25, 33, 0.45)',
+  void: '#070A0F',
+  canvas: 'radial-gradient(130% 100% at 50% 0%, rgba(15, 34, 61, 0.72) 0%, rgba(12, 20, 35, 0.78) 50%, rgba(7, 10, 18, 0.85) 100%)',
+  canvasFallback: '#0C1423',
+  surface: 'rgba(12, 20, 35, 0.75)',
+  surfaceElevated: 'rgba(15, 28, 48, 0.78)',
+  surfaceCard: 'rgba(20, 42, 75, 0.65)',
+  border: 'rgba(255, 255, 255, 0.14)',
+  borderHover: 'rgba(158, 138, 94, 0.45)',
+  borderActive: 'rgba(140, 19, 24, 0.65)',
+  specularHighlight: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.35)',
+  accentCarmine: '#8C1318',
   accentCrimson: '#D71921',
+  accentGold: '#9E8A5E',
+  accentGoldGlow: 'rgba(158, 138, 94, 0.45)',
   accentEmerald: '#10B981',
   accentAmber: '#F59E0B',
   accentCyan: '#38BDF8',
@@ -36,6 +42,19 @@ export const ZERO_G_PHYSICS = {
     surface: 0.24,
     staggerInterval: 0.02,
     reduced: 0.10,
+  },
+} as const;
+
+export const VISION_OS_PHYSICS = {
+  // Apple VisionOS spring dynamics: scale(0.96) with cubic-bezier(0.32, 0.72, 0, 1)
+  hapticPress: {
+    scale: 0.96,
+    ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+    duration: 0.22,
+  },
+  fluidGlide: {
+    ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+    duration: 0.26,
   },
 } as const;
 
@@ -90,12 +109,12 @@ export const ZERO_G_MOTION = {
     ease: 'linear' as const,
   },
 
-  // Micro-flash pulse keyframes for socket pushed tickets (#D71921)
+  // Micro-flash pulse keyframes for socket pushed tickets (#D71921 & #8C1318)
   flashPulse: {
-    borderColor: ['rgba(215, 25, 33, 1)', 'rgba(215, 25, 33, 0.2)', 'rgba(41, 52, 68, 1)'],
+    borderColor: ['rgba(215, 25, 33, 1)', 'rgba(140, 19, 24, 0.6)', 'rgba(158, 138, 94, 0.45)', 'rgba(41, 52, 68, 1)'],
     boxShadow: [
       '0 0 25px rgba(215, 25, 33, 0.7)',
-      '0 0 10px rgba(215, 25, 33, 0.3)',
+      '0 0 16px rgba(140, 19, 24, 0.5)',
       '0 0 0px rgba(0, 0, 0, 0)',
     ],
     transition: { duration: 1.2, ease: 'easeOut' },
