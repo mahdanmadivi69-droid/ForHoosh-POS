@@ -52,9 +52,9 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
     const x = (e.clientX - rect.left) / rect.width - 0.5; // -0.5 to +0.5
     const y = (e.clientY - rect.top) / rect.height - 0.5; // -0.5 to +0.5
 
-    // ±6 degrees maximum rotation
-    const rotateX = -y * 12; // clamped to [-6, 6]
-    const rotateY = x * 12;  // clamped to [-6, 6]
+    // Calibrated ±2.2° to ±5° sensory tilt physics
+    const rotateX = Math.max(-5, Math.min(5, -y * 8.8));
+    const rotateY = Math.max(-5, Math.min(5, x * 8.8));
 
     const sheenX = Math.round(((e.clientX - rect.left) / rect.width) * 100);
     const sheenY = Math.round(((e.clientY - rect.top) / rect.height) * 100);
@@ -91,7 +91,7 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
 
   return (
     <div
-      style={{ perspective: '1000px' }}
+      style={{ perspective: '1200px' }}
       className="relative select-none"
     >
       <div
@@ -101,7 +101,7 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
         onClick={handleCardClick}
         style={{
           transform: `rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg) scale3d(${tilt.isHovered ? 1.02 : 1}, ${tilt.isHovered ? 1.02 : 1}, 1)`,
-          transition: tilt.isHovered ? 'transform 0.08s ease-out' : 'transform 0.4s cubic-bezier(0.32, 0.72, 0, 1)',
+          transition: tilt.isHovered ? 'transform 0.08s ease-out' : 'transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1)',
           ['--sheen-x' as any]: `${tilt.sheenX}%`,
           ['--sheen-y' as any]: `${tilt.sheenY}%`,
           ['--sheen-opacity' as any]: tilt.isHovered ? 1 : 0,

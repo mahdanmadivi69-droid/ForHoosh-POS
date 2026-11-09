@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./styles/theme-tokens.css";
+@import "../public/fonts/pinar_font.css";
 
 /* Farsi Typography Hierarchy */
 @font-face {
@@ -23,7 +24,7 @@
 
 /* System Typography Tokens & Motion Physics Variables */
 :root {
-  --font-fa-sans: 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-fa-sans: 'Pinar', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono-numbers: 'Fira Code', 'JetBrains Mono', monospace;
 
   /* AntiGravity Apple VisionOS Physics Tokens */
@@ -260,20 +261,27 @@ body, button, input, select, textarea {
   transform: scale(0.96) !important;
 }
 
-/* KarWand Liquid Glass & Sheen Layer (100 HICH Sensory Lab) */
-.liquid-glass {
-  background: radial-gradient(130% 120% at 50% 0%, rgba(12, 30, 60, 0.85) 0%, rgba(8, 16, 32, 0.92) 55%, rgba(6, 10, 20, 0.96) 100%) !important;
-  backdrop-filter: blur(28px) saturate(200%) !important;
-  -webkit-backdrop-filter: blur(28px) saturate(200%) !important;
-  border: 1px solid rgba(144, 210, 237, 0.22) !important;
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 16px 36px -8px rgba(0, 0, 0, 0.75) !important;
+/* Universal Base Formula for Liquid Glass Elements - SPEC 2.0 */
+.liquid-glass-surface, .liquid-glass {
+  background: var(--glass-base, rgba(12, 25, 48, 0.76)) !important;
+  backdrop-filter: blur(var(--glass-blur, 34px)) saturate(var(--glass-saturate, 200%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 34px)) saturate(var(--glass-saturate, 200%)) !important;
+  border: var(--glass-border, 1px solid rgba(144, 210, 237, 0.28)) !important;
+  box-shadow: 
+    inset 0 1px 1.5px 0 var(--glass-specular, rgba(144, 210, 237, 0.25)),
+    var(--glass-elevation, 0 24px 60px -15px rgba(0, 0, 0, 0.90)) !important;
+  position: relative;
+  overflow: hidden;
   transform-style: preserve-3d;
   will-change: transform;
 }
 
 .liquid-glass:hover {
   border-color: rgba(144, 210, 237, 0.45) !important;
-  box-shadow: inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.5), 0 20px 42px -6px rgba(140, 19, 24, 0.35), 0 0 20px rgba(144, 210, 237, 0.15) !important;
+  box-shadow: 
+    inset 0 1px 1.5px 0 var(--glass-specular, rgba(255, 255, 255, 0.4)),
+    0 24px 60px -15px rgba(0, 0, 0, 0.90),
+    0 0 25px var(--glow-accent, rgba(0, 229, 255, 0.25)) !important;
 }
 
 .glass-sheen {
@@ -281,9 +289,9 @@ body, button, input, select, textarea {
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
-  background: radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 0%), rgba(144, 210, 237, 0.22) 0%, transparent 65%);
+  background: radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 0%), rgba(255, 255, 255, 0.16) 0%, transparent 65%);
   opacity: var(--sheen-opacity, 0);
-  transition: opacity 0.2s ease;
+  transition: opacity 0.3s ease;
   z-index: 10;
 }
 
