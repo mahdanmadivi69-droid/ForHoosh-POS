@@ -77,10 +77,10 @@ async function runTests() {
   const liveReceiptContent = fs.readFileSync(path.join(rootDir, 'src', 'components', 'LiveReceiptPreview.tsx'), 'utf8');
   assert(liveReceiptContent.includes('data-tenant='), 'LiveReceiptPreview includes dynamic data-tenant scoping');
   assert(liveReceiptContent.includes('var(--color-badge-text'), 'LiveReceiptPreview badges use semantic token variables');
-  // CRITICAL INVARIANT: Ensure VAT formula was NOT modified
+  // CRITICAL INVARIANT: Ensure VAT formula is aligned with Tax-Inclusive standard (RSK-FIN-01: 9/109)
   assert(
-    liveReceiptContent.includes('(subtotal * fiscalRules.vat_tax_percentage) / 100'),
-    'CRITICAL INVARIANT: VAT formula in LiveReceiptPreview remains strictly frozen'
+    liveReceiptContent.includes('(subtotal * fiscalRules.vat_tax_percentage) / (100 + fiscalRules.vat_tax_percentage)'),
+    'CRITICAL INVARIANT: VAT formula in LiveReceiptPreview is aligned with Tax-Inclusive standard (RSK-FIN-01)'
   );
 
   const receiptPreviewContent = fs.readFileSync(path.join(rootDir, 'src', 'components', 'ReceiptPreview.tsx'), 'utf8');

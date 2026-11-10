@@ -28,8 +28,11 @@ export const LiveReceiptPreview: React.FC<LiveReceiptPreviewProps> = ({
   ];
 
   const subtotal = sampleItems.reduce((acc, it) => acc + it.price * it.qty, 0);
-  const vatAmount = Math.round((subtotal * fiscalRules.vat_tax_percentage) / 100);
-  const total = subtotal + vatAmount;
+  const vatAmount =
+    fiscalRules.vat_tax_percentage > 0
+      ? Math.round((subtotal * fiscalRules.vat_tax_percentage) / (100 + fiscalRules.vat_tax_percentage))
+      : 0;
+  const total = subtotal;
 
   const tenantId = storeProfile.name_en?.toUpperCase().includes('MODENDO')
     ? 'tenant-modendo-01'
