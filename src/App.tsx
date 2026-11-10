@@ -165,12 +165,9 @@ export default function App() {
     showToast('شما با موفقیت از سیستم خارج شدید.');
   };
 
-  // User Switching
+  // User Switching (Strict Security Guard: always routes via PIN switch request)
   const handleUserChange = (userId: string) => {
-    SmartOrdersStore.setActiveUserId(userId);
-    const user = SmartOrdersStore.getActiveUser();
-    setActiveUser(user);
-    showToast(`کاربر فعال تغییر یافت: ${user.fullName}`);
+    handleUserSwitchRequest(userId);
   };
 
   // User Switching with Strict Security Lock & PIN Verification
@@ -302,6 +299,7 @@ export default function App() {
   if (isLocked || !isAuthenticated) {
     return (
       <PinLockScreen
+        initialUserId={pendingSwitchUserId}
         onUnlockSuccess={(unlockedUser: AuthUserRecord) => {
           const matched: User = allUsers.find(
             (u) => u.username === unlockedUser.username || u.fullName === unlockedUser.fullName
@@ -482,11 +480,9 @@ export default function App() {
             onRoleSwitch={(newRole) => {
               const matched = allUsers.find((u) => u.role === newRole);
               if (matched) {
-                handleUserChange(matched.id);
+                handleUserSwitchRequest(matched.id);
               } else {
-                const updated = { ...activeUser, role: newRole as any };
-                setActiveUser(updated);
-                showToast(`نقش موقت برای آزمایش تغییر یافت: ${newRole}`);
+                showToast(`کاربری با نقش ${newRole} برای ورود امن یافت نشد.`);
               }
             }}
           />

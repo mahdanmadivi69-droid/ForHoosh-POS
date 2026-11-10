@@ -150,8 +150,9 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Navigation Tabs dynamically decoupled for multi-tenant styling (RSK-05) */}
+          {/* Navigation Tabs (Streamlined 4 Clean Primary Pills) */}
           <nav className="hidden lg:flex items-center bg-[var(--color-surface-card,rgba(12,20,35,0.65))] p-1.5 rounded-2xl border border-[var(--color-surface-border,rgba(255,255,255,0.12))] text-xs font-bold gap-2 backdrop-blur-xl shadow-inner font-sans" dir="rtl">
+            {/* 1. POS Pill */}
             <button
               onClick={() => {
                 playPosBeep('click');
@@ -167,43 +168,54 @@ export const Header: React.FC<HeaderProps> = ({
                   ? 'border text-white'
                   : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
               }`}
+              title="صندوق فروش و بارتندر (POS)"
             >
               <UtensilsCrossed className="w-4 h-4 text-[var(--color-brand-accent,#90D2ED)]" />
-              <span>صندوق و بارتندر (POS)</span>
+              <span>صندوق</span>
             </button>
 
-            {isManager ? (
-              <button
-                onClick={() => {
-                  playPosBeep('click');
-                  onTabChange('inventory');
-                }}
-                style={currentTab === 'inventory' ? {
-                  background: 'var(--color-tab-active-bg)',
-                  borderColor: 'var(--color-tab-active-border)',
-                  boxShadow: 'var(--glow-accent, 0 0 20px rgba(140,19,24,0.6))',
-                } : undefined}
-                className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold ${
-                  currentTab === 'inventory'
-                    ? 'border text-white'
-                    : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
-                }`}
-                title="مدیریت انبارداری و سنسوری (Sensory & BOM)"
-              >
-                <Boxes className="w-4 h-4 text-amber-400" />
-                <span>انبارداری و سنسوری</span>
-              </button>
-            ) : (
-              <button
-                disabled
-                title="مخصوص مدیر و مالک"
-                className="px-3.5 py-1.5 rounded-xl flex items-center gap-2 text-[#526071] bg-[#121417]/50 cursor-not-allowed opacity-60 border border-transparent"
-              >
-                <Lock className="w-3.5 h-3.5 text-amber-500/70" />
-                <span>انبارداری و سنسوری</span>
-              </button>
-            )}
+            {/* 2. KDS Pill */}
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onOpenBaristaKds();
+              }}
+              className="px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold text-[#A0B2C6] hover:text-white hover:bg-white/10 border border-transparent"
+              title="نمایشگر زنده بار باریستا (KDS)"
+            >
+              <Coffee className="w-4 h-4 text-[#F3E9DD]" />
+              <span>بار باریستا (KDS)</span>
+              {baristaActiveCount > 0 && (
+                <span className="bg-[#D71921] text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-[0_0_8px_rgba(215,25,33,0.8)]">
+                  {baristaActiveCount}
+                </span>
+              )}
+            </button>
 
+            {/* 3. Reports Pill */}
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onTabChange('reports');
+              }}
+              style={currentTab === 'reports' ? {
+                background: 'var(--color-tab-active-bg)',
+                borderColor: 'var(--color-tab-active-border)',
+                boxShadow: 'var(--glow-accent, 0 0 20px rgba(140,19,24,0.6))',
+              } : undefined}
+              className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold ${
+                currentTab === 'reports'
+                  ? 'border text-white'
+                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
+              }`}
+              title="گزارشات جامع فروش، شیفت و مالی"
+            >
+              <TrendingUp className="w-4 h-4 text-emerald-400" />
+              <span>گزارشات</span>
+              {!isManager && <Lock className="w-2.5 h-2.5 text-amber-400" />}
+            </button>
+
+            {/* 4. Settings Pill */}
             <button
               onClick={() => {
                 playPosBeep('click');
@@ -280,26 +292,6 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
-          {/* Barista KDS Trigger */}
-          <button
-            onClick={() => {
-              playPosBeep('click');
-              onOpenBaristaKds();
-            }}
-            className="flex items-center gap-1.5 bg-[#1B222C] hover:bg-[#222B38] text-white border border-[#293444] px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer relative"
-            title="نمایشگر زنده بار باریستا (KDS)"
-          >
-            <Coffee className="w-3.5 h-3.5 text-[#F3E9DD]" />
-            <span className="hidden sm:inline">بار باریستا</span>
-            {baristaActiveCount > 0 ? (
-              <span className="bg-[#D71921] text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-[0_0_8px_rgba(215,25,33,0.8)]">
-                {baristaActiveCount}
-              </span>
-            ) : (
-              <span className="text-[10px] text-[#9EACB8]">KDS</span>
-            )}
-          </button>
-
           {/* Expense Modal Button */}
           {activeShift && (
             <button
@@ -349,12 +341,32 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          {/* User & Role Switcher */}
-          <div className="flex items-center gap-1 bg-[rgba(12,20,35,0.75)] border border-white/15 rounded-xl px-2.5 py-1 backdrop-blur-md shadow-inner">
+          {/* User & Role Switcher (Strict PIN Switch Guard) */}
+          <div
+            onClick={() => {
+              if (onUserSwitchRequest) {
+                onUserSwitchRequest(activeUser.id);
+              } else {
+                onLockTerminal?.();
+              }
+            }}
+            className="flex items-center gap-1.5 bg-[rgba(12,20,35,0.75)] hover:bg-[rgba(20,32,54,0.9)] border border-white/15 rounded-xl px-2.5 py-1 backdrop-blur-md shadow-inner cursor-pointer transition"
+            title="تغییر کاربر یا قفل صندوق (نیازمند تأیید PIN امنیتی)"
+          >
             <UserCheck className="w-3.5 h-3.5 text-[#9EACB8]" />
             <select
               value={activeUser.id}
-              onChange={(e) => onUserChange(e.target.value)}
+              onChange={(e) => {
+                const targetId = e.target.value;
+                if (targetId !== activeUser.id) {
+                  if (onUserSwitchRequest) {
+                    onUserSwitchRequest(targetId);
+                  } else {
+                    onUserChange(targetId);
+                  }
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
               className="bg-transparent text-white focus:outline-none text-xs font-semibold cursor-pointer max-w-[110px] truncate"
             >
               {allUsers.map((u) => (
@@ -363,6 +375,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </option>
               ))}
             </select>
+            <Lock className="w-3 h-3 text-amber-400/80" />
           </div>
 
           {/* Logout / Lock Button */}
@@ -398,7 +411,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Mobile Navigation Tabs dynamically decoupled for multi-tenant styling (RSK-05) */}
+      {/* Mobile Navigation Tabs (Streamlined 4 Clean Primary Pills) */}
       <div className="lg:hidden border-t border-[var(--color-header-border,#293444)] px-4 py-2 flex items-center justify-around bg-[var(--color-header-bg,#081425)] text-xs font-bold font-sans" dir="rtl">
         <button
           onClick={() => {
@@ -414,36 +427,41 @@ export const Header: React.FC<HeaderProps> = ({
           }`}
         >
           <UtensilsCrossed className="w-3.5 h-3.5 text-[var(--color-brand-accent,#90D2ED)]" />
-          <span>صندوق و بارتندر (POS)</span>
+          <span>صندوق</span>
         </button>
 
-        {isManager ? (
-          <button
-            onClick={() => {
-              playPosBeep('click');
-              onTabChange('inventory');
-            }}
-            style={currentTab === 'inventory' ? {
-              background: 'var(--color-tab-active-bg)',
-              borderColor: 'var(--color-tab-active-border)',
-            } : undefined}
-            className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
-              currentTab === 'inventory' ? 'text-white shadow-md border' : 'text-[#9EACB8] border-transparent'
-            }`}
-          >
-            <Boxes className="w-3.5 h-3.5 text-amber-400" />
-            <span>انبارداری و سنسوری</span>
-          </button>
-        ) : (
-          <button
-            disabled
-            className="px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-[#526071] opacity-50 cursor-not-allowed"
-            title="مخصوص مدیر و مالک"
-          >
-            <Lock className="w-3 h-3 text-amber-500/70" />
-            <span>انبارداری و سنسوری</span>
-          </button>
-        )}
+        <button
+          onClick={() => {
+            playPosBeep('click');
+            onOpenBaristaKds();
+          }}
+          className="px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all text-[#9EACB8] border-transparent"
+        >
+          <Coffee className="w-3.5 h-3.5 text-[#F3E9DD]" />
+          <span>KDS</span>
+          {baristaActiveCount > 0 && (
+            <span className="bg-[#D71921] text-white text-[9px] font-black px-1 rounded-full">
+              {baristaActiveCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => {
+            playPosBeep('click');
+            onTabChange('reports');
+          }}
+          style={currentTab === 'reports' ? {
+            background: 'var(--color-tab-active-bg)',
+            borderColor: 'var(--color-tab-active-border)',
+          } : undefined}
+          className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
+            currentTab === 'reports' ? 'text-white shadow-md border' : 'text-[#9EACB8] border-transparent'
+          }`}
+        >
+          <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+          <span>گزارشات</span>
+        </button>
 
         <button
           onClick={() => {

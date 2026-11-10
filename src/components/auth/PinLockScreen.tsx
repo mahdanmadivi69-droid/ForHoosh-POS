@@ -87,9 +87,14 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
         if (mounted) {
           const filtered = users.filter((u) => u.isActive);
           setActiveUsers(filtered);
-          // Default selection to owner if exists, or first active
-          const owner = filtered.find((u) => u.role === 'OWNER') || filtered[0];
-          if (owner) setSelectedUserId(owner.id);
+          // Respect initialUserId: do NOT overwrite selectedUserId with owner.id if initialUserId is provided
+          if (initialUserId && filtered.some((u) => u.id === initialUserId)) {
+            setSelectedUserId(initialUserId);
+          } else {
+            // Default selection to owner if exists, or first active
+            const owner = filtered.find((u) => u.role === 'OWNER') || filtered[0];
+            if (owner) setSelectedUserId(owner.id);
+          }
         }
       } catch (err) {
         console.error('Failed to init users for PIN gate:', err);
@@ -99,7 +104,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [initialUserId]);
 
   // Cooldown countdown effect
   useEffect(() => {
@@ -310,7 +315,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
         <div className="w-full max-w-[320px] mx-auto mb-4 relative">
           <div className="overflow-x-auto no-scrollbar scroll-smooth py-1 px-1 flex gap-2 snap-x snap-mandatory">
             {activeUsers.map((u) => {
-              const isSelected = selectedUserId === u.id || (u.role === 'OWNER' && !selectedUserId);
+              const isSelected = selectedUserId === u.id;
               const isOwner = u.role === 'OWNER';
               return (
                 <button

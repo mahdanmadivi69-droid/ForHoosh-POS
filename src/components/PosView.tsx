@@ -924,28 +924,18 @@ export const PosView: React.FC<PosViewProps> = ({
       <PosMainLayout
         catalog={
           <>
-        {/* Top Announcement & Roast Specs Bar */}
-        <div className="bg-gradient-to-r from-[#0F223D] via-[#1B222C] to-[#0F223D] p-3 rounded-xl border border-[#293444] mb-3 flex flex-wrap items-center justify-between gap-2 shadow-inner">
-          <div className="flex items-center gap-3">
-            <span className="bg-[#D71921] text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider uppercase">
-              NEW ROAST
-            </span>
-            <p className="text-xs md:text-sm font-semibold text-white">
-              روست هفتگی بلند اختصاصی{' '}
-              <span className="text-[#F3E9DD] font-bold">50/50 Brazil & Indonesia</span> آماده ارسال
-              و آسیاب تازه در بار
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 text-[11px] text-[#9EACB8]">
-            <div className="hidden sm:flex items-center gap-1.5">
-              <span>دما و فشار بویلر:</span>
-              <strong className="text-white font-mono num-heavy">93.5°C | 9.1 Bar</strong>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        {/* Compact Telemetry & Sync Bar (Noise Reduction & Vertical Space Optimization) */}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            {/* Boiler Telemetry Chip */}
+            <div className="flex items-center gap-1.5 bg-[#0C1423]/70 border border-white/10 px-2.5 py-1 rounded-xl text-[11px] text-[#9EACB8] backdrop-blur-md shadow-inner">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-slate-400 font-medium">بویلر:</span>
+              <span className="text-slate-200 font-mono font-bold num-heavy">93.5°C • 9.1 Bar</span>
             </div>
 
             {/* Offline Sync Status Chip */}
-            <div className="flex items-center gap-1.5 bg-[#121417]/80 px-2 py-0.5 rounded border border-[#293444]">
+            <div className="flex items-center gap-1.5 bg-[#0C1423]/70 px-2.5 py-1 rounded-xl border border-white/10 text-[11px] backdrop-blur-md shadow-inner">
               {queueStats.pending > 0 ? (
                 <>
                   <WifiOff className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
@@ -955,7 +945,7 @@ export const PosView: React.FC<PosViewProps> = ({
                   <button
                     onClick={handleTriggerManualSync}
                     disabled={isManualSyncing}
-                    className="p-1 hover:text-white"
+                    className="p-0.5 hover:text-white"
                     title="سینک فوری با سرور"
                   >
                     <RefreshCw className={`w-3 h-3 ${isManualSyncing ? 'animate-spin' : ''}`} />

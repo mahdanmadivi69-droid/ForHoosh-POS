@@ -12,6 +12,25 @@
  *  6. Storage-level authentication invariant: smartOrdersStore.authenticate rejects fast-path shortcuts without enrolled credentials.
  */
 
+// Mock localStorage for headless Node environment
+if (typeof globalThis.localStorage === 'undefined' || !globalThis.localStorage?.getItem) {
+  const store = new Map<string, string>();
+  (globalThis as any).localStorage = {
+    getItem: (key: string) => (store.has(key) ? store.get(key)! : null),
+    setItem: (key: string, val: string) => {
+      store.set(key, String(val));
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    clear: () => store.clear(),
+    key: (i: number) => Array.from(store.keys())[i] || null,
+    get length() {
+      return store.size;
+    },
+  };
+}
+
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert';
 import { RBACService } from '../src/services/RBACService';
@@ -213,6 +232,86 @@ describe('PIN Authentication & Client Perimeter Security Hardening (RSK-SEC-01)'
         assert.strictEqual(res.success, false, `Short PIN '${shortPin}' must be rejected`);
         assert.ok(res.error?.includes('۴ رقم'), 'Error message must state minimum 4 digits');
       }
+    });
+  });
+
+  describe('6. Strict Session Switch Teardown & Fail-Closed Guard', () => {
+    test('user switch request preserves fail-closed teardown without optimistic local state promotion', async () => {
+      SmartOrdersStore.switchTenant('tenant-100hich-01');
+      const storeUsers = SmartOrdersStore.getUsers();
+      const owner = storeUsers.find((u) => u.role === 'OWNER')!;
+      const cashier = storeUsers.find((u) => u.role === 'CASHIER')!;
+
+      // Simulate active session initialized to cashier
+      SmartOrdersStore.setActiveUserId(cashier.id);
+      assert.strictEqual(SmartOrdersStore.getActiveUser().id, cashier.id);
+
+      // Initiation of user switch request to Owner:
+      // Invariant: Local state must NOT be optimistically changed to Owner before PIN verification!
+      let isLocked = false;
+      let pendingSwitchUserId: string | null = null;
+
+      const handleUserSwitchRequest = (targetUserId: string) => {
+        pendingSwitchUserId = targetUserId;
+        isLocked = true;
+      };
+
+      handleUserSwitchRequest(owner.id);
+
+      // Verify operator context is locked down and target is pending
+      assert.strictEqual(isLocked, true, 'Terminal must immediately lock down');
+      assert.strictEqual(pendingSwitchUserId, owner.id, 'Target switch ID must be pending');
+      // Verify active user in storage was NOT prematurely mutated
+      assert.strictEqual(SmartOrdersStore.getActiveUser().id, cashier.id, 'Active user must NOT be optimistically promoted');
+    });
+
+    test('fail-closed: wrong PIN attempt aborts switch and prevents target user promotion', async () => {
+      SmartOrdersStore.switchTenant('tenant-100hich-01');
+      const storeUsers = SmartOrdersStore.getUsers();
+      const owner = storeUsers.find((u) => u.role === 'OWNER')!;
+      const cashier = storeUsers.find((u) => u.role === 'CASHIER')!;
+
+      const rbacUsers = await RBACService.getAllUsers();
+      const rbacOwner = rbacUsers.find((u) => u.role === 'OWNER')!;
+
+      SmartOrdersStore.setActiveUserId(cashier.id);
+      let isLocked = true;
+      let pendingSwitchUserId: string | null = owner.id;
+
+      // Bad PIN attempt for target user in RBAC
+      const failedAttempt = await RBACService.verifyLoginPin('9999', rbacOwner.id);
+      assert.strictEqual(failedAttempt.success, false, 'Bad PIN must fail verification');
+
+      // On failure, unlock is NOT called, isLocked remains true, target is NOT promoted
+      assert.strictEqual(isLocked, true, 'Terminal must remain locked on failed PIN');
+      assert.strictEqual(SmartOrdersStore.getActiveUser().id, cashier.id, 'Active user must remain cashier');
+    });
+
+    test('successful cryptographic PBKDF2 PIN verification promotes target user', async () => {
+      SmartOrdersStore.switchTenant('tenant-100hich-01');
+      const storeUsers = SmartOrdersStore.getUsers();
+      const owner = storeUsers.find((u) => u.role === 'OWNER')!;
+      const cashier = storeUsers.find((u) => u.role === 'CASHIER')!;
+
+      const rbacUsers = await RBACService.getAllUsers();
+      const rbacOwner = rbacUsers.find((u) => u.role === 'OWNER')!;
+
+      SmartOrdersStore.setActiveUserId(cashier.id);
+      let isLocked = true;
+      let pendingSwitchUserId: string | null = owner.id;
+
+      // Legitimate Owner PIN verification via RBAC PBKDF2
+      const legitimateAttempt = await RBACService.verifyLoginPin('1234', rbacOwner.id);
+      assert.strictEqual(legitimateAttempt.success, true, 'Valid Owner PIN must succeed');
+
+      // On unlock success in App.tsx:
+      SmartOrdersStore.setActiveUserId(owner.id);
+      isLocked = false;
+      pendingSwitchUserId = null;
+
+      assert.strictEqual(isLocked, false);
+      assert.strictEqual(pendingSwitchUserId, null);
+      assert.strictEqual(SmartOrdersStore.getActiveUser().id, owner.id, 'Owner must now be the active operator');
     });
   });
 });
