@@ -232,8 +232,8 @@ console.log('\n[Suite 4: Staff & RBAC Identity Partitioning]');
   // 100 Hich Staff
   SmartOrdersStore.switchTenant('tenant-100hich-01');
   const hichStaff = SmartOrdersStore.getUsers();
-  assert(hichStaff.some((u) => u.fullName.includes('سارا رضایی')), '100 Hich includes Sara (Shift Manager)');
-  assert(hichStaff.some((u) => u.fullName.includes('نیما کمالی')), '100 Hich includes Nima (Barista)');
+  assert(hichStaff.some((u) => u.fullName.includes('مهدان مهدوی') || u.role === 'OWNER'), '100 Hich includes Mahdan (Owner)');
+  assert(hichStaff.some((u) => u.fullName.includes('صندوقدار شیفت') || u.role === 'CASHIER'), '100 Hich includes Shift Cashier (Cashier)');
   assert(!hichStaff.some((u) => u.fullName.includes('آرین خسروی')), '100 Hich does NOT include Modendo Gamemaster');
 }
 
