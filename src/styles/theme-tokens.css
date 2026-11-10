@@ -24,9 +24,10 @@
     --app-text: #FFFFFF;
     --app-border: rgba(255, 255, 255, 0.16);
 
-    /* 100 HICH Brand Signature: Carmine Red (#8C1318) & Liquid Gold (#9E8A5E) */
-    --color-brand-primary: #8C1318;
-    --color-brand-primary-rgb: 140, 19, 24;
+    /* 100 HICH Brand Signature: Crimson Red (#D71921), Carmine Red (#8C1318) & Liquid Gold (#9E8A5E) */
+    --color-brand-primary: #D71921;
+    --color-brand-carmine: #8C1318;
+    --color-brand-primary-rgb: 215, 25, 33;
     --color-brand-primary-hover: #A5171D;
     --color-brand-primary-light: rgba(140, 19, 24, 0.22);
     --color-brand-primary-border: rgba(140, 19, 24, 0.55);
@@ -152,6 +153,7 @@
 
     --color-brand-accent: #3B82F6; /* PS5 Neon Blue */
     --color-brand-accent-hover: #60A5FA;
+    --color-brand-gold-light: rgba(59, 130, 246, 0.15);
 
     /* Semantic Surface Colors */
     --color-surface-base: #08090C;

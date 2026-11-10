@@ -358,7 +358,7 @@ export default function App() {
         backgroundColor: activeTenant.palette.primaryBg,
         color: activeTenant.palette.textPrimary,
       } as React.CSSProperties}
-      className="min-h-screen bg-[var(--app-bg,#070A0F)] text-white flex flex-col font-sans relative overflow-x-hidden selection:bg-[#8C1318] selection:text-white"
+      className="min-h-screen bg-[var(--color-surface-base,var(--app-bg,#070A0F))] text-white flex flex-col font-sans relative overflow-x-hidden selection:bg-[var(--color-brand-primary)] selection:text-white"
     >
       {/* Apple VisionOS Ambient Luminous Mesh Underlay */}
       <div className="vision-ambient-mesh" aria-hidden="true">

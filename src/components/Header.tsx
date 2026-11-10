@@ -86,7 +86,7 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       data-tenant={tenant.id}
-      className="vision-glass-slab border-b border-white/15 sticky top-0 z-40 transition-all select-none shadow-xl"
+      className="vision-glass-slab bg-[var(--color-header-bg,rgba(12,22,38,0.76))] border-b border-[var(--color-header-border,rgba(255,255,255,0.15))] sticky top-0 z-40 transition-all select-none shadow-xl"
     >
       {/* Top Main Brand & Control Bar */}
       <div className="max-w-[1720px] mx-auto px-3 md:px-5 py-2.5 flex items-center justify-between gap-3">
@@ -150,20 +150,25 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Navigation Tabs strictly isolated for 100 HICH */}
-          <nav className="hidden lg:flex items-center bg-[rgba(12,20,35,0.65)] p-1.5 rounded-2xl border border-white/12 text-xs font-bold gap-2 backdrop-blur-xl shadow-inner font-sans" dir="rtl">
+          {/* Navigation Tabs dynamically decoupled for multi-tenant styling (RSK-05) */}
+          <nav className="hidden lg:flex items-center bg-[var(--color-surface-card,rgba(12,20,35,0.65))] p-1.5 rounded-2xl border border-[var(--color-surface-border,rgba(255,255,255,0.12))] text-xs font-bold gap-2 backdrop-blur-xl shadow-inner font-sans" dir="rtl">
             <button
               onClick={() => {
                 playPosBeep('click');
                 onTabChange('pos');
               }}
+              style={currentTab === 'pos' ? {
+                background: 'var(--color-tab-active-bg)',
+                borderColor: 'var(--color-tab-active-border)',
+                boxShadow: 'var(--glow-accent, 0 0 20px rgba(140,19,24,0.6))',
+              } : undefined}
               className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold ${
                 currentTab === 'pos'
-                  ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-[0_0_20px_rgba(140,19,24,0.6),0_0_10px_rgba(158,138,94,0.4)]'
-                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
+                  ? 'border text-white'
+                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
               }`}
             >
-              <UtensilsCrossed className="w-4 h-4 text-[#90D2ED]" />
+              <UtensilsCrossed className="w-4 h-4 text-[var(--color-brand-accent,#90D2ED)]" />
               <span>صندوق و بارتندر (POS)</span>
             </button>
 
@@ -173,10 +178,15 @@ export const Header: React.FC<HeaderProps> = ({
                   playPosBeep('click');
                   onTabChange('inventory');
                 }}
+                style={currentTab === 'inventory' ? {
+                  background: 'var(--color-tab-active-bg)',
+                  borderColor: 'var(--color-tab-active-border)',
+                  boxShadow: 'var(--glow-accent, 0 0 20px rgba(140,19,24,0.6))',
+                } : undefined}
                 className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold ${
                   currentTab === 'inventory'
-                    ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-[0_0_20px_rgba(140,19,24,0.6),0_0_10px_rgba(158,138,94,0.4)]'
-                    : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
+                    ? 'border text-white'
+                    : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
                 }`}
                 title="مدیریت انبارداری و سنسوری (Sensory & BOM)"
               >
@@ -199,10 +209,15 @@ export const Header: React.FC<HeaderProps> = ({
                 playPosBeep('click');
                 onTabChange('settings');
               }}
+              style={currentTab === 'settings' ? {
+                background: 'var(--color-tab-active-bg)',
+                borderColor: 'var(--color-tab-active-border)',
+                boxShadow: 'var(--glow-accent, 0 0 20px rgba(140,19,24,0.6))',
+              } : undefined}
               className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold ${
                 currentTab === 'settings'
-                  ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-[0_0_20px_rgba(140,19,24,0.6),0_0_10px_rgba(158,138,94,0.4)]'
-                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10'
+                  ? 'border text-white'
+                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
               }`}
               title="تنظیمات سیستم، تجهیزات چاپگر و گیت امنیتی RBAC"
             >
@@ -383,18 +398,22 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Mobile Navigation Tabs strictly isolated for 100 HICH */}
-      <div className="lg:hidden border-t border-[#293444] px-4 py-2 flex items-center justify-around bg-[#081425] text-xs font-bold font-sans" dir="rtl">
+      {/* Mobile Navigation Tabs dynamically decoupled for multi-tenant styling (RSK-05) */}
+      <div className="lg:hidden border-t border-[var(--color-header-border,#293444)] px-4 py-2 flex items-center justify-around bg-[var(--color-header-bg,#081425)] text-xs font-bold font-sans" dir="rtl">
         <button
           onClick={() => {
             playPosBeep('click');
             onTabChange('pos');
           }}
+          style={currentTab === 'pos' ? {
+            background: 'var(--color-tab-active-bg)',
+            borderColor: 'var(--color-tab-active-border)',
+          } : undefined}
           className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
-            currentTab === 'pos' ? 'bg-[#8C1318] text-white shadow-md' : 'text-[#9EACB8]'
+            currentTab === 'pos' ? 'text-white shadow-md border' : 'text-[#9EACB8] border-transparent'
           }`}
         >
-          <UtensilsCrossed className="w-3.5 h-3.5" />
+          <UtensilsCrossed className="w-3.5 h-3.5 text-[var(--color-brand-accent,#90D2ED)]" />
           <span>صندوق و بارتندر (POS)</span>
         </button>
 
@@ -404,11 +423,15 @@ export const Header: React.FC<HeaderProps> = ({
               playPosBeep('click');
               onTabChange('inventory');
             }}
+            style={currentTab === 'inventory' ? {
+              background: 'var(--color-tab-active-bg)',
+              borderColor: 'var(--color-tab-active-border)',
+            } : undefined}
             className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
-              currentTab === 'inventory' ? 'bg-[#8C1318] text-white shadow-md' : 'text-[#9EACB8]'
+              currentTab === 'inventory' ? 'text-white shadow-md border' : 'text-[#9EACB8] border-transparent'
             }`}
           >
-            <Boxes className="w-3.5 h-3.5" />
+            <Boxes className="w-3.5 h-3.5 text-amber-400" />
             <span>انبارداری و سنسوری</span>
           </button>
         ) : (
@@ -427,8 +450,12 @@ export const Header: React.FC<HeaderProps> = ({
             playPosBeep('click');
             onTabChange('settings');
           }}
+          style={currentTab === 'settings' ? {
+            background: 'var(--color-tab-active-bg)',
+            borderColor: 'var(--color-tab-active-border)',
+          } : undefined}
           className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
-            currentTab === 'settings' ? 'bg-[#8C1318] text-white shadow-md' : 'text-[#9EACB8]'
+            currentTab === 'settings' ? 'text-white shadow-md border' : 'text-[#9EACB8] border-transparent'
           }`}
         >
           <Settings className="w-3.5 h-3.5" />
