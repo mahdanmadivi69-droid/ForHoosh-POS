@@ -17,6 +17,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { Coffee, Plus, AlertCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { CatalogMenuItem, SelectedBean } from '../types/catalog';
 import { formatToman } from '../services/financialMath';
+import { getProductWallpaper, getProductWallpaperStyle } from '../utils/productWallpapers';
 
 interface CatalogCardProps {
   item: CatalogMenuItem;
@@ -77,17 +78,19 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
     }));
   }, []);
 
-  // Compute active price based on dual-bean selection
+  // Compute active price based on dual-bean selection with resilient fallbacks
   const currentPrice = item.hasDualBean
     ? selectedBean === 'blend'
-      ? item.priceBlend ?? item.basePriceToman
-      : item.priceArabica ?? item.basePriceToman
-    : item.basePriceToman;
+      ? item.priceBlend ?? item.priceToman ?? item.basePriceToman ?? 0
+      : item.priceArabica ?? item.priceToman ?? item.basePriceToman ?? 0
+    : item.priceToman ?? item.basePriceToman ?? 0;
 
   const handleCardClick = () => {
     if (isOutOfStock) return;
     onAddToCart(item, selectedBean);
   };
+
+  const wallpaperUrl = getProductWallpaper(item);
 
   return (
     <div
@@ -112,8 +115,25 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
             : 'cursor-pointer hover:shadow-[0_20px_40px_-8px_rgba(140,19,24,0.4)]'
         }`}
       >
+        {/* Dynamic Item-Specific Full-Bleed Wallpaper */}
+        <div
+          className="product-card-wallpaper absolute inset-0 bg-cover bg-center z-0 transition-transform duration-500 group-hover:scale-105 pointer-events-none"
+          style={getProductWallpaperStyle(item)}
+        />
+
+        {/* VisionOS Liquid Glass Legibility Overlay */}
+        <div
+          className="product-card-liquid-glass-overlay absolute inset-0 z-10 pointer-events-none"
+          style={{
+            backdropFilter: 'blur(12px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+            background: 'linear-gradient(180deg, rgba(10, 14, 22, 0.40) 0%, rgba(6, 8, 12, 0.75) 100%)',
+            boxShadow: 'inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35)',
+          }}
+        />
+
         {/* Glass Sheen Dynamic Light Reflection */}
-        <div className="glass-sheen" />
+        <div className="glass-sheen z-15 pointer-events-none" />
 
         {/* Card Header & Badges */}
         <div className="relative z-20 flex flex-col gap-2">

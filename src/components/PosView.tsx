@@ -73,6 +73,8 @@ import { LiquidGlassPaymentSheet, SettlementResult } from './LiquidGlassPaymentS
 import { CatalogService } from '../services/catalog/catalogService';
 import { OpenTabRecord } from '../db/schema';
 import { usePrinterStore } from '../stores/usePrinterStore';
+import { PosMainLayout, PosCartPanel } from './pos';
+import { getProductWallpaper, getProductWallpaperStyle } from '../utils/productWallpapers';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -83,6 +85,96 @@ const IRANIAN_BANKNOTES_TOMAN = [
   1000000,
   2000000,
 ];
+
+/**
+ * Catalog Item Priority Hierarchy (Directive KW-DIR-ALPHA-2026-11-10-023)
+ * Prioritizes:
+ * 1. اسپرسو (Espresso)
+ * 2-3. آمریکانو (Americano / Brewed Coffee)
+ * 4-6. فلت وایت (Flat White / Cold Drinks)
+ * 7-8. کلد برو (Cold Brew / Brewed Coffee / Cold Drinks)
+ * 9-10. لاته (Latte)
+ * 11. چای / دمنوش (Teas / Infusions)
+ * 12. کرواسان (Croissants / Pastries)
+ */
+export const getItemPriorityRank = (item: MenuItem): number => {
+  const id = (item.id || '').toLowerCase();
+  const nameFa = (item.nameFa || '').toLowerCase();
+  const nameEn = (item.nameEn || '').toLowerCase();
+  const cat = (item.categoryId || '').toLowerCase();
+
+  // 1. اسپرسو (Espresso)
+  if (id === 'item-esp-50' || id === '100hich-esp-single') return 1;
+  if (id === 'item-esp-100' || id === '100hich-esp-double-yirgacheffe') return 2;
+  if (
+    (nameFa.includes('اسپرسو') || nameEn.includes('espresso')) &&
+    !nameFa.includes('ماکیاتو') &&
+    !nameFa.includes('آیس') &&
+    !nameFa.includes('آمریکانو') &&
+    !nameFa.includes('بلند') &&
+    !nameFa.includes('تونیک')
+  ) {
+    return 3;
+  }
+
+  // 2-3. آمریکانو (Americano / Brewed Coffee)
+  if (id === 'item-ame-50' || id === '100hich-esp-americano') return 4;
+  if (id === 'item-ame-100') return 5;
+  if (
+    (nameFa.includes('آمریکانو') || nameEn.includes('americano') || nameFa.includes('اسریکانو')) &&
+    !nameFa.includes('آیس')
+  ) {
+    return 6;
+  }
+
+  // 4-6. فلت وایت (Flat White / Cold Drinks)
+  if (id === 'item-flw-50' || id === '100hich-esp-flat-white') return 7;
+  if (id === 'item-flw-100') return 8;
+  if (nameFa.includes('فلت وایت') || nameEn.includes('flat white')) return 9;
+
+  // 7-8. کلد برو (Cold Brew / Brewed Coffee / Cold Drinks)
+  if (
+    id.includes('coldbrew') ||
+    nameFa.includes('کلد برو') ||
+    nameEn.includes('cold brew') ||
+    nameEn.includes('coldbrew')
+  ) {
+    return 10;
+  }
+  if (id === 'item-ice-ame-50') return 11;
+  if (id === 'item-ice-ame-100') return 12;
+
+  // 9-10. لاته (Latte)
+  if (id === 'item-lat-50' || id === '100hich-esp-latte-oat') return 13;
+  if (id === 'item-lat-100') return 14;
+
+  // 11. چای / دمنوش (Tea / Infusion)
+  if (
+    id === 'item-tea-lahijan' ||
+    id.includes('tea-lahijan') ||
+    nameFa.includes('چای تخصصی')
+  ) {
+    return 15;
+  }
+
+  // 12. کرواسان (Croissant / Pastries)
+  if (
+    id === 'item-bakery-croissant' ||
+    id.includes('croissant') ||
+    nameFa.includes('کروسان') ||
+    nameFa.includes('کرواسان') ||
+    nameEn.includes('croissant')
+  ) {
+    return 16;
+  }
+
+  // Secondary categories
+  if ((nameFa.includes('لاته') || nameEn.includes('latte')) && !nameFa.includes('آیس')) return 20;
+  if (nameFa.includes('چای') || nameFa.includes('دمنوش')) return 21;
+  if (cat.includes('pastry') || cat.includes('bakery') || nameFa.includes('کیک')) return 22;
+
+  return 100;
+};
 
 interface PosViewProps {
   tenant: Tenant;
@@ -207,26 +299,28 @@ export const PosView: React.FC<PosViewProps> = ({
 
   const stockAlertStats = countStockAlerts(menuItems, globalThreshold);
 
-  // Filter menu items
-  const filteredItems = menuItems.filter((item) => {
-    if (!item.isAvailable) return false;
-    const matchesCat = selectedCategoryId === 'all' || item.categoryId === selectedCategoryId;
-    const matchesRoast = roastFilter === 'all' || item.roast === roastFilter;
-    const matchesSearch =
-      !searchQuery.trim() ||
-      item.nameFa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.nameEn && item.nameEn.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.origin && item.origin.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.notes && item.notes.some((n) => n.toLowerCase().includes(searchQuery.toLowerCase())));
+  // Filter and sort menu items according to prioritized catalog hierarchy
+  const filteredItems = menuItems
+    .filter((item) => {
+      if (!item.isAvailable) return false;
+      const matchesCat = selectedCategoryId === 'all' || item.categoryId === selectedCategoryId;
+      const matchesRoast = roastFilter === 'all' || item.roast === roastFilter;
+      const matchesSearch =
+        !searchQuery.trim() ||
+        item.nameFa.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.nameEn && item.nameEn.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.origin && item.origin.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (item.notes && item.notes.some((n) => n.toLowerCase().includes(searchQuery.toLowerCase())));
 
-    if (!matchesCat || !matchesRoast || !matchesSearch) return false;
+      if (!matchesCat || !matchesRoast || !matchesSearch) return false;
 
-    if (stockFilter === 'ALERTS_ONLY') {
-      const status = evaluateStockStatus(item.currentStock, item.lowStockThreshold, globalThreshold).status;
-      return status === 'LOW' || status === 'OUT_OF_STOCK';
-    }
-    return true;
-  });
+      if (stockFilter === 'ALERTS_ONLY') {
+        const status = evaluateStockStatus(item.currentStock, item.lowStockThreshold, globalThreshold).status;
+        return status === 'LOW' || status === 'OUT_OF_STOCK';
+      }
+      return true;
+    })
+    .sort((a, b) => getItemPriorityRank(a) - getItemPriorityRank(b));
 
   // Hotkeys: 1-9 to add items, P for POS card, C for cash
   useEffect(() => {
@@ -826,9 +920,10 @@ export const PosView: React.FC<PosViewProps> = ({
   const totalCartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
-    <div className="flex-1 flex flex-col xl:flex-row gap-4 p-3 md:p-5 max-w-[1720px] mx-auto w-full relative select-none">
-      {/* ================= LEFT / MAIN: Catalog & Products Section ================= */}
-      <section className="flex-1 flex flex-col min-w-0">
+    <>
+      <PosMainLayout
+        catalog={
+          <>
         {/* Top Announcement & Roast Specs Bar */}
         <div className="bg-gradient-to-r from-[#0F223D] via-[#1B222C] to-[#0F223D] p-3 rounded-xl border border-[#293444] mb-3 flex flex-wrap items-center justify-between gap-2 shadow-inner">
           <div className="flex items-center gap-3">
@@ -1000,7 +1095,7 @@ export const PosView: React.FC<PosViewProps> = ({
           </div>
 
           {/* Search Box */}
-          <div className="relative flex-1 max-w-xs">
+          <div className="relative w-[330px] min-w-[330px] max-w-[330px]">
             <input
               type="text"
               value={searchQuery}
@@ -1045,7 +1140,7 @@ export const PosView: React.FC<PosViewProps> = ({
                     onAddToCart={handleAddCatalogCardItem}
                     isOutOfStock={isOutOfStock}
                     isLowStock={isLow}
-                    hotkeyIndex={idx < 9 ? idx + 1 : undefined}
+                    hotkeyIndex={idx < 9 ? idx : undefined}
                   />
                 );
               }
@@ -1059,7 +1154,25 @@ export const PosView: React.FC<PosViewProps> = ({
                   }`}
                 >
                   {/* Card Header & Badges */}
-                  <div className="p-3 pb-2 flex-1 flex flex-col justify-between">
+                  {/* Dynamic Item-Specific Full-Bleed Wallpaper */}
+                  <div
+                    className="product-card-wallpaper absolute inset-0 bg-cover bg-center z-0 transition-transform duration-500 group-hover:scale-105 pointer-events-none"
+                    style={getProductWallpaperStyle(item)}
+                  />
+
+                  {/* VisionOS Liquid Glass Legibility Overlay */}
+                  <div
+                    className="product-card-liquid-glass-overlay absolute inset-0 z-10 pointer-events-none"
+                    style={{
+                      backdropFilter: 'blur(12px) saturate(160%)',
+                      WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                      background: 'linear-gradient(180deg, rgba(10, 14, 22, 0.40) 0%, rgba(6, 8, 12, 0.75) 100%)',
+                      boxShadow: 'inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35)',
+                    }}
+                  />
+
+                  {/* Card Header & Badges */}
+                  <div className="relative z-20 p-3 pb-2 flex-1 flex flex-col justify-between">
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {item.roastLevelText ? (
@@ -1148,7 +1261,7 @@ export const PosView: React.FC<PosViewProps> = ({
                   </div>
 
                   {/* Card Bottom Bar: Price & Action CTA */}
-                  <div className="px-3 py-2 bg-[#121417]/90 border-t border-[#293444] rounded-b-xl flex items-center justify-between gap-1.5 mt-auto overflow-hidden">
+                  <div className="relative z-20 px-3 py-2 bg-[#121417]/90 border-t border-[#293444] rounded-b-xl flex items-center justify-between gap-1.5 mt-auto overflow-hidden">
                     <div className="min-w-0 pr-0.5">
                       <span className="text-[9px] text-[#9EACB8] block leading-none mb-0.5 font-medium">
                         قیمت پایه:
@@ -1196,406 +1309,46 @@ export const PosView: React.FC<PosViewProps> = ({
             })
           )}
         </div>
-      </section>
-
-      {/* ================= RIGHT / SIDEBAR: ORDER & POS CART ================= */}
-      <aside
-        id="pos-cart-panel"
-        className="hidden xl:flex flex-col w-[420px] vision-glass-slab rounded-3xl sticky top-[72px] h-[calc(100vh-90px)] shadow-2xl transition-all overflow-hidden border border-white/15"
-      >
-        {/* Cart Header & Order Type Toggle */}
-        <div className="p-3.5 border-b border-white/10 bg-[rgba(12,25,48,0.7)] backdrop-blur-xl flex flex-col gap-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#D71921] animate-ping"></span>
-              <h2 className="text-sm font-extrabold text-white tracking-wide">
-                سفارش جاری بار (فاکتور)
-              </h2>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  playPosBeep('click');
-                  setIsOpenTabsModalOpen(true);
-                }}
-                className="px-2.5 py-1 rounded-lg bg-[rgba(140,19,24,0.3)] hover:bg-[rgba(140,19,24,0.5)] border border-[rgba(144,210,237,0.3)] text-[#90D2ED] hover:text-white text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
-                title="مشاهده و بازیابی تب‌های باز سالن"
-              >
-                <Layers className="w-3 h-3" />
-                <span>تب‌های باز</span>
-                <span className="w-4 h-4 rounded-full bg-[#8C1318] text-white flex items-center justify-center text-[10px] font-mono">
-                  {openTabsCount}
-                </span>
-              </button>
-              <span className="font-mono text-xs bg-[#081425] px-2 py-0.5 rounded text-[#F3E9DD] border border-[#293444] font-bold">
-                #100H-{activeShift ? activeShift.id.slice(-4) : 'POS'}
-              </span>
-            </div>
-          </div>
-
-          {/* Active Recalled Tab Notice Banner */}
-          {activeTabId && (
-            <div className="bg-gradient-to-r from-[rgba(140,19,24,0.45)] to-[rgba(15,34,61,0.7)] border border-[rgba(144,210,237,0.45)] p-2 rounded-xl flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5">
-                <RotateCcw className="w-3.5 h-3.5 text-[#90D2ED]" />
-                <span className="font-bold text-white">
-                  در حال ویرایش تب: <span className="text-[#F5E8D0]">{tableLabel || 'میز فعال'}</span>
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={handleCancelTabEditing}
-                className="text-[10px] text-rose-300 hover:text-white px-2 py-0.5 rounded bg-black/40 border border-white/10 cursor-pointer"
-              >
-                خروج از ویرایش
-              </button>
-            </div>
-          )}
-
-          {/* Dine-in vs Takeaway Toggle */}
-          <div className="grid grid-cols-2 gap-1.5 bg-[#121417]/80 p-1 rounded-lg border border-[#293444] text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => {
-                playPosBeep('click');
-                setOrderType('TAKEAWAY');
-              }}
-              className={`py-1.5 rounded flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                orderType === 'TAKEAWAY'
-                  ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] border border-[#9E8A5E]/50 text-white shadow-md'
-                  : 'text-[#9EACB8] hover:text-white'
-              }`}
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>بیرون‌بر (Takeaway)</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                playPosBeep('click');
-                setOrderType('DINE_IN');
-              }}
-              className={`py-1.5 rounded flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                orderType === 'DINE_IN'
-                  ? 'bg-[#D71921] text-white shadow-sm'
-                  : 'text-[#9EACB8] hover:text-white'
-              }`}
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>سرو در سالن (Dine-in)</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Customer Detail */}
-        <div className="px-3 py-2 bg-[#121417]/50 border-b border-[#293444] flex items-center justify-between text-xs gap-2">
-          <input
-            type="text"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder={
-              orderType === 'DINE_IN'
-                ? 'نام مشتری / مهمان سالن...'
-                : 'نام مشتری بیرون‌بر...'
-            }
-            className="bg-transparent text-white placeholder:text-[#9EACB8]/70 text-xs w-full focus:outline-none"
+          </>
+        }
+        cart={
+          <PosCartPanel
+            cartItems={cartItems}
+            orderType={orderType}
+            setOrderType={setOrderType}
+            tableLabel={tableLabel}
+            setTableLabel={setTableLabel}
+            customerName={customerName}
+            setCustomerName={setCustomerName}
+            orderNotes={orderNotes}
+            setOrderNotes={setOrderNotes}
+            discountPercent={discountPercent}
+            handleApplyDiscountPercent={handleApplyDiscountPercent}
+            canEditFinancials={canEditFinancials}
+            grossAmountToman={grossAmountToman}
+            discountAmountToman={discountAmountToman}
+            netTotalToman={netTotalToman}
+            handleClearCart={handleClearCart}
+            handleStartCheckout={handleStartCheckout}
+            handleUpdateQuantity={handleUpdateQuantity}
+            handleRemoveItem={handleRemoveItem}
+            activeTabId={activeTabId}
+            handleCancelTabEditing={handleCancelTabEditing}
+            openTabsCount={openTabsCount}
+            onOpenTabsModal={() => {
+              playPosBeep('click');
+              setIsOpenTabsModalOpen(true);
+            }}
+            activeShift={activeShift}
+            onOpenTablePicker={() => setIsTablePickerOpen(true)}
+            activeTenant={activeTenant}
+            formatToman={formatToman}
           />
-          {orderType === 'DINE_IN' ? (
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setIsTablePickerOpen(true)}
-                className="text-[10px] bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors"
-                title="انتخاب بصری از نقشه سالن"
-              >
-                <LayoutGrid className="w-3 h-3 text-emerald-400" />
-                <span>نقشه</span>
-              </button>
-              <select
-                value={tableLabel}
-                onChange={(e) => setTableLabel(e.target.value)}
-                className="text-[10px] text-white bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] cursor-pointer focus:outline-none"
-              >
-                {activeTenant.workflow.requireTableNumber && (
-                  <option value="" className="bg-[#1B222C] text-gray-400">
-                    -- انتخاب میز --
-                  </option>
-                )}
-                {floorPlanService.getTables().map((tbl) => (
-                  <option key={tbl.id} value={tbl.display_name} className="bg-[#1B222C] text-white">
-                    {tbl.display_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <span className="text-[10px] text-[#9EACB8] bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] whitespace-nowrap">
-              بیرون‌بر
-            </span>
-          )}
-        </div>
-
-        {/* Quick-Select Table Button Bar for Table-Required Tenants (e.g. Modendo) */}
-        {orderType === 'DINE_IN' && activeTenant.workflow.requireTableNumber && activeTenant.workflow.quickTables.length > 0 && (
-          <div className="px-3 py-2 bg-[#121417]/80 border-b border-[#293444]">
-            <div className="text-[10px] text-[#9EACB8] font-bold mb-1.5 flex items-center justify-between">
-              <span>میزهای پرکاربرد (سریع):</span>
-              {tableLabel ? (
-                <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-                  <span>میز فعال:</span>
-                  <span className="bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-600/50">{tableLabel}</span>
-                </span>
-              ) : (
-                <span className="text-amber-400 font-bold">میزی انتخاب نشده است</span>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {activeTenant.workflow.quickTables.map((tbl) => (
-                <button
-                  key={tbl}
-                  type="button"
-                  onClick={() => {
-                    playPosBeep('click');
-                    setTableLabel(tbl);
-                  }}
-                  className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
-                    tableLabel === tbl
-                      ? 'bg-[var(--app-accent,#005A3E)] text-white shadow-md border border-emerald-400 scale-105'
-                      : 'bg-[#1B222C] text-[#9EACB8] hover:text-white border border-[#293444]'
-                  }`}
-                >
-                  {tbl}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Invoice Notes */}
-        <div className="px-3 py-1.5 bg-[#121417]/30 border-b border-[#293444] flex items-center text-xs gap-2">
-          <input
-            type="text"
-            value={orderNotes}
-            onChange={(e) => setOrderNotes(e.target.value)}
-            placeholder="یادداشت فاکتور (توضیحات کلی سفارش)..."
-            className="bg-transparent text-white placeholder:text-[#9EACB8]/50 text-xs w-full focus:outline-none"
-          />
-        </div>
-
-        {/* Cart Items List (Scrollable Area) */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
-          {cartItems.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#9EACB8]">
-              <div className="w-14 h-14 rounded-full bg-[#121417] flex items-center justify-center border border-[#293444] mb-3">
-                <Coffee className="w-7 h-7 text-[#D71921] opacity-80" />
-              </div>
-              <p className="text-sm font-bold text-white mb-1">فاکتور هنوز خالی است</p>
-              <p className="text-xs text-[#9EACB8] max-w-xs">
-                آیتمی از منوی بلندها، بار گرم یا دانه‌های تخصصی صد هیچ را لمس کنید تا به سبد اضافه شود.
-              </p>
-            </div>
-          ) : (
-            cartItems.map((item) => (
-              <div
-                key={item.id}
-                className="bg-[#121417] border border-[#293444] rounded-lg p-2.5 flex flex-col gap-2 transition hover:border-[#293444]/90"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-bold text-white truncate">
-                      {item.itemNameSnapshot}
-                    </h4>
-                    {item.modifiers && item.modifiers.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-[#9EACB8]">
-                        {item.modifiers.map((m, mIdx) => (
-                          <span key={mIdx} className="text-[#F3E9DD] font-medium">
-                            {m.nameFa}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {item.notes && (
-                      <div className="text-[10px] text-amber-400 italic">*{item.notes}</div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveItem(item.id)}
-                    className="text-[#9EACB8] hover:text-red-400 p-1 cursor-pointer"
-                    title="حذف آیتم"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between pt-1 border-t border-[#293444]/50">
-                  <div className="flex items-center bg-[#1B222C] border border-[#293444] rounded-md">
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateQuantity(item.id, -1)}
-                      className="w-6 h-6 flex items-center justify-center text-[#9EACB8] hover:text-white font-black text-sm active:bg-[#D71921] cursor-pointer"
-                    >
-                      -
-                    </button>
-                    <span className="w-7 text-center font-bold text-xs text-white num-heavy">
-                      {item.quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleUpdateQuantity(item.id, 1)}
-                      className="w-6 h-6 flex items-center justify-center text-[#9EACB8] hover:text-white font-black text-sm active:bg-[#D71921] cursor-pointer"
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className="text-left">
-                    <span className="text-xs font-black text-white num-heavy">
-                      {formatToman(item.subtotalToman)}
-                    </span>
-                    <span className="text-[9px] text-[#9EACB8] mr-0.5">تومان</span>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Discount & POS Keypad Accelerators */}
-        <div className="px-3 pt-2 pb-1 border-t border-[#293444] bg-[#121417]/40">
-          <div className="flex items-center justify-between text-[11px] text-[#9EACB8] mb-1.5">
-            <span className="flex items-center gap-1.5">
-              <span>تخفیف سریع فاکتور:</span>
-              {!canEditFinancials && (
-                <span className="flex items-center gap-0.5 text-[9px] bg-amber-950/60 text-amber-300 border border-amber-800/60 px-1.5 py-0.2 rounded font-bold">
-                  <Lock className="w-2.5 h-2.5" />
-                  <span>قفل مدیر</span>
-                </span>
-              )}
-            </span>
-            <span className="text-[#F3E9DD] font-bold">
-              {discountPercent > 0 ? `${discountPercent}٪ تخفیف فعال` : 'بدون تخفیف'}
-            </span>
-          </div>
-          <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
-            <button
-              type="button"
-              onClick={() => handleApplyDiscountPercent(0)}
-              className={`py-1 rounded border text-[11px] cursor-pointer ${
-                discountPercent === 0
-                  ? 'bg-[#0F223D] border-[#D71921] text-white'
-                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
-              }`}
-            >
-              ۰٪
-            </button>
-            <button
-              type="button"
-              disabled={!canEditFinancials}
-              onClick={() => handleApplyDiscountPercent(5)}
-              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1 rounded border text-[11px] ${
-                !canEditFinancials
-                  ? 'opacity-40 cursor-not-allowed bg-[#1B222C] border-[#293444] text-[#9EACB8]'
-                  : discountPercent === 5
-                  ? 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
-                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white cursor-pointer'
-              }`}
-            >
-              ۵٪ ویژه
-            </button>
-            <button
-              type="button"
-              disabled={!canEditFinancials}
-              onClick={() => handleApplyDiscountPercent(10)}
-              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1 rounded border text-[11px] ${
-                !canEditFinancials
-                  ? 'opacity-40 cursor-not-allowed bg-[#1B222C] border-[#293444] text-[#9EACB8]'
-                  : discountPercent === 10
-                  ? 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
-                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white cursor-pointer'
-              }`}
-            >
-              ۱۰٪ باریستا
-            </button>
-            <button
-              type="button"
-              disabled={!canEditFinancials}
-              onClick={() => handleApplyDiscountPercent(15)}
-              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1 rounded border text-[11px] ${
-                !canEditFinancials
-                  ? 'opacity-40 cursor-not-allowed bg-[#1B222C] border-[#293444] text-[#9EACB8]'
-                  : discountPercent === 15
-                  ? 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
-                  : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white cursor-pointer'
-              }`}
-            >
-              ۱۵٪ همکار
-            </button>
-          </div>
-        </div>
-
-        {/* Calculations & Total Summary */}
-        <div className="p-3.5 bg-[#121417] border-t border-[#293444] space-y-2 rounded-b-xl">
-          <div className="flex justify-between items-center text-xs text-[#9EACB8]">
-            <span>جمع اقلام:</span>
-            <span className="font-bold text-white num-heavy">
-              {formatToman(grossAmountToman)} تومان
-            </span>
-          </div>
-
-          <div className="flex justify-between items-center text-xs text-[#9EACB8]">
-            <span>کسر تخفیف:</span>
-            <span className="text-[#F3E9DD] num-heavy">
-              {discountAmountToman > 0
-                ? `-${formatToman(discountAmountToman)} تومان`
-                : '۰ تومان'}
-            </span>
-          </div>
-
-          <div className="h-[1px] bg-[#293444]/80 my-1"></div>
-
-          <div className="flex justify-between items-baseline">
-            <span className="text-sm font-extrabold text-white">مبلغ نهایی فاکتور:</span>
-            <div className="text-right">
-              <span className="text-xl font-black text-[#D71921] num-heavy tracking-tight">
-                {formatToman(netTotalToman)}
-              </span>
-              <span className="text-xs text-[#9EACB8] mr-1">تومان</span>
-            </div>
-          </div>
-
-          {/* Action Controls */}
-          <div className="grid grid-cols-5 gap-2 pt-1.5">
-            <button
-              type="button"
-              onClick={handleClearCart}
-              title="پاک کردن سبد"
-              className="col-span-1 bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-[#9EACB8] hover:text-red-400 rounded-lg flex items-center justify-center transition cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={handleStartCheckout}
-              disabled={cartItems.length === 0}
-              className="col-span-4 bg-gradient-to-r from-[#8C1318] to-[#6E0D12] hover:from-[#A8171E] hover:to-[#8C1318] disabled:bg-stone-800 disabled:opacity-40 text-white font-black py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-[#90D2ED]/40 shadow-[0_0_25px_rgba(140,19,24,0.6)] transition transform active:scale-[0.98] cursor-pointer"
-            >
-              <CreditCard className="w-5 h-5" />
-              <span>ثبت نهایی و تسویه فاکتور</span>
-            </button>
-          </div>
-        </div>
-      </aside>
+        }
+      />
 
       {/* ================= MOBILE FLOATING CART BAR ================= */}
-      <div className="xl:hidden fixed bottom-4 left-4 right-4 z-40">
+      <div className="hidden fixed bottom-4 left-4 right-4 z-40">
         <button
           onClick={() => setIsMobileCartOpen(true)}
           className="w-full bg-[#D71921] hover:bg-[#B8141B] text-white p-3 rounded-xl flex items-center justify-between font-black shadow-[0_0_25px_rgba(215,25,33,0.6)] cursor-pointer"
@@ -1612,7 +1365,7 @@ export const PosView: React.FC<PosViewProps> = ({
 
       {/* ================= MOBILE CART DRAWER ================= */}
       {isMobileCartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end xl:hidden">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end hidden">
           <div className="bg-[#1B222C] border-t border-[#293444] rounded-t-2xl max-h-[85vh] flex flex-col p-4">
             <div className="flex items-center justify-between pb-3 border-b border-[#293444]">
               <h3 className="text-base font-extrabold text-white flex items-center gap-2">
@@ -1783,6 +1536,6 @@ export const PosView: React.FC<PosViewProps> = ({
           setOrderType('DINE_IN');
         }}
       />
-    </div>
+    </>
   );
 };
