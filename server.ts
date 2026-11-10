@@ -38,6 +38,13 @@ const __dirname = path.dirname(__filename);
 const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
+function resolveActiveTenant(): 'tenant-100hich-01' | 'tenant-modendo-01' {
+  if (process.env.VITE_TENANT_ID === 'tenant-modendo-01') return 'tenant-modendo-01';
+  if (process.env.VITE_TENANT_ID === 'tenant-100hich-01') return 'tenant-100hich-01';
+  if (PORT === 3002) return 'tenant-modendo-01';
+  return 'tenant-100hich-01';
+}
+
 /**
  * Creates and configures the Express application.
  * Exported for seamless in-process integration testing.
@@ -471,15 +478,38 @@ export async function startServer() {
     });
     app.use(vite.middlewares);
   } else {
-    app.use(express.static(path.resolve(__dirname, 'dist')));
-    app.get('*', (_req, res) => {
-      res.sendFile(path.resolve(__dirname, 'dist', 'index.html'));
+    const activeTenant = resolveActiveTenant();
+    const defaultDir = activeTenant === 'tenant-modendo-01' ? 'modendo' : '100hich';
+    const defaultDistPath = path.resolve(__dirname, 'dist', defaultDir);
+    const hichDistPath = path.resolve(__dirname, 'dist', '100hich');
+    const modendoDistPath = path.resolve(__dirname, 'dist', 'modendo');
+
+    // Mount partitioned static assets
+    app.use('/100hich', express.static(hichDistPath));
+    app.use('/modendo', express.static(modendoDistPath));
+    app.use(express.static(defaultDistPath));
+
+    // Tenant-aware SPA fallback routing
+    app.get('*', (req, res) => {
+      if (req.path.startsWith('/modendo')) {
+        const modendoIndex = path.resolve(modendoDistPath, 'index.html');
+        if (fs.existsSync(modendoIndex)) return res.sendFile(modendoIndex);
+      }
+      if (req.path.startsWith('/100hich')) {
+        const hichIndex = path.resolve(hichDistPath, 'index.html');
+        if (fs.existsSync(hichIndex)) return res.sendFile(hichIndex);
+      }
+      const defaultIndex = path.resolve(defaultDistPath, 'index.html');
+      if (fs.existsSync(defaultIndex)) {
+        return res.sendFile(defaultIndex);
+      }
+      res.status(404).send(`Application build not found for ${activeTenant}. Please run: npm run build:${defaultDir}`);
     });
   }
 
   server.on('error', (err: any) => {
     if (err.code === 'EADDRINUSE') {
-      const altPort = PORT + 1;
+      const altPort = PORT >= 3000 && PORT < 3010 ? PORT + 10 : PORT + 1;
       console.log(`Port ${PORT} is in use, falling back to port ${altPort}...`);
       server.listen(altPort, '0.0.0.0', () => {
         console.log(`☕ CAFE OS Server running on port ${altPort} [Mode: ${isProduction ? 'Production' : 'Dev'}]`);
