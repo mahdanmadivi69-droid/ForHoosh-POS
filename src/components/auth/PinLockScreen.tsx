@@ -306,37 +306,37 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
           </div>
         </div>
 
-        {/* User Profile Selector Chips - Loaded dynamically from verified active staff */}
-        <div className="w-full flex items-center justify-center gap-2 mb-4">
-          {activeUsers.map((u) => {
-            const isSelected = selectedUserId === u.id || (u.role === 'OWNER' && !selectedUserId);
-            const isOwner = u.role === 'OWNER';
-            return (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => {
-                  hapticAudio.playKeyClick();
-                  hapticAudio.vibrate(15);
-                  setSelectedUserId(u.id);
-                  setPin('');
-                  setErrorMessage(null);
-                }}
-                className={`flex-1 py-2 px-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center gap-0.5 ${
-                  isSelected
-                    ? isOwner
-                      ? 'bg-gradient-to-r from-[#8C1318] to-[#5e0c10] border-[#90D2ED] text-white shadow-[0_0_16px_rgba(140,19,24,0.5)]'
-                      : 'bg-gradient-to-r from-[#0F2E5A] to-[#0A1E3B] border-[#90D2ED] text-white shadow-[0_0_16px_rgba(15,46,90,0.5)]'
-                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
-                }`}
-              >
-                <span className="text-xs font-black truncate max-w-full">{u.fullName}</span>
-                <span className="text-[10px] font-mono text-slate-300 opacity-80">
-                  {isOwner ? 'مالک / مدیر' : u.role === 'CASHIER' ? 'صندوق‌دار شیفت' : u.role}
-                </span>
-              </button>
-            );
-          })}
+        {/* Staff Profile Selector Chips - Hard-Contained Liquid Glass Carousel */}
+        <div className="w-full max-w-[320px] mx-auto mb-4 relative">
+          <div className="overflow-x-auto no-scrollbar scroll-smooth py-1 px-1 flex gap-2 snap-x snap-mandatory">
+            {activeUsers.map((u) => {
+              const isSelected = selectedUserId === u.id || (u.role === 'OWNER' && !selectedUserId);
+              const isOwner = u.role === 'OWNER';
+              return (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedUserId(u.id);
+                    setPin('');
+                    setErrorMessage(null);
+                  }}
+                  className={`shrink-0 w-[95px] h-[48px] rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center p-1 snap-start ${
+                    isSelected
+                      ? isOwner
+                        ? 'bg-gradient-to-r from-[var(--color-brand-primary,#8C1318)] to-[#5e0c10] border-[var(--color-brand-accent,#90D2ED)] text-white shadow-[0_0_16px_var(--color-brand-primary-light,rgba(140,19,24,0.5))] backdrop-blur-md'
+                        : 'bg-gradient-to-r from-[var(--color-brand-secondary,#0F2E5A)] to-[#0A1E3B] border-[var(--color-brand-accent,#90D2ED)] text-white shadow-[0_0_16px_var(--color-brand-secondary-light,rgba(15,46,90,0.5))] backdrop-blur-md'
+                      : 'bg-white/5 border border-white/10 backdrop-blur-md text-slate-400 hover:text-white hover:bg-white/10'
+                  }`}
+                >
+                  <span className="text-xs font-bold truncate w-full text-center">{u.fullName}</span>
+                  <span className="text-[10px] opacity-60 truncate w-full text-center">
+                    {isOwner ? 'مالک / مدیر' : u.role}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* PIN Mask Dots Indicator */}
