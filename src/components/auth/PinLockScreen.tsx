@@ -1,3 +1,4 @@
+import { hapticAudio } from '../../services/hapticAudio';
 import { normalizeDigits } from '../../utils/digitNormalizer';
 /**
  * src/components/auth/PinLockScreen.tsx
@@ -7,9 +8,7 @@ import { normalizeDigits } from '../../utils/digitNormalizer';
  * 
  * Features:
  *  - Default entrypoint on application start and lock.
- *  - Seeded users:
- *     * Owner/Manager: "مهدان مهدوی" (Role: 'OWNER', PIN: '1234')
- *     * Cashier: "صندوقدار شیفت" (Role: 'CASHIER', PIN: '2222')
+ *  - PBKDF2/SHA-256 salted PIN authentication for authorized active staff.
  *  - International standard 12-key POS numpad layout (1-2-3, 4-5-6, 7-8-9, C-0-Backspace).
  *  - 3-Strike Admin Lockout: 3 consecutive failed PIN attempts trigger a 30s cooldown
  *    and reveal "Request KarWand Master Recovery" with a 15-minute challenge token and QR modal.
@@ -39,6 +38,7 @@ import { playPosBeep } from '../../services/soundEffects';
 import { audioFeedback } from '../../services/audioFeedback';
 import { generateQrSvg } from '../../utils/qrCodeGenerator';
 
+
 interface PinLockScreenProps {
   onUnlockSuccess: (user: AuthUserRecord) => void;
   venueTitle?: string;
@@ -54,7 +54,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
 }) => {
   const [pin, setPin] = useState<string>('');
   const [activeUsers, setActiveUsers] = useState<AuthUserRecord[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId || 'auth-user-owner');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(initialUserId || null);
 
   useEffect(() => {
     if (initialUserId) {
@@ -161,11 +161,9 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
     if (lockoutCooldown > 0 || isVerifying) return;
     if (pin.length >= 6) return;
 
-    try {
-      audioFeedback.playTap();
-    } catch {
-      playPosBeep('click');
-    }
+    hapticAudio.playKeyClick();
+    hapticAudio.vibrate(15);
+    try { audioFeedback.playTap(); } catch { playPosBeep('click'); }
 
     setErrorMessage(null);
     setPin((prev) => prev + digit);
@@ -173,21 +171,17 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
 
   const handleBackspace = () => {
     if (lockoutCooldown > 0 || isVerifying) return;
-    try {
-      audioFeedback.playTap();
-    } catch {
-      playPosBeep('click');
-    }
+    hapticAudio.playKeyClick();
+    hapticAudio.vibrate(12);
+    try { audioFeedback.playTap(); } catch { playPosBeep('click'); }
     setPin((prev) => prev.slice(0, -1));
   };
 
   const handleClear = () => {
     if (isVerifying) return;
-    try {
-      audioFeedback.playTap();
-    } catch {
-      playPosBeep('click');
-    }
+    hapticAudio.playKeyClick();
+    hapticAudio.vibrate(20);
+    try { audioFeedback.playTap(); } catch { playPosBeep('click'); }
     setPin('');
     setErrorMessage(null);
   };
@@ -206,11 +200,9 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
       if (res.success && res.user) {
         // Reset failures
         setConsecutiveFails(0);
-        try {
-          audioFeedback.playSuccess();
-        } catch {
-          playPosBeep('success');
-        }
+        hapticAudio.playSuccessChime();
+        hapticAudio.vibrate(50);
+        try { audioFeedback.playSuccess(); } catch { playPosBeep('success'); }
         onUnlockSuccess(res.user);
       } else {
         triggerFailedAttempt();
@@ -224,11 +216,9 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   };
 
   const triggerFailedAttempt = () => {
-    try {
-      audioFeedback.playError();
-    } catch {
-      playPosBeep('delete');
-    }
+    hapticAudio.playErrorBuzz();
+    hapticAudio.vibrate(60);
+    try { audioFeedback.playError(); } catch { playPosBeep('delete'); }
 
     setIsShaking(true);
     setTimeout(() => setIsShaking(false), 500);
@@ -262,8 +252,13 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
 
   const handleUnlockWithMasterRecovery = () => {
     const input = masterRecoveryCodeInput.trim();
-    // Master emergency bypass: '9999' or matching the token challenge suffix
-    if (input === '9999' || input.toUpperCase() === challengeToken.slice(-4)) {
+    if (challengeExpiresAt && Date.now() > challengeExpiresAt) {
+      playPosBeep('delete');
+      setRecoveryError('مهلت توکن بازیابی منقضی شده است. لطفاً مجدداً تلاش کنید.');
+      return;
+    }
+    // Master emergency verification: strictly matching the dynamic token challenge suffix
+    if (challengeToken && input.toUpperCase() === challengeToken.slice(-4)) {
       playPosBeep('success');
       setConsecutiveFails(0);
       setLockoutCooldown(0);
@@ -311,20 +306,18 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
           </div>
         </div>
 
-        {/* User Profile Selector Chips - Strictly 2 Authorized Glass Pills */}
+        {/* User Profile Selector Chips - Loaded dynamically from verified active staff */}
         <div className="w-full flex items-center justify-center gap-2 mb-4">
-          {(activeUsers.length > 0 ? activeUsers.filter(u => u.role === 'OWNER' || u.role === 'CASHIER') : [
-            { id: 'auth-user-owner', fullName: 'مهدان مهدوی', role: 'OWNER' },
-            { id: 'auth-user-cashier', fullName: 'صندوقدار شیفت', role: 'CASHIER' }
-          ]).slice(0, 2).map((u: any) => {
-            const isSelected = selectedUserId === u.id;
+          {activeUsers.map((u) => {
+            const isSelected = selectedUserId === u.id || (u.role === 'OWNER' && !selectedUserId);
             const isOwner = u.role === 'OWNER';
             return (
               <button
                 key={u.id}
                 type="button"
                 onClick={() => {
-                  playPosBeep('click');
+                  hapticAudio.playKeyClick();
+                  hapticAudio.vibrate(15);
                   setSelectedUserId(u.id);
                   setPin('');
                   setErrorMessage(null);
@@ -339,7 +332,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
               >
                 <span className="text-xs font-black truncate max-w-full">{u.fullName}</span>
                 <span className="text-[10px] font-mono text-slate-300 opacity-80">
-                  {isOwner ? 'مالک / مدیر' : 'صندوق‌دار شیفت'}
+                  {isOwner ? 'مالک / مدیر' : u.role === 'CASHIER' ? 'صندوق‌دار شیفت' : u.role}
                 </span>
               </button>
             );
@@ -431,9 +424,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
 
         {/* Footer Hint */}
         <div className="mt-3 text-[11px] text-slate-500 flex items-center justify-center gap-3">
-          <span>پین مالک: ۱۲۳۴</span>
-          <span>•</span>
-          <span>پین صندوقدار: ۲۲۲۲</span>
+          <span>ورود امن با پین‌کد اختصاصی پرسنل</span>
         </div>
       </div>
 
@@ -492,7 +483,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
             {/* Master Recovery Code Input */}
             <div className="w-full space-y-2 mb-4">
               <label className="text-[11px] font-bold text-slate-300 block">
-                مستر کد اضطراری کاروند (تستی: 9999 یا ۴ کاراکتر آخر توکن):
+                مستر کد اضطراری کاروند (۴ کاراکتر انتهای توکن چالش):
               </label>
               <input
                 type="password"

@@ -1875,31 +1875,6 @@ export class SmartOrdersStore {
       recordFailure();
       return { success: false, error: 'کاربری با این مشخصات یافت نشد یا حساب غیرفعال است.' };
     }
-
-    // Fast-path authentication for 100 HICH default PINs (1234 for owner, 2222 for cashier)
-    if (
-      (cleanPass === '1234' || cleanPass === '123456' || cleanPass === '123') &&
-      (matched.role === 'OWNER' || matched.role === 'MANAGER' || matched.username === 'admin' || trimmed === 'admin')
-    ) {
-      loginThrottles.delete(trimmed);
-      this.setActiveUserId(matched.id);
-      try {
-        window.sessionStorage?.setItem('smartorders_session_active_v1', 'true');
-      } catch {}
-      return { success: true, user: matched };
-    }
-    if (
-      cleanPass === '2222' &&
-      (matched.role === 'CASHIER' || matched.username === 'cashier' || trimmed === 'cashier')
-    ) {
-      loginThrottles.delete(trimmed);
-      this.setActiveUserId(matched.id);
-      try {
-        window.sessionStorage?.setItem('smartorders_session_active_v1', 'true');
-      } catch {}
-      return { success: true, user: matched };
-    }
-
     if (matched.credential) {
       const isValid = await verifyPassword(cleanPass, matched.credential);
       if (!isValid) {

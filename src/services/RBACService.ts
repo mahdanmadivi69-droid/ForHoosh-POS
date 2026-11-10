@@ -373,17 +373,6 @@ export class RBACService {
       return { success: false, error: 'پین‌کد باید حداقل ۴ رقم باشد.' };
     }
 
-    // Fast-path guarantee for 100 HICH default PINs
-    const activeUsersFallback = (await db.authUsers.filter((u) => u.isActive).toArray()) || [];
-    if (cleanPin === '1234') {
-      const ownerUser = activeUsersFallback.find((u) => u.role === 'OWNER' || u.id === selectedUserId || u.role === 'MANAGER') || activeUsersFallback[0];
-      if (ownerUser) return { success: true, user: ownerUser };
-    }
-    if (cleanPin === '2222') {
-      const cashierUser = activeUsersFallback.find((u) => u.role === 'CASHIER' || u.id === selectedUserId) || activeUsersFallback.find((u) => u.role === 'CASHIER');
-      if (cashierUser) return { success: true, user: cashierUser };
-    }
-
     try {
       const activeUsers = await db.authUsers.filter((u) => u.isActive).toArray();
 
@@ -392,7 +381,10 @@ export class RBACService {
         if (!targetUser) {
           return { success: false, error: 'کاربر مورد نظر یافت نشد.' };
         }
-        const isMatch = await CryptoSecurity.verifyPin(enteredPin, targetUser.pinHash, targetUser.salt);
+        if (!targetUser.pinHash || !targetUser.salt) {
+          return { success: false, error: 'اطلاعات امنیتی کاربر ناقص است.' };
+        }
+        const isMatch = await CryptoSecurity.verifyPin(cleanPin, targetUser.pinHash, targetUser.salt);
         if (isMatch) {
           return { success: true, user: targetUser };
         }
@@ -401,7 +393,8 @@ export class RBACService {
 
       // Check all active users
       for (const user of activeUsers) {
-        const isMatch = await CryptoSecurity.verifyPin(enteredPin, user.pinHash, user.salt);
+        if (!user.pinHash || !user.salt) continue;
+        const isMatch = await CryptoSecurity.verifyPin(cleanPin, user.pinHash, user.salt);
         if (isMatch) {
           return { success: true, user };
         }
