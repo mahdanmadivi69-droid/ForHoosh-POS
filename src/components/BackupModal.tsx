@@ -2,7 +2,6 @@ import React, { useRef, useState, useEffect } from 'react';
 import {
   Download,
   Upload,
-  RotateCcw,
   X,
   Shield,
   AlertTriangle,
@@ -132,14 +131,6 @@ export const BackupModal: React.FC<BackupModalProps> = ({
     };
     reader.readAsText(file);
     e.target.value = '';
-  };
-
-  const handleResetDemo = () => {
-    if (window.confirm('آیا مطمئن هستید که می‌خواهید تمام داده‌ها را به نسخه آزمایشی اولیه بازنشانی کنید؟ تمام سوابق فعلی جایگزین خواهند شد.')) {
-      SmartOrdersStore.resetDatabaseToSeed();
-      setFeedback({ type: 'success', message: 'اطلاعات با موفقیت به داده‌های اولیه بازنشانی شد.' });
-      onDataRestored();
-    }
   };
 
   const formatPersianDate = (isoString?: string | null) => {
@@ -333,21 +324,6 @@ export const BackupModal: React.FC<BackupModalProps> = ({
             >
               <Upload className="w-3.5 h-3.5 text-teal-400" />
               <span>انتخاب و بارگذاری فایل پشتیبان</span>
-            </button>
-          </div>
-
-          {/* 4. Reset Demo card */}
-          <div className="bg-stone-950 p-3 rounded-xl border border-stone-800 flex items-center justify-between gap-2">
-            <div>
-              <span className="font-semibold text-stone-300 block">بازنشانی به داده‌های آزمایشی اولیه</span>
-              <span className="text-[10px] text-stone-500">پاکسازی دیتای فعلی و بارگذاری داده‌های پایه آزمایشی</span>
-            </div>
-            <button
-              onClick={handleResetDemo}
-              className="bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-900/60 py-1.5 px-3 rounded-lg font-medium flex items-center gap-1 transition"
-            >
-              <RotateCcw className="w-3 h-3" />
-              <span>بازنشانی</span>
             </button>
           </div>
         </div>

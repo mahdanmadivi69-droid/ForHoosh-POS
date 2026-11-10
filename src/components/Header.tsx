@@ -2,28 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useOutboxSync } from '../hooks/useOutboxSync';
 import { SyncStatusBarBadge } from './SyncStatusBarBadge';
 import {
-  Coffee,
-  Clock,
-  DollarSign,
-  FileText,
   Shield,
-  UtensilsCrossed,
   UserCheck,
-  PowerOff,
   LogOut,
   Lock,
-  Zap,
-  Boxes,
-  Settings,
   LayoutGrid,
-  TrendingUp,
-  Sparkles,
 } from 'lucide-react';
 import { Shift, User, Tenant, isManagerOrOwner } from '../types/domain';
-import { formatToman } from '../services/financialMath';
 import { PWAInstallButton } from './PWAInstallButton';
 import { playPosBeep } from '../services/soundEffects';
-import { FEATURES } from '../modules/smart-orders';
 import { getActiveTenant } from '../config/tenantConfig';
 
 interface HeaderProps {
@@ -48,19 +35,9 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   tenant,
-  activeShift,
   activeUser,
-  allUsers,
-  currentTab,
   onTabChange,
-  onOpenShiftModal,
-  onOpenZReportModal,
-  onOpenExpenseModal,
   onOpenBackupModal,
-  onOpenBaristaKds,
-  onOpenTenantConfig,
-  baristaActiveCount = 0,
-  onUserChange,
   onUserSwitchRequest,
   onLockTerminal,
   onLogout,
@@ -86,14 +63,26 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       data-tenant={tenant.id}
-      className="vision-glass-slab bg-[var(--color-header-bg,rgba(12,22,38,0.76))] border-b border-[var(--color-header-border,rgba(255,255,255,0.15))] sticky top-0 z-40 transition-all select-none shadow-xl"
+      className="vision-glass-slab bg-[var(--color-header-bg,rgba(12,22,38,0.76))] border-b border-[var(--color-header-border,rgba(255,255,255,0.15))] sticky top-0 z-40 transition-all select-none shadow-xl h-[64px] flex items-center"
     >
-      {/* Top Main Brand & Control Bar */}
-      <div className="max-w-[1720px] mx-auto px-3 md:px-5 py-2.5 flex items-center justify-between gap-3">
-        {/* Brand & Branch Identity */}
-        <div className="flex items-center gap-3">
+      <div className="max-w-[1720px] mx-auto px-3 md:px-5 w-full flex items-center justify-between gap-3 relative select-none">
+        {/* ================= FAR TOP-RIGHT SECTOR (Physical Right in RTL) ================= */}
+        <div className="flex items-center gap-2.5 z-10">
+          {/* AntiGravity Cloud Outbox Sync Badge */}
+          <SyncStatusBarBadge status={syncStatus} onManualFlush={triggerFlush} />
+
+          {/* Boiler Telemetry Status Chip */}
+          <div className="flex items-center gap-1.5 bg-[rgba(12,20,35,0.7)] border border-white/10 px-2.5 py-1.5 rounded-xl text-xs text-[#9EACB8] backdrop-blur-md shadow-inner">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-slate-400 font-medium hidden sm:inline">بویلر:</span>
+            <span className="text-slate-200 font-mono font-bold num-heavy">93.5°C • 9.1 Bar</span>
+          </div>
+        </div>
+
+        {/* ================= CENTER BRAND LOCKUP (Strict Horizontal Center) ================= */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
           <div
-            className="flex items-center bg-[rgba(12,20,35,0.7)] border border-white/15 px-3 py-1.5 rounded-xl shadow-inner backdrop-blur-md"
+            className="flex items-center bg-[rgba(12,20,35,0.7)] border border-white/15 px-3.5 py-1.5 rounded-2xl shadow-inner backdrop-blur-md"
             style={{
               backgroundColor: activeTenant.palette.surfaceBg,
               borderColor: activeTenant.palette.borderHairline,
@@ -149,124 +138,43 @@ export const Header: React.FC<HeaderProps> = ({
               </p>
             </div>
           </div>
-
-          {/* Navigation Tabs (Streamlined 4 Clean Primary Pills) */}
-          <nav className="hidden lg:flex items-center bg-[var(--color-surface-card,rgba(12,20,35,0.65))] p-1.5 rounded-2xl border border-[var(--color-surface-border,rgba(255,255,255,0.12))] text-xs font-bold gap-2 backdrop-blur-xl shadow-inner font-sans" dir="rtl">
-            {/* 1. POS Pill */}
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('pos');
-              }}
-              style={currentTab === 'pos' ? {
-                background: 'var(--color-tab-active-bg)',
-                borderColor: 'var(--color-tab-active-border)',
-                boxShadow: 'var(--glow-accent, 0 0 20px rgba(140,19,24,0.6))',
-              } : undefined}
-              className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold ${
-                currentTab === 'pos'
-                  ? 'border text-white'
-                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
-              }`}
-              title="صندوق فروش و بارتندر (POS)"
-            >
-              <UtensilsCrossed className="w-4 h-4 text-[var(--color-brand-accent,#90D2ED)]" />
-              <span>صندوق</span>
-            </button>
-
-            {/* 2. KDS Pill */}
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onOpenBaristaKds();
-              }}
-              className="px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold text-[#A0B2C6] hover:text-white hover:bg-white/10 border border-transparent"
-              title="نمایشگر زنده بار باریستا (KDS)"
-            >
-              <Coffee className="w-4 h-4 text-[#F3E9DD]" />
-              <span>بار باریستا (KDS)</span>
-              {baristaActiveCount > 0 && (
-                <span className="bg-[#D71921] text-white text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-[0_0_8px_rgba(215,25,33,0.8)]">
-                  {baristaActiveCount}
-                </span>
-              )}
-            </button>
-
-            {/* 3. Reports Pill */}
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('reports');
-              }}
-              style={currentTab === 'reports' ? {
-                background: 'var(--color-tab-active-bg)',
-                borderColor: 'var(--color-tab-active-border)',
-                boxShadow: 'var(--glow-accent, 0 0 20px rgba(140,19,24,0.6))',
-              } : undefined}
-              className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold ${
-                currentTab === 'reports'
-                  ? 'border text-white'
-                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
-              }`}
-              title="گزارشات جامع فروش، شیفت و مالی"
-            >
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span>گزارشات</span>
-              {!isManager && <Lock className="w-2.5 h-2.5 text-amber-400" />}
-            </button>
-
-            {/* 4. Settings Pill */}
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('settings');
-              }}
-              style={currentTab === 'settings' ? {
-                background: 'var(--color-tab-active-bg)',
-                borderColor: 'var(--color-tab-active-border)',
-                boxShadow: 'var(--glow-accent, 0 0 20px rgba(140,19,24,0.6))',
-              } : undefined}
-              className={`px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer font-bold ${
-                currentTab === 'settings'
-                  ? 'border text-white'
-                  : 'text-[#A0B2C6] hover:text-white hover:bg-white/10 border-transparent'
-              }`}
-              title="تنظیمات سیستم، تجهیزات چاپگر و گیت امنیتی RBAC"
-            >
-              <Settings className="w-4 h-4 text-slate-300" />
-              <span>تنظیمات</span>
-              {!isManager && <Lock className="w-2.5 h-2.5 text-amber-400" />}
-            </button>
-          </nav>
         </div>
 
-        {/* Live Status, Clock & Actions */}
-        <div className="flex items-center gap-2.5">
-                    {/* AntiGravity Cloud Outbox Sync Badge */}
-          <SyncStatusBarBadge status={syncStatus} onManualFlush={triggerFlush} />
+        {/* ================= TOP-LEFT SECTOR (Physical Left in RTL) ================= */}
+        <div className="flex items-center gap-2.5 z-10">
+          {/* Subtle back-to-launcher icon button */}
+          <button
+            onClick={() => {
+              playPosBeep('click');
+              onTabChange('hub');
+            }}
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-[rgba(20,32,54,0.7)] hover:bg-[rgba(30,48,80,0.9)] text-[#90D2ED] hover:text-white border border-white/15 transition cursor-pointer shadow-inner"
+            title="بازگشت به لانچر برنامه‌ها (Hub)"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
 
-          {/* Shift Status Indicator */}
-          {activeShift ? (
-            <div className="hidden sm:flex items-center gap-1.5 bg-emerald-950/50 border border-emerald-800/60 text-emerald-400 px-2.5 py-1 rounded-lg text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="font-semibold">
-                شیفت فعال: {formatToman(activeShift.openingCashToman)} ت
-              </span>
-            </div>
-          ) : (
-            <div className="hidden sm:flex items-center gap-1.5 bg-rose-950/50 border border-rose-800/60 text-rose-400 px-2.5 py-1 rounded-lg text-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
-              <span>شیفت بسته است</span>
-            </div>
-          )}
-
-          {/* Live Clock & Cashier Info */}
-          <div onClick={() => onUserSwitchRequest ? onUserSwitchRequest(activeUser.id) : onLockTerminal?.()} title="کلیک جهت قفل یا تغییر کاربر" className="hidden md:flex flex-col text-left pl-1 cursor-pointer hover:opacity-80 transition">
+          {/* Live Clock */}
+          <div className="hidden md:flex flex-col text-left pl-1">
             <span className="text-xs font-mono font-bold text-white num-heavy leading-tight">
               {liveClock || '00:00:00'}
             </span>
             <span className="text-[10px] text-[#9EACB8] leading-tight">
-              {activeUser.fullName.split(' ')[0]} •{' '}
+              {new Date().toLocaleDateString('fa-IR', { weekday: 'short', month: 'numeric', day: 'numeric' })}
+            </span>
+          </div>
+
+          {/* Operator Profile Badge */}
+          <div
+            onClick={() => onUserSwitchRequest ? onUserSwitchRequest(activeUser.id) : onLockTerminal?.()}
+            className="flex items-center gap-1.5 bg-[rgba(12,20,35,0.75)] hover:bg-[rgba(20,32,54,0.9)] border border-white/15 rounded-xl px-2.5 py-1.5 backdrop-blur-md shadow-inner cursor-pointer transition select-none"
+            title="تغییر کاربر یا قفل صندوق (کلیک جهت ورود PIN)"
+          >
+            <UserCheck className="w-3.5 h-3.5 text-[#90D2ED]" />
+            <span className="text-xs font-bold text-white max-w-[120px] truncate">
+              {activeUser.fullName}
+            </span>
+            <span className="text-[10px] bg-white/10 border border-white/10 px-1.5 py-0.5 rounded text-slate-300 font-medium">
               {activeUser.role === 'OWNER'
                 ? 'مالک'
                 : activeUser.role === 'MANAGER'
@@ -275,211 +183,40 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'صندوق‌دار'
                 : 'باریستا'}
             </span>
-          </div>
-
-          {/* SaaS Tenant Intake Modal Trigger */}
-          {onOpenTenantConfig && (
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onOpenTenantConfig();
-              }}
-              className="flex items-center gap-1.5 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-800/60 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
-              title="پذیرش و راه‌اندازی شعبه جدید (SaaS Onboarding)"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span className="hidden xl:inline">شعبه جدید</span>
-            </button>
-          )}
-
-          {/* Expense Modal Button */}
-          {activeShift && (
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onOpenExpenseModal();
-              }}
-              className="hidden lg:flex items-center gap-1 bg-[#1B222C] hover:bg-[#222B38] text-rose-300 border border-[#293444] px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
-              title="ثبت هزینه تنخواه از صندوق نقد"
-            >
-              <DollarSign className="w-3.5 h-3.5 text-rose-400" />
-              <span>هزینه تنخواه</span>
-            </button>
-          )}
-
-          {/* Open / Close Shift / Z-Report Button */}
-          <button
-            onClick={() => {
-              playPosBeep('click');
-              if (activeShift) {
-                if (onOpenZReportModal) {
-                  onOpenZReportModal();
-                } else {
-                  onOpenShiftModal();
-                }
-              } else {
-                onOpenShiftModal();
-              }
-            }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-extrabold transition cursor-pointer ${
-              activeShift
-                ? 'bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-700/80 shadow-[0_0_12px_-2px_rgba(215,25,33,0.4)]'
-                : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md'
-            }`}
-            title={activeShift ? 'بستن شیفت و صدور گزارش جامع Z-Report' : 'بازگشایی شیفت کاری جدید'}
-          >
-            {activeShift ? (
-              <>
-                <PowerOff className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">بستن شیفت / Z-Report</span>
-              </>
-            ) : (
-              <>
-                <Clock className="w-3.5 h-3.5" />
-                <span>شروع شیفت</span>
-              </>
-            )}
-          </button>
-
-          {/* User & Role Switcher (Strict PIN Switch Guard) */}
-          <div
-            onClick={() => {
-              if (onUserSwitchRequest) {
-                onUserSwitchRequest(activeUser.id);
-              } else {
-                onLockTerminal?.();
-              }
-            }}
-            className="flex items-center gap-1.5 bg-[rgba(12,20,35,0.75)] hover:bg-[rgba(20,32,54,0.9)] border border-white/15 rounded-xl px-2.5 py-1 backdrop-blur-md shadow-inner cursor-pointer transition"
-            title="تغییر کاربر یا قفل صندوق (نیازمند تأیید PIN امنیتی)"
-          >
-            <UserCheck className="w-3.5 h-3.5 text-[#9EACB8]" />
-            <select
-              value={activeUser.id}
-              onChange={(e) => {
-                const targetId = e.target.value;
-                if (targetId !== activeUser.id) {
-                  if (onUserSwitchRequest) {
-                    onUserSwitchRequest(targetId);
-                  } else {
-                    onUserChange(targetId);
-                  }
-                }
-              }}
-              onClick={(e) => e.stopPropagation()}
-              className="bg-transparent text-white focus:outline-none text-xs font-semibold cursor-pointer max-w-[110px] truncate"
-            >
-              {allUsers.map((u) => (
-                <option key={u.id} value={u.id} className="bg-[#1B222C] text-white">
-                  {u.fullName}
-                </option>
-              ))}
-            </select>
             <Lock className="w-3 h-3 text-amber-400/80" />
           </div>
 
-          {/* Logout / Lock Button */}
+          {/* Lock / Logout Button */}
           <button
             onClick={() => {
               playPosBeep('click');
               onLogout();
             }}
-            className="flex items-center gap-1.5 bg-[rgba(20,32,54,0.75)] hover:bg-rose-950/70 text-[#CAD5E2] hover:text-rose-200 border border-white/15 hover:border-rose-600/60 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer vision-haptic-press"
+            className="flex items-center gap-1.5 bg-[rgba(20,32,54,0.75)] hover:bg-rose-950/70 text-[#CAD5E2] hover:text-rose-200 border border-white/15 hover:border-rose-600/60 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer vision-haptic-press shadow-inner"
             title="خروج از حساب و بازگشت به صفحه لاگین"
           >
             <LogOut className="w-3.5 h-3.5 text-rose-400" />
             <span className="hidden sm:inline">خروج</span>
           </button>
 
-          {/* Backup Button (for Owner & Manager) */}
-          {(activeUser.role === 'OWNER' || activeUser.role === 'MANAGER') && (
+          {/* Support Backup button (for diagnostic export and cloud backup validation) */}
+          {isManager && (
             <button
               onClick={() => {
                 playPosBeep('click');
                 onOpenBackupModal();
               }}
-              className="hidden xl:flex items-center gap-1 bg-[#1B222C] hover:bg-[#222B38] text-[#F3E9DD] border border-[#293444] rounded-lg px-2.5 py-1.5 text-xs font-medium transition cursor-pointer"
-              title="پشتیبان‌گیری و بازیابی اطلاعات"
+              className="flex items-center gap-1 bg-[#1B222C] hover:bg-[#222B38] text-[#F3E9DD] border border-[#293444] rounded-xl px-2.5 py-1.5 text-xs font-medium transition cursor-pointer"
+              title="پشتیبان‌گیری ابری و بازیابی اطلاعات"
             >
-              <Shield className="w-3.5 h-3.5 text-[#F3E9DD]" />
-              <span>پشتیبان</span>
+              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden xl:inline">پشتیبان</span>
             </button>
           )}
 
-          {/* In-app PWA install button */}
+          {/* PWA Install Button */}
           <PWAInstallButton />
         </div>
-      </div>
-
-      {/* Mobile Navigation Tabs (Streamlined 4 Clean Primary Pills) */}
-      <div className="lg:hidden border-t border-[var(--color-header-border,#293444)] px-4 py-2 flex items-center justify-around bg-[var(--color-header-bg,#081425)] text-xs font-bold font-sans" dir="rtl">
-        <button
-          onClick={() => {
-            playPosBeep('click');
-            onTabChange('pos');
-          }}
-          style={currentTab === 'pos' ? {
-            background: 'var(--color-tab-active-bg)',
-            borderColor: 'var(--color-tab-active-border)',
-          } : undefined}
-          className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
-            currentTab === 'pos' ? 'text-white shadow-md border' : 'text-[#9EACB8] border-transparent'
-          }`}
-        >
-          <UtensilsCrossed className="w-3.5 h-3.5 text-[var(--color-brand-accent,#90D2ED)]" />
-          <span>صندوق</span>
-        </button>
-
-        <button
-          onClick={() => {
-            playPosBeep('click');
-            onOpenBaristaKds();
-          }}
-          className="px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all text-[#9EACB8] border-transparent"
-        >
-          <Coffee className="w-3.5 h-3.5 text-[#F3E9DD]" />
-          <span>KDS</span>
-          {baristaActiveCount > 0 && (
-            <span className="bg-[#D71921] text-white text-[9px] font-black px-1 rounded-full">
-              {baristaActiveCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => {
-            playPosBeep('click');
-            onTabChange('reports');
-          }}
-          style={currentTab === 'reports' ? {
-            background: 'var(--color-tab-active-bg)',
-            borderColor: 'var(--color-tab-active-border)',
-          } : undefined}
-          className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
-            currentTab === 'reports' ? 'text-white shadow-md border' : 'text-[#9EACB8] border-transparent'
-          }`}
-        >
-          <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
-          <span>گزارشات</span>
-        </button>
-
-        <button
-          onClick={() => {
-            playPosBeep('click');
-            onTabChange('settings');
-          }}
-          style={currentTab === 'settings' ? {
-            background: 'var(--color-tab-active-bg)',
-            borderColor: 'var(--color-tab-active-border)',
-          } : undefined}
-          className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition-all ${
-            currentTab === 'settings' ? 'text-white shadow-md border' : 'text-[#9EACB8] border-transparent'
-          }`}
-        >
-          <Settings className="w-3.5 h-3.5" />
-          <span>تنظیمات</span>
-          {!isManager && <Lock className="w-2.5 h-2.5 text-amber-400" />}
-        </button>
       </div>
     </header>
   );

@@ -174,7 +174,7 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
 
           {/* Item Name & Details */}
           <div>
-            <h3 className="font-extrabold text-sm md:text-base text-white group-hover:text-[#90D2ED] transition-colors leading-snug">
+            <h3 className="font-extrabold text-sm md:text-base text-[#F5F5F7]/92 group-hover:text-[#90D2ED] transition-colors leading-snug">
               {item.nameFa}
             </h3>
             {item.description && (
@@ -227,8 +227,8 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
         <div className="relative z-20 mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
           <div>
             <span className="text-[10px] text-[#9EACB8] block">قیمت نهایی:</span>
-            <span className="font-black text-sm md:text-base text-white font-mono tracking-tight">
-              {formatToman(currentPrice)} <span className="text-[10px] font-sans text-[#90D2ED]">تومان</span>
+            <span className="font-black text-sm md:text-base text-[#C5A880] font-mono tracking-tight">
+              {formatToman(currentPrice)} <span className="text-[10px] font-sans text-[#C5A880]/80">تومان</span>
             </span>
           </div>
 

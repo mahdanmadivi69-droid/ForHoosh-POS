@@ -9,11 +9,14 @@ import {
   Trash2,
   Lock,
   CreditCard,
+  User as UserIcon,
+  Phone,
 } from 'lucide-react';
 import { OrderItem, OrderType } from '../../types/domain';
 import { TenantProfile } from '../../config/tenantConfig';
 import { floorPlanService } from '../../services/floorPlanService';
 import { playPosBeep } from '../../services/soundEffects';
+import { getCafeDatabase } from '../../db/cafeDb';
 
 export interface PosCartPanelProps {
   cartItems: OrderItem[];
@@ -23,6 +26,8 @@ export interface PosCartPanelProps {
   setTableLabel: (table: string) => void;
   customerName: string;
   setCustomerName: (name: string) => void;
+  customerPhone?: string;
+  setCustomerPhone?: (phone: string) => void;
   orderNotes: string;
   setOrderNotes: (notes: string) => void;
   discountPercent: number;
@@ -64,6 +69,8 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
   setTableLabel,
   customerName,
   setCustomerName,
+  customerPhone,
+  setCustomerPhone,
   orderNotes,
   setOrderNotes,
   discountPercent,
@@ -86,6 +93,45 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
   formatToman,
   className = '',
 }) => {
+  const tenantIdStr = activeTenant.id as string;
+  const is100Hich = tenantIdStr === '100hich' || tenantIdStr === 'tenant-100hich-01';
+
+  // Persist customer record to tenant-partitioned Dexie database
+  const handleCustomerPersist = async (name: string, phone: string) => {
+    const cleanName = (name || '').trim();
+    const cleanPhone = (phone || '').trim();
+    if (!cleanName && !cleanPhone) return;
+
+    try {
+      const tenantDb = getCafeDatabase(activeTenant.id);
+      let existing = null;
+      if (cleanPhone) {
+        existing = await tenantDb.customers.where('phone').equals(cleanPhone).first();
+      }
+      if (!existing && cleanName) {
+        existing = await tenantDb.customers.where('name').equals(cleanName).first();
+      }
+
+      if (existing) {
+        await tenantDb.customers.update(existing.id, {
+          name: cleanName || existing.name,
+          phone: cleanPhone || existing.phone,
+        });
+      } else {
+        const id = `cust_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        await tenantDb.customers.put({
+          id,
+          name: cleanName,
+          phone: cleanPhone,
+          tenantId: activeTenant.id,
+          createdAt: Date.now(),
+        });
+      }
+    } catch (err) {
+      console.warn('[PosCartPanel] Customer persistence error:', err);
+    }
+  };
+
   return (
     <div
       className={`bg-[rgba(20,25,36,0.72)] backdrop-blur-[28px] border border-white/10 rounded-3xl shadow-2xl transition-all overflow-hidden flex flex-col h-full w-full ${className}`}
@@ -108,7 +154,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#D71921] animate-ping"></span>
             <h2 className="text-sm font-extrabold text-white tracking-wide">
-              سفارش جاری بار (فاکتور)
+              سفارش جاری بار
             </h2>
           </div>
           <div className="flex items-center gap-1.5">
@@ -189,87 +235,118 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
       </div>
 
       {/* ================= CUSTOMER DETAIL & TABLE PICKER ================= */}
-      <div className="px-3 py-2 bg-[#121417]/50 border-b border-[#293444] flex items-center justify-between text-xs gap-2">
-        <input
-          type="text"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          placeholder={
-            orderType === 'DINE_IN'
-              ? 'نام مشتری / مهمان سالن...'
-              : 'نام مشتری بیرون‌بر...'
-          }
-          className="bg-transparent text-white placeholder:text-[#9EACB8]/70 text-xs w-full focus:outline-none"
-        />
-        {orderType === 'DINE_IN' ? (
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={onOpenTablePicker}
-              className="text-[10px] bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors"
-              title="انتخاب بصری از نقشه سالن"
-            >
-              <LayoutGrid className="w-3 h-3 text-emerald-400" />
-              <span>نقشه</span>
-            </button>
-            <select
-              value={tableLabel}
-              onChange={(e) => setTableLabel(e.target.value)}
-              className="text-[10px] text-white bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] cursor-pointer focus:outline-none"
-            >
-              {activeTenant.workflow.requireTableNumber && (
-                <option value="" className="bg-[#1B222C] text-gray-400">
-                  -- انتخاب میز --
-                </option>
-              )}
-              {floorPlanService.getTables().map((tbl) => (
-                <option key={tbl.id} value={tbl.display_name} className="bg-[#1B222C] text-white">
-                  {tbl.display_name}
-                </option>
-              ))}
-            </select>
+      {is100Hich ? (
+        <div className="px-3 py-2 bg-[#121417]/50 border-b border-[#293444] flex flex-col gap-1.5 text-xs">
+          <div className="flex items-center gap-2">
+            <UserIcon className="w-3.5 h-3.5 text-[#9EACB8] shrink-0" />
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              onBlur={() => handleCustomerPersist(customerName, customerPhone || '')}
+              placeholder="نام مشتری..."
+              className="bg-transparent text-white placeholder:text-[#9EACB8]/70 text-xs w-full focus:outline-none"
+            />
           </div>
-        ) : (
-          <span className="text-[10px] text-[#9EACB8] bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] whitespace-nowrap">
-            بیرون‌بر
-          </span>
-        )}
-      </div>
-
-      {/* Quick-Select Table Button Bar for Table-Required Tenants */}
-      {orderType === 'DINE_IN' && activeTenant.workflow.requireTableNumber && activeTenant.workflow.quickTables.length > 0 && (
-        <div className="px-3 py-2 bg-[#121417]/80 border-b border-[#293444]">
-          <div className="text-[10px] text-[#9EACB8] font-bold mb-1.5 flex items-center justify-between">
-            <span>میزهای پرکاربرد (سریع):</span>
-            {tableLabel ? (
-              <span className="text-emerald-400 font-extrabold flex items-center gap-1">
-                <span>میز فعال:</span>
-                <span className="bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-600/50">{tableLabel}</span>
-              </span>
-            ) : (
-              <span className="text-amber-400 font-bold">میزی انتخاب نشده است</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {activeTenant.workflow.quickTables.map((tbl) => (
-              <button
-                key={tbl}
-                type="button"
-                onClick={() => {
-                  playPosBeep('click');
-                  setTableLabel(tbl);
-                }}
-                className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
-                  tableLabel === tbl
-                    ? 'bg-[var(--app-accent,#005A3E)] text-white shadow-md border border-emerald-400 scale-105'
-                    : 'bg-[#1B222C] text-[#9EACB8] hover:text-white border border-[#293444]'
-                }`}
-              >
-                {tbl}
-              </button>
-            ))}
+          <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+            <Phone className="w-3.5 h-3.5 text-[#9EACB8] shrink-0" />
+            <input
+              type="tel"
+              value={customerPhone || ''}
+              onChange={(e) => setCustomerPhone?.(e.target.value)}
+              onBlur={() => handleCustomerPersist(customerName, customerPhone || '')}
+              placeholder="شماره تماس..."
+              dir="ltr"
+              className="bg-transparent text-white placeholder:text-[#9EACB8]/70 text-xs w-full text-right focus:outline-none font-mono"
+            />
           </div>
         </div>
+      ) : (
+        <>
+          <div className="px-3 py-2 bg-[#121417]/50 border-b border-[#293444] flex items-center justify-between text-xs gap-2">
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              onBlur={() => handleCustomerPersist(customerName, customerPhone || '')}
+              placeholder={
+                orderType === 'DINE_IN'
+                  ? 'نام مشتری / مهمان سالن...'
+                  : 'نام مشتری بیرون‌بر...'
+              }
+              className="bg-transparent text-white placeholder:text-[#9EACB8]/70 text-xs w-full focus:outline-none"
+            />
+            {orderType === 'DINE_IN' ? (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={onOpenTablePicker}
+                  className="text-[10px] bg-emerald-950/70 hover:bg-emerald-900 border border-emerald-700/60 text-emerald-300 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors"
+                  title="انتخاب بصری از نقشه سالن"
+                >
+                  <LayoutGrid className="w-3 h-3 text-emerald-400" />
+                  <span>نقشه</span>
+                </button>
+                <select
+                  value={tableLabel}
+                  onChange={(e) => setTableLabel(e.target.value)}
+                  className="text-[10px] text-white bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] cursor-pointer focus:outline-none"
+                >
+                  {activeTenant.workflow.requireTableNumber && (
+                    <option value="" className="bg-[#1B222C] text-gray-400">
+                      -- انتخاب میز --
+                    </option>
+                  )}
+                  {floorPlanService.getTables().map((tbl) => (
+                    <option key={tbl.id} value={tbl.display_name} className="bg-[#1B222C] text-white">
+                      {tbl.display_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <span className="text-[10px] text-[#9EACB8] bg-[#1B222C] px-1.5 py-0.5 rounded border border-[#293444] whitespace-nowrap">
+                بیرون‌بر
+              </span>
+            )}
+          </div>
+
+          {/* Quick-Select Table Button Bar for Table-Required Tenants */}
+          {orderType === 'DINE_IN' && activeTenant.workflow.requireTableNumber && activeTenant.workflow.quickTables.length > 0 && (
+            <div className="px-3 py-2 bg-[#121417]/80 border-b border-[#293444]">
+              <div className="text-[10px] text-[#9EACB8] font-bold mb-1.5 flex items-center justify-between">
+                <span>میزهای پرکاربرد (سریع):</span>
+                {tableLabel ? (
+                  <span className="text-emerald-400 font-extrabold flex items-center gap-1">
+                    <span>میز فعال:</span>
+                    <span className="bg-emerald-950 px-1.5 py-0.5 rounded border border-emerald-600/50">{tableLabel}</span>
+                  </span>
+                ) : (
+                  <span className="text-amber-400 font-bold">میزی انتخاب نشده است</span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {activeTenant.workflow.quickTables.map((tbl) => (
+                  <button
+                    key={tbl}
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setTableLabel(tbl);
+                    }}
+                    className={`px-2.5 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                      tableLabel === tbl
+                        ? 'bg-[var(--app-accent,#005A3E)] text-white shadow-md border border-emerald-400 scale-105'
+                        : 'bg-[#1B222C] text-[#9EACB8] hover:text-white border border-[#293444]'
+                    }`}
+                  >
+                    {tbl}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* ================= INVOICE NOTES ================= */}
@@ -469,27 +546,43 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
           </div>
         </div>
 
-        {/* Action Controls */}
-        <div className="grid grid-cols-5 gap-2 pt-1.5">
+        {/* Action Controls Split */}
+        <div className="flex items-center gap-2 pt-1.5">
           <button
             type="button"
             onClick={handleClearCart}
             title="پاک کردن سبد"
-            className="col-span-1 bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-[#9EACB8] hover:text-red-400 rounded-lg flex items-center justify-center transition cursor-pointer"
+            className="w-10 h-11 shrink-0 bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-[#9EACB8] hover:text-red-400 rounded-xl flex items-center justify-center transition cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
           </button>
 
-          {/* Primary Action Button: High-contrast Crimson Red (#D71921) with Glowing Sheen */}
+          {/* Button 1: ثبت تب / مشاهده تب‌ها */}
+          <button
+            type="button"
+            onClick={() => {
+              playPosBeep('click');
+              onOpenTabsModal();
+            }}
+            className="flex-1 h-11 px-2.5 rounded-xl bg-[rgba(15,28,48,0.85)] hover:bg-[rgba(20,38,65,0.95)] border border-[rgba(144,210,237,0.35)] text-[#90D2ED] hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm"
+          >
+            <Layers className="w-4 h-4 shrink-0 text-[#90D2ED]" />
+            <span className="truncate">ثبت تب / مشاهده تب‌ها</span>
+            <span className="w-4 h-4 rounded-full bg-[#8C1318] text-white flex items-center justify-center text-[10px] font-mono shrink-0">
+              {openTabsCount}
+            </span>
+          </button>
+
+          {/* Button 2: ثبت و پرداخت فوری (Crimson #D71921 CTA) */}
           <button
             type="button"
             onClick={handleStartCheckout}
             disabled={cartItems.length === 0}
-            className="col-span-4 relative group overflow-hidden bg-[#D71921] hover:bg-[#B8141B] active:scale-[0.98] disabled:bg-stone-800 disabled:opacity-40 text-white font-black py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 border border-white/30 shadow-[0_0_25px_rgba(215,25,33,0.65)] hover:shadow-[0_0_35px_rgba(215,25,33,0.85)] transition-all cursor-pointer"
+            className="flex-[1.4] h-11 relative group overflow-hidden bg-[#D71921] hover:bg-[#B8141B] active:scale-[0.98] disabled:bg-stone-800 disabled:opacity-40 text-white font-black px-3 rounded-xl flex items-center justify-center gap-1.5 border border-white/30 shadow-[0_0_20px_rgba(215,25,33,0.6)] hover:shadow-[0_0_30px_rgba(215,25,33,0.8)] transition-all cursor-pointer text-xs"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full duration-1000 transition-transform pointer-events-none" />
-            <CreditCard className="w-5 h-5 shrink-0" />
-            <span className="relative z-10">ثبت و پرداخت</span>
+            <CreditCard className="w-4 h-4 shrink-0" />
+            <span className="relative z-10 whitespace-nowrap">ثبت و پرداخت فوری</span>
           </button>
         </div>
       </div>

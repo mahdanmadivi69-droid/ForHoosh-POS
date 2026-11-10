@@ -131,4 +131,30 @@ describe('POS Obsidian Liquid Glass Layout & Wallpapers (KW-DIR-ALPHA-2026-11-10
     assert.ok(cardContent.includes('rgba(10, 14, 22, 0.40)'), 'CatalogCard must apply 10,14,22 gradient');
     assert.ok(cardContent.includes('rgba(255, 255, 255, 0.35)'), 'CatalogCard must apply inset highlight 255,255,255,0.35');
   });
+
+  it('6. Viewport freeze, safe tenant cart isolation, folder tabs, and text contrast invariants', () => {
+    // 1. Viewport Freeze & Scroll Containment
+    const layoutContent = fs.readFileSync(posMainLayoutPath, 'utf8');
+    assert.ok(layoutContent.includes('h-screen max-h-screen overflow-hidden'), 'PosMainLayout must freeze outer shell height');
+    assert.ok(layoutContent.includes('h-[calc(100vh-64px)]'), 'PosMainLayout must bound main row height');
+
+    const viewContent = fs.readFileSync(posViewPath, 'utf8');
+    assert.ok(viewContent.includes('flex-1 overflow-y-auto pr-1 no-scrollbar min-h-0'), 'PosView must wrap product grid in dedicated scroll container');
+    assert.ok(viewContent.includes('border-b-2 border-white/10'), 'PosView folder tabs must rest on connecting bottom border');
+    assert.ok(viewContent.includes('rounded-t-lg bg-gradient-to-t from-[#162238] to-[#223554]'), 'PosView must apply active folder tab gradient');
+
+    // 2. Safe Tenant Cart Isolation & Tab Workflow
+    const cartContent = fs.readFileSync(posCartPanelPath, 'utf8');
+    assert.ok(cartContent.includes('is100Hich'), 'PosCartPanel must conditionally isolate 100 HICH from Modendo');
+    assert.ok(cartContent.includes('نام مشتری...'), '100 HICH cart must provide guest name input');
+    assert.ok(cartContent.includes('شماره تماس...'), '100 HICH cart must provide guest phone input');
+    assert.ok(cartContent.includes('ثبت تب / مشاهده تب‌ها'), 'Cart must provide split tab button');
+    assert.ok(cartContent.includes('ثبت و پرداخت فوری'), 'Cart must provide immediate crimson checkout CTA');
+    assert.ok(cartContent.includes('handleCustomerPersist'), 'Cart must persist customer CRM records to Dexie');
+
+    // 3. Typography Contrast
+    const cardContent = fs.readFileSync(catalogCardPath, 'utf8');
+    assert.ok(cardContent.includes('text-[#F5F5F7]/92'), 'CatalogCard must apply soft bone text-[#F5F5F7]/92 to titles');
+    assert.ok(cardContent.includes('text-[#C5A880]'), 'CatalogCard must apply warm gold text-[#C5A880] to prices');
+  });
 });

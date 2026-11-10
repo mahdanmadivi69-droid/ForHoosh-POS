@@ -37,7 +37,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   const cashierDisplay =
     order.createdByUserName && order.createdByUserName !== 'مدیر سیستم'
       ? order.createdByUserName
-      : 'مهدان مددی - مدیر و مالک';
+      : 'مهدان مهدوی - مدیر و مالک';
 
   const orderTypeDisplay =
     order.orderType === 'DINE_IN'

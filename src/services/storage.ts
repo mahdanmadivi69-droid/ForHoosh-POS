@@ -52,7 +52,7 @@ export const MODENDO_USERS: User[] = [
   {
     id: 'user-mod-01',
     tenantId: 'tenant-modendo-01',
-    fullName: 'مهدان مددی (مدیر کل و مالک)',
+    fullName: 'مهدان مهدوی (مدیر کل و مالک)',
     phoneNumber: '09121110001',
     username: 'admin',
     mustChangePassword: true,
@@ -1721,6 +1721,17 @@ export class SmartOrdersStore {
   static updateUser(updated: User): void {
     const users = this.getUsers().map((u) => (u.id === updated.id ? updated : u));
     this.saveUsers(users);
+  }
+
+  static addUser(newUser: User): void {
+    const users = this.getUsers();
+    const existingIndex = users.findIndex((u) => u.id === newUser.id || u.username === newUser.username);
+    if (existingIndex >= 0) {
+      users[existingIndex] = { ...users[existingIndex], ...newUser };
+      this.saveUsers(users);
+    } else {
+      this.saveUsers([...users, newUser]);
+    }
   }
 
   static async migrateLegacyUserPasswords(): Promise<void> {

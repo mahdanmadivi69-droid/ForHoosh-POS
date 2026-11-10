@@ -27,6 +27,15 @@ export class CafeDatabase extends Dexie {
   zReports!: Table<ZReportData, string>;
   stockInwardTransactions!: Table<StockInwardTransaction, string>;
 
+  // CafeOS Customer CRM (v2.6.0)
+  customers!: Table<{
+    id: string;
+    phone: string;
+    name: string;
+    tenantId: string;
+    createdAt: number;
+  }, string>;
+
   constructor(dbName: string = 'CafeOS_LocalDB') {
     super(dbName);
     this.version(1).stores({
@@ -58,6 +67,7 @@ export class CafeDatabase extends Dexie {
       elevationAuditLogs: 'id, action_type, requested_by_user, authorized_by_manager, timestamp, status',
       zReports: 'id, shift_id, timestamp, opened_by, closed_by',
       stockInwardTransactions: 'id, raw_item_id, batch_number, timestamp, supplier_name',
+      customers: 'id, phone, name, tenantId, createdAt',
     });
   }
 }

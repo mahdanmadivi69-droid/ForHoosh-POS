@@ -152,7 +152,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
           )}
           <div className="flex justify-between text-gray-700">
             <span>صندوقدار / باریستا:</span>
-            <span>{order.cashier || (isModendo ? "مهدان مددی - مدیر کل" : "مهدان مددی - مدیر و مالک")}</span>
+            <span>{order.cashier || (isModendo ? "مهدان مهدوی - مدیر کل" : "مهدان مهدوی - مدیر و مالک")}</span>
           </div>
         </div>
 
@@ -350,7 +350,7 @@ export function renderReceiptTemplateHtml(
   const phone = escapeHtml(tenantInfo.phone || (isModendo ? "۰۲۱-۸۸۹۹۷۷۶۶" : "۰۲۱-۴۴۶۶۸۰۹۰"));
   const tagline = escapeHtml(tenantInfo.tagline || headerNote || (isModendo ? "«کافه مودندو؛ دنیای بردگیم و هیجان کنسول PS5»" : "«صد هیچ؛ تمرکز محض روی اصالت قهوه»"));
   const website = escapeHtml(tenantInfo.website || (isModendo ? "MODENDO.CAFE" : "100HICH.IR"));
-  const cashier = escapeHtml(order.cashier || (isModendo ? "مهدان مددی - مدیر کل" : "مهدان مددی - مدیر و مالک"));
+  const cashier = escapeHtml(order.cashier || (isModendo ? "مهدان مهدوی - مدیر کل" : "مهدان مهدوی - مدیر و مالک"));
   const subtotal = (order.subtotalAmount ?? order.totalAmount).toLocaleString("fa-IR");
   const total = order.totalAmount.toLocaleString("fa-IR");
 

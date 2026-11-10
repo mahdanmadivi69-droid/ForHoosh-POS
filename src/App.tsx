@@ -301,17 +301,22 @@ export default function App() {
       <PinLockScreen
         initialUserId={pendingSwitchUserId}
         onUnlockSuccess={(unlockedUser: AuthUserRecord) => {
-          const matched: User = allUsers.find(
-            (u) => u.username === unlockedUser.username || u.fullName === unlockedUser.fullName
-          ) || {
-            id: unlockedUser.id,
-            tenantId: 'tenant-100hich-01',
-            fullName: unlockedUser.fullName,
-            username: unlockedUser.username,
-            phoneNumber: unlockedUser.phoneNumber || '09120000000',
-            role: unlockedUser.role as any,
-            isActive: true,
-          };
+          const currentStoreUsers = SmartOrdersStore.getUsers();
+          let matched: User | undefined = currentStoreUsers.find(
+            (u) => u.id === unlockedUser.id || u.username === unlockedUser.username || u.fullName === unlockedUser.fullName
+          );
+          if (!matched) {
+            matched = {
+              id: unlockedUser.id,
+              tenantId: SmartOrdersStore.getActiveTenantId(),
+              fullName: unlockedUser.fullName,
+              username: unlockedUser.username,
+              phoneNumber: unlockedUser.phoneNumber || '09120000000',
+              role: unlockedUser.role as any,
+              isActive: true,
+            };
+            SmartOrdersStore.addUser(matched);
+          }
           SmartOrdersStore.setActiveUserId(matched.id);
           setActiveUser(matched);
           setIsAuthenticated(true);
