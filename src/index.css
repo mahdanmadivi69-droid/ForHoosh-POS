@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "./styles/theme-tokens.css";
-@import "../public/fonts/pinar_font.css";
+@import "./styles/pinar_font.css";
 
 /* Farsi Typography Hierarchy */
 @font-face {
@@ -39,8 +39,9 @@
   --motion-ticket-mass: 0.7;
 }
 
-[dir="rtl"] {
-  font-family: var(--font-fa-sans);
+html, body, button, input, select, textarea, [dir="rtl"], nav, header {
+  font-family: 'Pinar', 'Pinar-DS4', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-variation-settings: 'DSTY' 4;
   letter-spacing: 0 !important; /* Never use negative tracking in Persian script */
 }
 

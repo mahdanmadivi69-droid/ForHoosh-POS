@@ -30,6 +30,8 @@ export default defineConfig(({ mode }) => {
     base: basePath,
     define: {
       'import.meta.env.VITE_TENANT_ID': JSON.stringify(tenantId),
+      'import.meta.env.VITE_TARGET_VENUE': JSON.stringify('100hich'),
+      'import.meta.env.IS_VENUE_MUTABLE': JSON.stringify(false),
     },
     build: {
       outDir: isModendo ? 'dist/modendo' : 'dist/100hich',
