@@ -59,15 +59,15 @@ def send_to_thermal_printer(ip: str, port: int, payload: bytes) -> bool:
             f.write(f"Raw HEX: {payload.hex()[:120]}...\n")
         return False
 
-def build_escpos_ticket(table_id: any, waiter_name: str, station: str, items: list) -> bytes:
-    """Build binary ESC/POS ticket with Modendo Cafe branding and item details."""
+def build_escpos_ticket(table_id: any, waiter_name: str, station: str, items: list, venue_title: str = "MODENDO CAFE") -> bytes:
+    """Build binary ESC/POS ticket with parameterized venue branding and item details."""
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     buf = bytearray()
     buf.extend(INIT_PRINTER)
     
-    # Header: Modendo Boardgame & Gaming Cafe
+    # Header: Venue Branding
     buf.extend(ALIGN_CENTER + BOLD_ON + DOUBLE_SIZE)
-    buf.extend(f"MODENDO CAFE\n".encode("ascii", "ignore"))
+    buf.extend(f"{venue_title}\n".encode("utf-8"))
     buf.extend(NORMAL_SIZE + BOLD_OFF)
     buf.extend(f"STATION: {station.upper()}\n".encode("ascii", "ignore"))
     buf.extend(f"TABLE: #{table_id}  |  WAITER: {waiter_name}\n".encode("utf-8"))
@@ -96,6 +96,14 @@ async def dispatch_order(order: dict):
     waiter = order.get("waiter", order.get("createdByUserName", "Staff"))
     items = order.get("items", [])
 
+    tenant_id = order.get("tenantId") or order.get("tenant_id") or ""
+    venue_title = order.get("venueTitle") or order.get("storeName")
+    if not venue_title:
+        if "100hich" in str(tenant_id).lower() or tenant_id == "tenant-100hich-01":
+            venue_title = "100 HICH COFFEE ROASTERS"
+        else:
+            venue_title = "MODENDO CAFE"
+
     bar_items = [i for i in items if i.get("category") == "bar" or i.get("station") == "BAR"]
     kitchen_items = [i for i in items if i.get("category") == "kitchen" or i.get("station") == "KITCHEN"]
 
@@ -105,11 +113,11 @@ async def dispatch_order(order: dict):
 
     results = {}
     if bar_items:
-        payload = build_escpos_ticket(table_id, waiter, "BAR", bar_items)
+        payload = build_escpos_ticket(table_id, waiter, "BAR", bar_items, venue_title=venue_title)
         results["bar"] = send_to_thermal_printer(PRINTER_CONFIG["bar"]["ip"], PRINTER_CONFIG["bar"]["port"], payload)
 
     if kitchen_items:
-        payload = build_escpos_ticket(table_id, waiter, "KITCHEN", kitchen_items)
+        payload = build_escpos_ticket(table_id, waiter, "KITCHEN", kitchen_items, venue_title=venue_title)
         results["kitchen"] = send_to_thermal_printer(PRINTER_CONFIG["kitchen"]["ip"], PRINTER_CONFIG["kitchen"]["port"], payload)
 
     return results
