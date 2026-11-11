@@ -24,14 +24,14 @@ export const PosMainLayout: React.FC<PosMainLayoutProps> = ({
     <div
       className={`h-screen max-h-screen overflow-hidden bg-[#0B0E14] text-white select-none flex flex-col ${className}`}
     >
-      <div className="flex-1 flex flex-row gap-4 p-3 md:p-4 max-w-[1720px] mx-auto w-full h-[calc(100vh-64px)] overflow-hidden relative">
+      <div className="flex-1 min-h-0 flex flex-row gap-4 p-3 md:p-4 max-w-[1720px] mx-auto w-full h-[calc(100vh-64px)] overflow-hidden relative">
         {/* ================= CATALOG SECTION ================= */}
         {/*
           In RTL (dir="rtl"): flex starts on right. order-1 renders at start (RIGHT).
           In LTR (dir="ltr"): flex starts on left. order-2 renders at end (RIGHT).
           Result: Catalog is permanently on the RIGHT.
         */}
-        <section className="flex-1 flex flex-col min-w-0 h-full overflow-hidden order-2 rtl:order-1 ltr:order-2">
+        <section className="flex-1 min-h-0 flex flex-col min-w-0 h-full overflow-hidden order-2 rtl:order-1 ltr:order-2">
           {catalog}
         </section>
 

@@ -30,6 +30,14 @@ import { getCafeDatabase } from '../../db/cafeDb';
 const memoryTabs = new Map<string, OpenTabRecord>();
 const memoryGrainLedger: InventoryGrainLedgerRecord[] = [];
 
+function normalizeTenantId(id?: string): string {
+  if (!id) return 'tenant-100hich-01';
+  const trimmed = id.trim();
+  if (trimmed === '100hich') return 'tenant-100hich-01';
+  if (trimmed === 'modendo') return 'tenant-modendo-01';
+  return trimmed;
+}
+
 export interface BomItemBreakdown {
   cartItemId: string;
   title: string;
@@ -141,10 +149,12 @@ export class CatalogService {
     assertIntegerToman(totalToman, 'Tab Total');
 
     const tabId = `tab-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const resolvedTenant = normalizeTenantId(tenantId);
     const tabRecord: OpenTabRecord = {
       tab_id: tabId,
       tabId,
-      tenant_id: tenantId,
+      tenant_id: resolvedTenant,
+      tenantId: resolvedTenant,
       table_or_customer: tableOrCustomer.trim() || 'میز موقت',
       tableOrCustomer: tableOrCustomer.trim() || 'میز موقت',
       raw_cart_json: JSON.stringify(cart),
@@ -195,6 +205,10 @@ export class CatalogService {
       throw new Error(`[CatalogService] Cannot recall tab with status: ${tab.status}`);
     }
 
+    if (tab.tenant_id && normalizeTenantId(tab.tenant_id) !== normalizeTenantId(tenantId)) {
+      throw new Error(`[Tenant Isolation Violation] Cannot recall tab belonging to ${tab.tenant_id} from ${tenantId}`);
+    }
+
     // Mark closed
     const updatedTab: OpenTabRecord = {
       ...tab,
@@ -242,6 +256,10 @@ export class CatalogService {
       throw new Error(`[CatalogService] Cannot recall tab with status: ${tab.status}`);
     }
 
+    if (tab.tenant_id && normalizeTenantId(tab.tenant_id) !== normalizeTenantId(tenantId)) {
+      throw new Error(`[Tenant Isolation Violation] Cannot recall tab belonging to ${tab.tenant_id} from ${tenantId}`);
+    }
+
     const cart: CatalogCartItem[] = JSON.parse(tab.raw_cart_json);
     return { cart, tab };
   }
@@ -261,6 +279,9 @@ export class CatalogService {
     }
     if (existing.status !== 'OPEN') {
       throw new Error(`[CatalogService] Cannot update tab "${tabId}" with status ${existing.status}`);
+    }
+    if (existing.tenant_id && normalizeTenantId(existing.tenant_id) !== normalizeTenantId(tenantId)) {
+      throw new Error(`[Tenant Isolation Violation] Cannot update tab belonging to ${existing.tenant_id} from ${tenantId}`);
     }
     if (!cart || cart.length === 0) {
       throw new Error('[CatalogService] Cannot update tab with an empty cart');
@@ -307,6 +328,9 @@ export class CatalogService {
     if (!existing) {
       throw new Error(`[CatalogService] Tab "${tabId}" not found to settle`);
     }
+    if (existing.tenant_id && normalizeTenantId(existing.tenant_id) !== normalizeTenantId(tenantId)) {
+      throw new Error(`[Tenant Isolation Violation] Cannot settle tab belonging to ${existing.tenant_id} from ${tenantId}`);
+    }
 
     const closedTab: OpenTabRecord = {
       ...existing,
@@ -341,6 +365,9 @@ export class CatalogService {
     const existing = memoryTabs.get(tabId);
     if (!existing) {
       throw new Error(`[CatalogService] Tab "${tabId}" not found to void`);
+    }
+    if (existing.tenant_id && normalizeTenantId(existing.tenant_id) !== normalizeTenantId(tenantId)) {
+      throw new Error(`[Tenant Isolation Violation] Cannot void tab belonging to ${existing.tenant_id} from ${tenantId}`);
     }
 
     const voidedTab: OpenTabRecord = {
@@ -493,18 +520,30 @@ export class CatalogService {
   }
 
   /**
-   * Returns active open tabs.
+   * Returns active open tabs, optionally scoped to a specific tenant.
    */
-  public static getOpenTabs(): OpenTabRecord[] {
-    return Array.from(memoryTabs.values()).filter((t) => t.status === 'OPEN');
+  public static getOpenTabs(tenantId?: string): OpenTabRecord[] {
+    const active = Array.from(memoryTabs.values()).filter((t) => t.status === 'OPEN');
+    if (!tenantId) return active;
+    const resolved = normalizeTenantId(tenantId);
+    return active.filter((t) => normalizeTenantId(t.tenant_id || (t as any).tenantId) === resolved);
   }
 
   /**
-   * Clears memory tabs (for testing).
+   * Clears memory tabs (for testing), optionally scoped to a specific tenant.
    */
-  public static clearMemoryState(): void {
-    memoryTabs.clear();
-    memoryGrainLedger.length = 0;
+  public static clearMemoryState(tenantId?: string): void {
+    if (!tenantId) {
+      memoryTabs.clear();
+      memoryGrainLedger.length = 0;
+    } else {
+      const resolved = normalizeTenantId(tenantId);
+      for (const [id, tab] of memoryTabs.entries()) {
+        if (normalizeTenantId(tab.tenant_id || (tab as any).tenantId) === resolved) {
+          memoryTabs.delete(id);
+        }
+      }
+    }
   }
 }
 

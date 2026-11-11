@@ -35,6 +35,7 @@ interface OpenTabsModalProps {
   onRecallTab: (tab: OpenTabRecord) => void;
   activeTabId?: string | null;
   onNewTabRequest?: () => void;
+  tenantId?: string;
 }
 
 export const OpenTabsModal: React.FC<OpenTabsModalProps> = ({
@@ -43,11 +44,12 @@ export const OpenTabsModal: React.FC<OpenTabsModalProps> = ({
   onRecallTab,
   activeTabId,
   onNewTabRequest,
+  tenantId,
 }) => {
   const [tabs, setTabs] = useState<OpenTabRecord[]>([]);
 
   const refreshTabs = () => {
-    const activeList = CatalogService.getOpenTabs();
+    const activeList = CatalogService.getOpenTabs(tenantId);
     setTabs(activeList);
   };
 

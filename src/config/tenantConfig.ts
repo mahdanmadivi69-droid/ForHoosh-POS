@@ -86,6 +86,19 @@ export function getActiveTenant(): TenantProfile {
       return TENANT_PROFILES[urlTenant];
     }
   }
+  if (typeof localStorage !== 'undefined' && localStorage) {
+    try {
+      const stored = localStorage.getItem('cafeos_active_tenant_id');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && TENANT_PROFILES[parsed]) {
+          return TENANT_PROFILES[parsed];
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
   const envTenant = (import.meta as any).env?.VITE_ACTIVE_TENANT;
   return TENANT_PROFILES[envTenant] || TENANT_PROFILES['100hich'];
 }

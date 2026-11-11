@@ -109,10 +109,10 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
           ['--sheen-y' as any]: `${tilt.sheenY}%`,
           ['--sheen-opacity' as any]: tilt.isHovered ? 1 : 0,
         }}
-        className={`liquid-glass relative rounded-2xl overflow-hidden flex flex-col justify-between group p-3.5 transition-all ${
+        className={`liquid-glass catalog-card-tilt relative rounded-2xl overflow-hidden flex flex-col justify-between group p-3.5 transition-all bg-[#0F223D]/70 border border-white/12 shadow-[0_16px_36px_-8px_rgba(0,0,0,0.75),inset_0_1px_1px_rgba(255,255,255,0.18)] hover:border-[#C5A880]/40 ${
           isOutOfStock
             ? 'opacity-50 cursor-not-allowed'
-            : 'cursor-pointer hover:shadow-[0_20px_40px_-8px_rgba(140,19,24,0.4)]'
+            : 'cursor-pointer hover:shadow-[0_20px_40px_-8px_rgba(215,25,33,0.35)]'
         }`}
       >
         {/* Dynamic Item-Specific Full-Bleed Wallpaper */}
@@ -137,23 +137,23 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
 
         {/* Card Header & Badges */}
         <div className="relative z-20 flex flex-col gap-2">
-          <div className="flex items-center justify-between gap-1.5">
-            <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center justify-between gap-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
               {item.roastLevelText && (
-                <span className="text-[10px] font-mono font-bold bg-[#0C1E3C]/90 text-[#90D2ED] border border-[#90D2ED]/30 px-2 py-0.5 rounded-lg shadow-inner">
+                <span className="text-[10px] font-mono font-bold bg-[#0F223D] text-[#90D2ED] border border-white/15 px-2 py-0.5 rounded-lg shadow-inner shrink-0">
                   {item.roastLevelText}
                 </span>
               )}
 
               {item.badge && (
-                <span className="text-[10px] font-black bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white border border-[#90D2ED]/30 px-2 py-0.5 rounded-lg uppercase tracking-wider shadow-sm">
+                <span className="text-[10px] font-black bg-[#D71921] text-white border border-white/20 px-2 py-0.5 rounded-lg uppercase tracking-wider shadow-sm shrink-0">
                   {item.badge}
                 </span>
               )}
             </div>
 
             {hotkeyIndex !== undefined && hotkeyIndex < 9 && (
-              <span className="text-[10px] font-mono bg-[#0A0D11]/80 text-[#90D2ED] px-1.5 py-0.5 rounded-md border border-white/10">
+              <span className="text-[10px] font-mono bg-[#0B1524]/90 text-[#F5F5F7]/80 px-1.5 py-0.5 rounded-md border border-white/10 shrink-0">
                 کلید {hotkeyIndex + 1}
               </span>
             )}
@@ -161,24 +161,24 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
 
           {/* Stock Alerts */}
           {isOutOfStock ? (
-            <div className="bg-rose-950/70 border border-rose-800 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-              <AlertCircle className="w-3 h-3 text-rose-400" />
-              <span>ناموجود (اتمام سرفصل انبار)</span>
+            <div className="bg-rose-950/80 border border-[#D71921]/60 text-rose-200 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+              <AlertCircle className="w-3 h-3 text-[#D71921] shrink-0" />
+              <span className="truncate">ناموجود (اتمام سرفصل انبار)</span>
             </div>
           ) : isLowStock ? (
-            <div className="bg-amber-950/70 border border-amber-800 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3 text-amber-400" />
-              <span>هشدار کسری موجودی دانه</span>
+            <div className="bg-amber-950/80 border border-amber-600/50 text-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+              <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+              <span className="truncate">هشدار کسری موجودی دانه</span>
             </div>
           ) : null}
 
           {/* Item Name & Details */}
           <div>
-            <h3 className="font-extrabold text-sm md:text-base text-[#F5F5F7]/92 group-hover:text-[#90D2ED] transition-colors leading-snug">
+            <h3 className="font-extrabold text-sm md:text-base text-[#F5F5F7]/92 group-hover:text-white transition-colors leading-snug line-clamp-1">
               {item.nameFa}
             </h3>
             {item.description && (
-              <p className="text-[11px] text-[#9EACB8] line-clamp-1 mt-0.5">
+              <p className="text-[11px] text-[#F5F5F7]/70 line-clamp-1 mt-0.5">
                 {item.description}
               </p>
             )}
@@ -189,59 +189,67 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
         {item.hasDualBean && (
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative z-20 mt-3 p-1 rounded-xl bg-[#081224]/90 border border-[#90D2ED]/20 grid grid-cols-2 gap-1"
+            className="relative z-20 mt-3 p-1 rounded-xl bg-[#0B1524]/90 border border-white/12 grid grid-cols-2 gap-1.5"
           >
             <button
               type="button"
               onClick={() => setSelectedBean('arabica')}
-              className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all flex flex-col items-center justify-center ${
+              className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all flex flex-col items-center justify-center min-w-0 cursor-pointer ${
                 selectedBean === 'arabica'
-                  ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] text-white shadow-md border border-[#90D2ED]/40'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-white/5'
+                  ? 'bg-[#D71921] text-white shadow-md border border-white/25'
+                  : 'bg-[#0F223D]/60 text-[#F5F5F7]/70 hover:text-white hover:bg-[#0F223D] border border-white/10'
               }`}
             >
-              <span>عربیکا ۱۰۰٪</span>
-              <span className="text-[9px] opacity-80 mt-0.5 font-mono">
-                {formatToman(item.priceArabica ?? item.basePriceToman)}
+              <span className="truncate w-full text-center">عربیکا ۱۰۰٪</span>
+              <span className="text-[9px] opacity-90 mt-0.5 font-mono text-[#C5A880] truncate w-full text-center">
+                {formatToman(item.priceArabica ?? item.basePriceToman)} ت
               </span>
             </button>
 
             <button
               type="button"
               onClick={() => setSelectedBean('blend')}
-              className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all flex flex-col items-center justify-center ${
+              className={`py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all flex flex-col items-center justify-center min-w-0 cursor-pointer ${
                 selectedBean === 'blend'
-                  ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] text-white shadow-md border border-[#90D2ED]/40'
-                  : 'text-[#9EACB8] hover:text-white hover:bg-white/5'
+                  ? 'bg-[#D71921] text-white shadow-md border border-white/25'
+                  : 'bg-[#0F223D]/60 text-[#F5F5F7]/70 hover:text-white hover:bg-[#0F223D] border border-white/10'
               }`}
             >
-              <span>بلند ۵۰/۵۰</span>
-              <span className="text-[9px] opacity-80 mt-0.5 font-mono">
-                {formatToman(item.priceBlend ?? item.basePriceToman)}
+              <span className="truncate w-full text-center">بلند ۵۰/۵۰</span>
+              <span className="text-[9px] opacity-90 mt-0.5 font-mono text-[#C5A880] truncate w-full text-center">
+                {formatToman(item.priceBlend ?? item.basePriceToman)} ت
               </span>
             </button>
           </div>
         )}
 
         {/* Card Footer: Price & Quick Action */}
-        <div className="relative z-20 mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between">
-          <div>
-            <span className="text-[10px] text-[#9EACB8] block">قیمت نهایی:</span>
-            <span className="font-black text-sm md:text-base text-[#C5A880] font-mono tracking-tight">
-              {formatToman(currentPrice)} <span className="text-[10px] font-sans text-[#C5A880]/80">تومان</span>
-            </span>
+        <div className="relative z-20 mt-3 pt-2.5 border-t border-white/10 flex items-center justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] text-[#F5F5F7]/60 block leading-tight">قیمت نهایی:</span>
+            <div className="flex items-baseline gap-1">
+              <span className="font-black text-sm md:text-base text-[#C5A880] font-mono tracking-tight truncate">
+                {formatToman(currentPrice)}
+              </span>
+              <span className="text-[10px] font-sans text-[#C5A880]/80 shrink-0">تومان</span>
+            </div>
           </div>
 
           <button
             type="button"
             disabled={isOutOfStock}
-            className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-lg transition-transform active:scale-90 ${
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCardClick();
+            }}
+            title={isOutOfStock ? 'ناموجود' : 'افزودن به سبد سفارش'}
+            className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-lg transition-all active:scale-95 shrink-0 ${
               isOutOfStock
-                ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-br from-[#8C1318] to-[#5a0c10] text-white border border-[#90D2ED]/30 hover:scale-105'
+                ? 'bg-[#1B222C] text-stone-500 border border-stone-800 cursor-not-allowed'
+                : 'bg-[#D71921] hover:bg-[#B8141B] text-white border border-white/20 shadow-[0_0_12px_rgba(215,25,33,0.35)] hover:shadow-[0_0_20px_rgba(215,25,33,0.65)] cursor-pointer'
             }`}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 shrink-0 stroke-[2.5]" />
           </button>
         </div>
       </div>

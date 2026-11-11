@@ -36,6 +36,20 @@ export class CafeDatabase extends Dexie {
     createdAt: number;
   }, string>;
 
+  // CafeOS Offline Synchronization Queue (v2.7.0)
+  syncQueue!: Table<{
+    id: string;
+    clientGeneratedId: string;
+    tenantId: string;
+    syncStatus: string;
+    retryCount: number;
+    payload: any;
+    createdAt: string;
+    lastAttemptAt?: string;
+    nextAttemptAt?: string;
+    errorMessage?: string;
+  }, string>;
+
   constructor(dbName: string = 'CafeOS_LocalDB') {
     super(dbName);
     this.version(1).stores({
@@ -68,6 +82,7 @@ export class CafeDatabase extends Dexie {
       zReports: 'id, shift_id, timestamp, opened_by, closed_by',
       stockInwardTransactions: 'id, raw_item_id, batch_number, timestamp, supplier_name',
       customers: 'id, phone, name, tenantId, createdAt',
+      syncQueue: 'id, clientGeneratedId, tenantId, syncStatus, createdAt',
     });
   }
 }
@@ -198,6 +213,13 @@ export async function migrateLegacyCafeDatabase(): Promise<{
       await targetDb.authUsers.bulkPut(legacyUsers);
       recordsMigrated.authUsers = legacyUsers.length;
       totalCount += legacyUsers.length;
+    }
+
+    const legacyCustomers = await legacyDb.customers?.toArray().catch(() => []);
+    if (legacyCustomers && legacyCustomers.length > 0) {
+      await targetDb.customers.bulkPut(legacyCustomers);
+      recordsMigrated.customers = legacyCustomers.length;
+      totalCount += legacyCustomers.length;
     }
 
     return {

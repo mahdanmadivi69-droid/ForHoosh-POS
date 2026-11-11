@@ -157,7 +157,9 @@ export class DecomposedOfflineSyncQueue {
         await this.db.syncQueue.put(record);
 
         // 2. Update local order record to synced = 0
-        const existingOrder = await this.db.orders.get(clientGeneratedId);
+        const existingOrder =
+          (await this.db.orders.get(clientGeneratedId)) ||
+          (await this.db.orders.where('clientGeneratedId').equals(clientGeneratedId).first());
         if (existingOrder) {
           existingOrder.synced = 0;
           existingOrder.updatedAt = nowIso;
@@ -194,8 +196,10 @@ export class DecomposedOfflineSyncQueue {
 
     try {
       await this.db.transaction('rw', [this.db.syncQueue, this.db.orders], async () => {
-        await this.db.syncQueue.where({ clientGeneratedId }).delete();
-        const existingOrder = await this.db.orders.get(clientGeneratedId);
+        await this.db.syncQueue.where('clientGeneratedId').equals(clientGeneratedId).delete();
+        const existingOrder =
+          (await this.db.orders.get(clientGeneratedId)) ||
+          (await this.db.orders.where('clientGeneratedId').equals(clientGeneratedId).first());
         if (existingOrder) {
           existingOrder.synced = 1;
           existingOrder.updatedAt = nowIso;
@@ -236,7 +240,8 @@ export class DecomposedOfflineSyncQueue {
     try {
       await this.db.transaction('rw', [this.db.syncQueue], async () => {
         const item = await this.db.syncQueue
-          .where({ clientGeneratedId })
+          .where('clientGeneratedId')
+          .equals(clientGeneratedId)
           .first();
 
         if (item) {

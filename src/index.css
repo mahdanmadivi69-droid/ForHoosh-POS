@@ -39,6 +39,15 @@
   --motion-ticket-mass: 0.7;
 }
 
+/* Strict Viewport Freeze: Zero page-level bounce, elasticity, or scroll */
+html, body, #root {
+  height: 100%;
+  max-height: 100vh;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-overscroll-behavior: none;
+}
+
 html, body, button, input, select, textarea, [dir="rtl"], nav, header {
   font-family: 'Pinar', 'Pinar-DS4', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
   font-variation-settings: 'DSTY' 4;
@@ -292,7 +301,7 @@ body, button, input, select, textarea {
   transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.15s cubic-bezier(0.32, 0.72, 0, 1) !important;
 }
 
-.liquid-glass-btn:active, .tactile-press:active, button.vision-haptic-press:active, .liquid-glass:active {
+.liquid-glass-btn:active, .tactile-press:active, button.vision-haptic-press:active, .liquid-glass:not(.catalog-card-tilt):active {
   transform: scale(0.93) !important;
   box-shadow: 0 0 20px rgba(215, 25, 33, 0.35) !important;
 }

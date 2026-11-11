@@ -42,6 +42,7 @@ export interface OpenTabRecord {
   tab_id: string; // Primary Key
   tabId?: string; // Ergonomic alias
   tenant_id: string;
+  tenantId?: string; // Ergonomic alias
   table_or_customer: string;
   tableOrCustomer?: string; // Ergonomic alias
   raw_cart_json: string; // Serialized JSON cart

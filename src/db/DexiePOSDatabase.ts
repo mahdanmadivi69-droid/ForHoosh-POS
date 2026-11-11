@@ -190,6 +190,15 @@ export interface DecomposedAuditLogRecord {
   timestamp: string;
 }
 
+export interface DecomposedCustomerRecord {
+  id: string;
+  tenantId: string;
+  name: string;
+  phone?: string;
+  createdAt: number | string;
+  updatedAt?: number | string;
+}
+
 // =============================================================================
 // Dexie POS Database Class
 // =============================================================================
@@ -207,6 +216,7 @@ export class DexiePOSDatabase extends Dexie {
   public stockInward!: Table<DecomposedStockInwardRecord, string>;
   public syncQueue!: Table<DecomposedSyncQueueRecord, string>;
   public auditLogs!: Table<DecomposedAuditLogRecord, string>;
+  public customers!: Table<DecomposedCustomerRecord, string>;
 
   constructor(dbName: string = 'CafeOS_POS_DecomposedDB') {
     super(dbName);
@@ -255,11 +265,25 @@ export class DexiePOSDatabase extends Dexie {
       orders:
         'id, clientGeneratedId, tenantId, shiftId, status, createdAt, synced, tableSessionId, flowType, takeawayBillingMode, [tenantId+id], [tenantId+status], [tenantId+createdAt], [tenantId+shiftId], [tenantId+synced], [tenantId+tableSessionId], [tenantId+flowType], [tenantId+takeawayBillingMode]',
     });
+
+    // Version 5: Normalized Customers Table with Multi-Tenant Compound Indices
+    this.version(5).stores({
+      customers:
+        'id, tenantId, phone, name, createdAt, [tenantId+id], [tenantId+phone], [tenantId+name]',
+    });
   }
 
   // ===========================================================================
   // Tenant-Scoped Fast Query Accessors (Compound Index Accelerated)
   // ===========================================================================
+
+  public getCustomersByTenant(tenantId: string) {
+    return this.customers.where('[tenantId+name]').between([tenantId, Dexie.minKey], [tenantId, Dexie.maxKey]);
+  }
+
+  public getCustomerByPhone(tenantId: string, phone: string) {
+    return this.customers.where('[tenantId+phone]').equals([tenantId, phone]).first();
+  }
 
   public getOrdersByTenant(tenantId: string) {
     return this.orders.where('[tenantId+status]').between([tenantId, Dexie.minKey], [tenantId, Dexie.maxKey]);

@@ -72,6 +72,7 @@ import { OpenTabsModal } from './OpenTabsModal';
 import { LiquidGlassPaymentSheet, SettlementResult } from './LiquidGlassPaymentSheet';
 import { CatalogService } from '../services/catalog/catalogService';
 import { OpenTabRecord } from '../db/schema';
+import { getCafeDatabase } from '../db/cafeDb';
 import { usePrinterStore } from '../stores/usePrinterStore';
 import { PosMainLayout, PosCartPanel } from './pos';
 import { getProductWallpaper, getProductWallpaperStyle } from '../utils/productWallpapers';
@@ -220,6 +221,22 @@ export const PosView: React.FC<PosViewProps> = ({
   });
 
   const activeTenant = getActiveTenant();
+  const currentTenantId = activeShift?.tenantId || tenant?.id || activeTenant?.id || 'tenant-100hich-01';
+  const prevTenantIdRef = React.useRef<string>(currentTenantId);
+
+  // Per-tenant cart memory cache to prevent cross-tenant memory leaks while preserving operator state
+  const tenantCartsRef = React.useRef<Map<string, {
+    cartItems: OrderItem[];
+    orderType: OrderType;
+    tableLabel: string;
+    customerName: string;
+    customerPhone: string;
+    orderNotes: string;
+    discountPercent: number;
+    discountToman: number;
+    activeTabId: string | null;
+  }>>(new Map());
+
   const [tableToast, setTableToast] = useState<string | null>(null);
   const showTableToast = (msg: string) => {
     setTableToast(msg);
@@ -246,6 +263,7 @@ export const PosView: React.FC<PosViewProps> = ({
   const [discountToman, setDiscountToman] = useState<number>(0);
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
 
   // Modifier sheet modal state
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
@@ -261,7 +279,7 @@ export const PosView: React.FC<PosViewProps> = ({
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [openTabsCount, setOpenTabsCount] = useState<number>(() => {
     try {
-      return CatalogService.getOpenTabs().length;
+      return CatalogService.getOpenTabs(currentTenantId).length;
     } catch {
       return 0;
     }
@@ -281,6 +299,70 @@ export const PosView: React.FC<PosViewProps> = ({
     cartItems,
     discountToman
   );
+
+  // Strict Conditional Tenant Cart Isolation
+  useEffect(() => {
+    if (prevTenantIdRef.current !== currentTenantId) {
+      const prevTid = prevTenantIdRef.current;
+      // 1. Snapshot previous tenant's cart state
+      tenantCartsRef.current.set(prevTid, {
+        cartItems: [...cartItems],
+        orderType,
+        tableLabel,
+        customerName,
+        customerPhone,
+        orderNotes,
+        discountPercent,
+        discountToman,
+        activeTabId,
+      });
+
+      // 2. Restore target tenant's cart state or reset to isolated defaults
+      const saved = tenantCartsRef.current.get(currentTenantId);
+      if (saved) {
+        setCartItems(saved.cartItems);
+        setOrderType(saved.orderType);
+        setTableLabel(saved.tableLabel);
+        setCustomerName(saved.customerName);
+        setCustomerPhone(saved.customerPhone);
+        setOrderNotes(saved.orderNotes);
+        setDiscountPercent(saved.discountPercent);
+        setDiscountToman(saved.discountToman);
+        setActiveTabId(saved.activeTabId);
+      } else {
+        setCartItems([]);
+        setOrderType(activeTenant.workflow.defaultOrderType);
+        setTableLabel(preselectedTableLabel || (activeTenant.workflow.requireTableNumber ? '' : 'میز ۱'));
+        setCustomerName('');
+        setCustomerPhone('');
+        setOrderNotes('');
+        setDiscountPercent(0);
+        setDiscountToman(0);
+        setActiveTabId(null);
+      }
+
+      // 3. Clear transient modals and receipts to prevent cross-tenant UI bleed
+      setCompletedReceiptOrder(null);
+      setCompletedReceiptPayment(null);
+      setIsCheckoutOpen(false);
+      setIsOpenTabsModalOpen(false);
+      setSelectedCategoryId('all');
+      setSearchQuery('');
+      setOpenTabsCount(CatalogService.getOpenTabs(currentTenantId).length);
+
+      prevTenantIdRef.current = currentTenantId;
+    }
+  }, [currentTenantId]);
+
+  // Keep discount amount synchronized with discount percent when cart items change
+  useEffect(() => {
+    if (discountPercent > 0) {
+      const calculatedDiscount = Math.round((grossAmountToman * discountPercent) / 100);
+      setDiscountToman(calculatedDiscount);
+    } else if (grossAmountToman === 0 && discountToman > 0) {
+      setDiscountToman(0);
+    }
+  }, [grossAmountToman, discountPercent]);
 
   // Subscribe to offline sync queue stats
   useEffect(() => {
@@ -573,7 +655,7 @@ export const PosView: React.FC<PosViewProps> = ({
   // Open Tabs Handlers
   const handleRecallTabForEditing = (tab: OpenTabRecord) => {
     try {
-      const recalled = CatalogService.recallTabForEditing(tab.tab_id, activeShift?.tenantId);
+      const recalled = CatalogService.recallTabForEditing(tab.tab_id, activeShift?.tenantId || currentTenantId);
       const mappedItems: OrderItem[] = recalled.cart.map((c) => ({
         id: c.cartItemId || `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         menuItemId: c.menuItemId,
@@ -620,21 +702,21 @@ export const PosView: React.FC<PosViewProps> = ({
     if (activeTabId) {
       // In-place mutation of existing tab
       try {
-        CatalogService.updateOpenTab(activeTabId, catalogCart, label, activeShift?.tenantId);
+        CatalogService.updateOpenTab(activeTabId, catalogCart, label, activeShift?.tenantId || currentTenantId);
         showTableToast(`تغییرات تب "${label}" با موفقیت ذخیره شد`);
-        setCartItems([]);
+        handleClearCart();
         setActiveTabId(null);
-        setOpenTabsCount(CatalogService.getOpenTabs().length);
+        setOpenTabsCount(CatalogService.getOpenTabs(activeShift?.tenantId || currentTenantId).length);
       } catch (e: any) {
         alert(`خطا در بروزرسانی تب: ${e?.message || e}`);
       }
     } else {
       // Creation of new tab
       try {
-        CatalogService.holdCurrentCartAsTab(catalogCart, label, activeShift?.tenantId);
+        CatalogService.holdCurrentCartAsTab(catalogCart, label, activeShift?.tenantId || currentTenantId);
         showTableToast(`سفارش در تب جدید "${label}" نگهداری شد`);
-        setCartItems([]);
-        setOpenTabsCount(CatalogService.getOpenTabs().length);
+        handleClearCart();
+        setOpenTabsCount(CatalogService.getOpenTabs(activeShift?.tenantId || currentTenantId).length);
       } catch (e: any) {
         alert(`خطا در نگهداری تب: ${e?.message || e}`);
       }
@@ -684,160 +766,208 @@ export const PosView: React.FC<PosViewProps> = ({
   };
 
   const handleConfirmPayment = (autoPrint = false, settleResult?: SettlementResult) => {
-    if (!activeShift) return;
+    if (!activeShift || isSubmittingOrder) return;
+    setIsSubmittingOrder(true);
 
-    playPosBeep('success');
+    try {
+      playPosBeep('success');
 
-    const clientGeneratedId =
-      typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `cid-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+      const clientGeneratedId =
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `cid-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
-    const newOrder: Order = {
-      id: `order-${Date.now()}`,
-      tenantId: activeShift.tenantId,
-      shiftId: activeShift.id,
-      createdByUserId: activeUser.id,
-      createdByUserName: activeUser.fullName,
-      orderNumber: 0,
-      orderType,
-      tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
-      customerName: customerName.trim() || undefined,
-      notes: orderNotes.trim() || undefined,
-      status: 'COMPLETED',
-      items: cartItems,
-      grossAmountToman,
-      discountAmountToman,
-      netTotalToman,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+      const effectivePaymentMethod: PaymentMethod = settleResult
+        ? (settleResult.paymentMethod === 'CASH'
+            ? 'CASH'
+            : settleResult.paymentMethod === 'POS'
+            ? 'CARD_MANUAL'
+            : 'OTHER')
+        : paymentMethod;
 
-    const result = onOrderCompleted(
-      newOrder,
-      paymentMethod,
-      referenceCode.trim() || undefined,
-      terminalName
-    );
+      const effectiveTerminal = settleResult?.terminalName || terminalName;
+      const effectiveReferenceCode = (settleResult?.referenceCode ?? referenceCode).trim() || undefined;
+      const effectiveCashTendered = settleResult?.cashTendered ?? cashTendered;
 
-    if (result) {
-      // Automatically deduct raw BOM materials upon order settlement
-      // If completing a recalled open tab, settle and close it in place!
-      if (activeTabId) {
-        try {
-          CatalogService.settleAndCloseTab(activeTabId, result.order.id, activeShift.tenantId);
-          setOpenTabsCount(CatalogService.getOpenTabs().length);
-        } catch (e) {
-          console.warn('[PosView] Failed to settle tab:', e);
-        }
-        setActiveTabId(null);
-      }
-
-      inventoryBomService.deductForItems(
-        cartItems.map((it) => ({
-          id: it.id,
-          menuItemId: it.menuItemId,
-          title: it.itemNameSnapshot,
-          quantity: it.quantity,
-          unitPrice: it.unitPriceSnapshotToman,
-          subtotal: it.subtotalToman,
-          modifiers: it.modifiers?.map((m) => ({ id: m.id, nameFa: m.nameFa, priceDelta: m.priceDeltaToman })),
-          notes: it.notes,
-        }))
-      );
-
-      const orderAggregateItems: OrderItemAggregate[] = cartItems.map((item) => {
-        const mods = item.modifiers ? item.modifiers.map((m) => ({ ...m })) : [];
-        const modsDelta = mods.reduce((sum, m) => sum + m.priceDeltaToman, 0);
-        return {
-          id: item.id,
-          menuItemId: item.menuItemId,
-          itemNameSnapshot: item.itemNameSnapshot,
-          unitPriceSnapshotToman: item.unitPriceSnapshotToman,
-          quantity: item.quantity,
-          modifiers: mods,
-          modifiersDeltaToman: modsDelta * item.quantity,
-          subtotalToman: item.subtotalToman,
-          notes: item.notes,
-        };
-      });
-
-      const orderAggregate: OrderAggregate = {
-        clientGeneratedId,
-        id: result.order.id,
+      const newOrder: Order = {
+        id: `order-${Date.now()}`,
         tenantId: activeShift.tenantId,
         shiftId: activeShift.id,
-        orderNumber: result.order.orderNumber,
-        orderType,
-        state: 'PAID',
-        tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
-        customerName: customerName.trim() || undefined,
-        items: orderAggregateItems,
-        grossAmountToman,
-        grossAmount: grossAmountToman,
-        discountAmountToman,
-        discountAmount: discountAmountToman,
-        netTotalToman,
-        totalNet: netTotalToman,
-        payments: [
-          {
-            id: result.payment.id,
-            tenantId: activeShift.tenantId,
-            orderId: result.order.id,
-            clientGeneratedId,
-            shiftId: activeShift.id,
-            receivedByUserId: activeUser.id,
-            receivedByUserName: activeUser.fullName,
-            amountToman: netTotalToman,
-            paymentMethod,
-            referenceCode: referenceCode.trim() || undefined,
-            terminalName,
-            status: 'SUCCESSFUL',
-            createdAt: new Date().toISOString(),
-          },
-        ],
-        paidAmountToman: netTotalToman,
-        paidAmount: netTotalToman,
-        createdAt: result.order.createdAt,
-        updatedAt: result.order.updatedAt,
         createdByUserId: activeUser.id,
         createdByUserName: activeUser.fullName,
+        orderNumber: 0,
+        orderType,
+        tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
+        customerName: customerName.trim() || undefined,
+        notes: orderNotes.trim() || undefined,
+        status: 'COMPLETED',
+        items: cartItems,
+        grossAmountToman,
+        discountAmountToman,
+        netTotalToman,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
-      // 1. Enqueue in OfflineSyncQueue (IndexedDB)
-      globalOfflineSyncQueue.enqueue(orderAggregate).catch((err) => {
-        console.warn('Enqueue into offline database failed:', err);
-      });
+      const result = onOrderCompleted(
+        newOrder,
+        effectivePaymentMethod,
+        effectiveReferenceCode,
+        effectiveTerminal
+      );
 
-      // 2. Dispatch to Barista Bar in real time
-      baristaDispatcher.dispatchPaidOrder(orderAggregate).catch((err) => {
-        console.warn('Dispatching to barista bar failed:', err);
-      });
+      if (result) {
+        // Automatically deduct raw BOM materials upon order settlement
+        // If completing a recalled open tab, settle and close it in place!
+        if (activeTabId) {
+          try {
+            CatalogService.settleAndCloseTab(activeTabId, result.order.id, activeShift.tenantId);
+            setOpenTabsCount(CatalogService.getOpenTabs(activeShift.tenantId).length);
+          } catch (e) {
+            console.warn('[PosView] Failed to settle tab:', e);
+          }
+          setActiveTabId(null);
+        }
 
-      // 3. Station Printing & Routing (Bypassed when printer.enabled = false for 100 HICH)
-      usePrinterStore.getState().dispatchOrder(orderAggregate).catch((err) => {
-        console.warn('[PosView] Station printer routing dispatch:', err);
-      });
+        // Persist customer CRM details if customer name/phone was provided
+        if (customerName.trim() || customerPhone.trim()) {
+          const tenantDb = getCafeDatabase(activeShift.tenantId);
+          tenantDb.transaction('rw', tenantDb.customers, async () => {
+            const cName = customerName.trim();
+            const cPhone = customerPhone.trim();
+            let existing = null;
+            if (cPhone) {
+              existing = await tenantDb.customers.where('phone').equals(cPhone).first();
+            }
+            if (!existing && cName) {
+              existing = await tenantDb.customers.where('name').equals(cName).first();
+            }
+            if (existing) {
+              await tenantDb.customers.update(existing.id, {
+                name: cName || existing.name,
+                phone: cPhone || existing.phone,
+              });
+            } else {
+              await tenantDb.customers.put({
+                id: `cust_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                name: cName,
+                phone: cPhone,
+                tenantId: activeShift.tenantId,
+                createdAt: Date.now(),
+              });
+            }
+          }).catch((err: any) => console.warn('[PosView] Customer CRM persistence error:', err));
+        }
 
-      setCompletedReceiptOrder(result.order);
-      setCompletedReceiptPayment(result.payment);
-      if (paymentMethod === 'CASH') {
-        setCompletedCashTendered(cashTendered);
-        setCompletedChange(Math.max(0, cashTendered - netTotalToman));
-      } else {
-        setCompletedCashTendered(undefined);
-        setCompletedChange(undefined);
+        inventoryBomService.deductForItems(
+          cartItems.map((it) => ({
+            id: it.id,
+            menuItemId: it.menuItemId,
+            title: it.itemNameSnapshot,
+            quantity: it.quantity,
+            unitPrice: it.unitPriceSnapshotToman,
+            subtotal: it.subtotalToman,
+            modifiers: it.modifiers?.map((m) => ({ id: m.id, nameFa: m.nameFa, priceDelta: m.priceDeltaToman })),
+            notes: it.notes,
+          }))
+        );
+
+        const orderAggregateItems: OrderItemAggregate[] = cartItems.map((item) => {
+          const mods = item.modifiers ? item.modifiers.map((m) => ({ ...m })) : [];
+          const modsDelta = mods.reduce((sum, m) => sum + m.priceDeltaToman, 0);
+          return {
+            id: item.id,
+            menuItemId: item.menuItemId,
+            itemNameSnapshot: item.itemNameSnapshot,
+            unitPriceSnapshotToman: item.unitPriceSnapshotToman,
+            quantity: item.quantity,
+            modifiers: mods,
+            modifiersDeltaToman: modsDelta * item.quantity,
+            subtotalToman: item.subtotalToman,
+            notes: item.notes,
+          };
+        });
+
+        const orderAggregate: OrderAggregate = {
+          clientGeneratedId,
+          id: result.order.id,
+          tenantId: activeShift.tenantId,
+          shiftId: activeShift.id,
+          orderNumber: result.order.orderNumber,
+          orderType,
+          state: 'PAID',
+          tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
+          customerName: customerName.trim() || undefined,
+          customerPhone: customerPhone.trim() || undefined,
+          items: orderAggregateItems,
+          grossAmountToman,
+          grossAmount: grossAmountToman,
+          discountAmountToman,
+          discountAmount: discountAmountToman,
+          netTotalToman,
+          totalNet: netTotalToman,
+          payments: [
+            {
+              id: result.payment.id,
+              tenantId: activeShift.tenantId,
+              orderId: result.order.id,
+              clientGeneratedId,
+              shiftId: activeShift.id,
+              receivedByUserId: activeUser.id,
+              receivedByUserName: activeUser.fullName,
+              amountToman: netTotalToman,
+              paymentMethod: effectivePaymentMethod,
+              referenceCode: effectiveReferenceCode,
+              terminalName: effectiveTerminal,
+              status: 'SUCCESSFUL',
+              createdAt: new Date().toISOString(),
+            },
+          ],
+          paidAmountToman: netTotalToman,
+          paidAmount: netTotalToman,
+          createdAt: result.order.createdAt,
+          updatedAt: result.order.updatedAt,
+          createdByUserId: activeUser.id,
+          createdByUserName: activeUser.fullName,
+        };
+
+        // 1. Enqueue in OfflineSyncQueue (IndexedDB)
+        globalOfflineSyncQueue.enqueue(orderAggregate).catch((err) => {
+          console.warn('Enqueue into offline database failed:', err);
+        });
+
+        // 2. Dispatch to Barista Bar in real time
+        baristaDispatcher.dispatchPaidOrder(orderAggregate).catch((err) => {
+          console.warn('Dispatching to barista bar failed:', err);
+        });
+
+        // 3. Station Printing & Routing (Bypassed when printer.enabled = false for 100 HICH)
+        usePrinterStore.getState().dispatchOrder(orderAggregate).catch((err) => {
+          console.warn('[PosView] Station printer routing dispatch:', err);
+        });
+
+        setCompletedReceiptOrder(result.order);
+        setCompletedReceiptPayment(result.payment);
+        if (effectivePaymentMethod === 'CASH') {
+          setCompletedCashTendered(effectiveCashTendered);
+          setCompletedChange(Math.max(0, effectiveCashTendered - netTotalToman));
+        } else {
+          setCompletedCashTendered(undefined);
+          setCompletedChange(undefined);
+        }
+        setIsCheckoutOpen(false);
+        handleClearCart();
+        setReferenceCode('');
+        setIsMobileCartOpen(false);
+
+        if (autoPrint) {
+          setTimeout(() => {
+            printThermalReceipt('thermal-receipt');
+          }, 300);
+        }
       }
-      setIsCheckoutOpen(false);
-      handleClearCart();
-      setReferenceCode('');
-      setIsMobileCartOpen(false);
-
-      if (autoPrint) {
-        setTimeout(() => {
-          printThermalReceipt('thermal-receipt');
-        }, 300);
-      }
+    } finally {
+      setIsSubmittingOrder(false);
     }
   };
 
@@ -928,7 +1058,7 @@ export const PosView: React.FC<PosViewProps> = ({
         <div className="shrink-0 mb-3 flex flex-col gap-2">
           <div className="flex items-end justify-between gap-3 border-b-2 border-white/10 pb-0">
             {/* Horizontal File-Drawer Folder Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none select-none pt-1">
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none pt-1">
               <button
                 type="button"
                 onClick={() => {
@@ -937,11 +1067,11 @@ export const PosView: React.FC<PosViewProps> = ({
                 }}
                 className={`px-3.5 py-2 text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                   selectedCategoryId === 'all'
-                    ? 'rounded-t-lg bg-gradient-to-t from-[#162238] to-[#223554] border-t-2 border-x-2 border-b-0 border-[#90D2ED]/40 text-white font-bold relative -bottom-[2px] z-10 shadow-md'
-                    : 'rounded-t-lg bg-[#0C1524]/60 text-[#8E9EB0] hover:text-white border-t border-x border-b border-white/10 hover:bg-white/5'
+                    ? 'rounded-t-lg bg-gradient-to-t from-[#162238] to-[#223554] border-t-2 border-x border-b-0 border-[#D71921] text-[#F5F5F7] font-black relative -bottom-[2px] z-10 shadow-lg'
+                    : 'rounded-t-lg bg-[#0B1524]/70 text-[#F5F5F7]/70 hover:text-white border-t border-x border-b border-white/10 hover:bg-[#0F223D]/50'
                 }`}
               >
-                <span>⚡</span>
+                <span className="text-[#D71921]">⚡</span>
                 <span>همه محصولات</span>
               </button>
 
@@ -965,8 +1095,8 @@ export const PosView: React.FC<PosViewProps> = ({
                     }}
                     className={`px-3.5 py-2 text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                       isActive
-                        ? 'rounded-t-lg bg-gradient-to-t from-[#162238] to-[#223554] border-t-2 border-x-2 border-b-0 border-[#90D2ED]/40 text-white font-bold relative -bottom-[2px] z-10 shadow-md'
-                        : 'rounded-t-lg bg-[#0C1524]/60 text-[#8E9EB0] hover:text-white border-t border-x border-b border-white/10 hover:bg-white/5'
+                        ? 'rounded-t-lg bg-gradient-to-t from-[#162238] to-[#223554] border-t-2 border-x border-b-0 border-[#D71921] text-[#F5F5F7] font-black relative -bottom-[2px] z-10 shadow-lg'
+                        : 'rounded-t-lg bg-[#0B1524]/70 text-[#F5F5F7]/70 hover:text-white border-t border-x border-b border-white/10 hover:bg-[#0F223D]/50'
                     }`}
                   >
                     <span>{icon}</span>
@@ -985,10 +1115,10 @@ export const PosView: React.FC<PosViewProps> = ({
                     playPosBeep('click');
                     setStockFilter(stockFilter === 'ALL' ? 'ALERTS_ONLY' : 'ALL');
                   }}
-                  className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-bold transition cursor-pointer flex items-center gap-1 ${
+                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition cursor-pointer flex items-center gap-1 active:scale-95 ${
                     stockFilter === 'ALERTS_ONLY'
-                      ? 'bg-rose-950/60 border-rose-500 text-rose-300'
-                      : 'bg-[#1B222C] border-[#293444] text-rose-400 hover:border-rose-500'
+                      ? 'bg-[#D71921]/30 border-[#D71921] text-[#F5F5F7]'
+                      : 'bg-[#0F223D]/80 border-white/12 text-[#D71921] hover:border-[#D71921]'
                   }`}
                   title="فیلتر کسری موجودی"
                 >
@@ -1002,9 +1132,9 @@ export const PosView: React.FC<PosViewProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="جستجوی دان، ۵۰/۵۰، کرک تی، نوشیدنی..."
-                  className="w-full bg-[#121417] border border-[#293444] text-white text-xs rounded-lg pr-8 pl-3 py-1.5 focus:outline-none focus:border-[#D71921] transition-colors placeholder:text-[#9EACB8]/60"
+                  className="w-full bg-[#0B1524]/90 border border-white/12 text-[#F5F5F7] text-xs rounded-xl pr-8 pl-3 py-2 focus:outline-none focus:border-[#D71921] transition-colors placeholder:text-[#F5F5F7]/40 shadow-inner"
                 />
-                <Search className="w-3.5 h-3.5 text-[#9EACB8] absolute right-2.5 top-2" />
+                <Search className="w-3.5 h-3.5 text-[#F5F5F7]/60 absolute right-2.5 top-2.5" />
               </div>
             </div>
           </div>
@@ -1014,10 +1144,10 @@ export const PosView: React.FC<PosViewProps> = ({
         <div className="flex-1 overflow-y-auto pr-1 no-scrollbar min-h-0">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-3 md:gap-4 pb-4">
           {filteredItems.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-[#9EACB8] bg-[#1B222C]/40 border border-[#293444] rounded-2xl">
-              <Coffee className="w-10 h-10 mx-auto text-[#9EACB8] mb-2 opacity-50" />
-              <p className="font-bold text-white text-sm">هیچ محصولی با این فیلتر یافت نشد</p>
-              <p className="text-xs mt-1">
+            <div className="col-span-full py-16 text-center text-[#F5F5F7]/70 bg-[#0F223D]/40 border border-white/10 rounded-2xl">
+              <Coffee className="w-10 h-10 mx-auto text-[#D71921] mb-2 opacity-80" />
+              <p className="font-bold text-[#F5F5F7] text-sm">هیچ محصولی با این فیلتر یافت نشد</p>
+              <p className="text-xs text-[#F5F5F7]/50 mt-1">
                 نام دیگری مانند «۵۰/۵۰»، «کرک»، «اتیوپی» یا کاتگوری دیگری را انتخاب نمایید.
               </p>
             </div>
@@ -1163,14 +1293,14 @@ export const PosView: React.FC<PosViewProps> = ({
                   {/* Card Bottom Bar: Price & Action CTA */}
                   <div className="relative z-20 px-3 py-2 bg-[#121417]/90 border-t border-[#293444] rounded-b-xl flex items-center justify-between gap-1.5 mt-auto overflow-hidden">
                     <div className="min-w-0 pr-0.5">
-                      <span className="text-[9px] text-[#9EACB8] block leading-none mb-0.5 font-medium">
+                      <span className="text-[9px] text-[#F5F5F7]/60 block leading-none mb-0.5 font-medium">
                         قیمت پایه:
                       </span>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-sm font-black text-white num-heavy tracking-tight">
+                        <span className="text-sm font-black text-[#C5A880] num-heavy font-mono tracking-tight">
                           {formatToman(item.priceToman)}
                         </span>
-                        <span className="text-[9px] text-[#9EACB8] shrink-0">تومان</span>
+                        <span className="text-[9px] text-[#C5A880]/80 shrink-0">تومان</span>
                       </div>
                     </div>
 
@@ -1360,10 +1490,11 @@ export const PosView: React.FC<PosViewProps> = ({
         isOpen={isOpenTabsModalOpen}
         onClose={() => {
           setIsOpenTabsModalOpen(false);
-          setOpenTabsCount(CatalogService.getOpenTabs().length);
+          setOpenTabsCount(CatalogService.getOpenTabs(activeShift?.tenantId || currentTenantId).length);
         }}
         onRecallTab={handleRecallTabForEditing}
         activeTabId={activeTabId}
+        tenantId={activeShift?.tenantId || currentTenantId}
       />
 
       {/* ================= COMPLETED RECEIPT PREVIEW MODAL ================= */}

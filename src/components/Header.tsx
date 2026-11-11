@@ -63,39 +63,34 @@ export const Header: React.FC<HeaderProps> = ({
   return (
     <header
       data-tenant={tenant.id}
-      className="vision-glass-slab bg-[var(--color-header-bg,rgba(12,22,38,0.76))] border-b border-[var(--color-header-border,rgba(255,255,255,0.15))] sticky top-0 z-40 transition-all select-none shadow-xl h-[64px] flex items-center"
+      className="vision-glass-slab bg-[#0F223D]/90 border-b border-white/12 sticky top-0 z-40 transition-all select-none shadow-2xl h-[64px] shrink-0 flex items-center backdrop-blur-2xl"
     >
       <div className="max-w-[1720px] mx-auto px-3 md:px-5 w-full flex items-center justify-between gap-3 relative select-none">
         {/* ================= FAR TOP-RIGHT SECTOR (Physical Right in RTL) ================= */}
-        <div className="flex items-center gap-2.5 z-10">
+        <div className="flex items-center gap-2.5 z-10 shrink-0">
           {/* AntiGravity Cloud Outbox Sync Badge */}
           <SyncStatusBarBadge status={syncStatus} onManualFlush={triggerFlush} />
 
           {/* Boiler Telemetry Status Chip */}
-          <div className="flex items-center gap-1.5 bg-[rgba(12,20,35,0.7)] border border-white/10 px-2.5 py-1.5 rounded-xl text-xs text-[#9EACB8] backdrop-blur-md shadow-inner">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-slate-400 font-medium hidden sm:inline">بویلر:</span>
-            <span className="text-slate-200 font-mono font-bold num-heavy">93.5°C • 9.1 Bar</span>
+          <div className="flex items-center gap-1.5 bg-[#0B1524]/80 border border-white/12 px-2.5 py-1.5 rounded-xl text-xs text-[#F5F5F7]/70 backdrop-blur-md shadow-inner">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#005A3E] border border-emerald-400 animate-pulse"></span>
+            <span className="text-[#F5F5F7]/60 font-medium hidden sm:inline">بویلر:</span>
+            <span className="text-[#F5F5F7] font-mono font-bold num-heavy">93.5°C • 9.1 Bar</span>
           </div>
         </div>
 
         {/* ================= CENTER BRAND LOCKUP (Strict Horizontal Center) ================= */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
           <div
-            className="flex items-center bg-[rgba(12,20,35,0.7)] border border-white/15 px-3.5 py-1.5 rounded-2xl shadow-inner backdrop-blur-md"
+            className="flex items-center bg-[#0F223D]/90 border border-white/15 px-3.5 py-1.5 rounded-2xl shadow-inner backdrop-blur-xl"
             style={{
-              backgroundColor: activeTenant.palette.surfaceBg,
-              borderColor: activeTenant.palette.borderHairline,
+              borderColor: activeTenant.palette.borderHairline || 'rgba(255,255,255,0.15)',
             }}
           >
             {/* Tenant Logo Badge */}
             <div className="flex items-center gap-2">
               <div
-                className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center p-0.5 border"
-                style={{
-                  borderColor: activeTenant.palette.borderHairline,
-                  backgroundColor: activeTenant.palette.primaryBg,
-                }}
+                className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center p-0.5 border border-white/15 bg-[#0B1524]"
               >
                 <img
                   src={activeTenant.receipt.logoPath}
@@ -114,26 +109,25 @@ export const Header: React.FC<HeaderProps> = ({
                   {activeTenant.id === 'modendo' ? 'MODENDO' : '100'}
                 </span>
                 <span
-                  className="text-[9px] block tracking-widest font-black uppercase"
-                  style={{ color: activeTenant.palette.textMuted }}
+                  className="text-[9px] block tracking-widest font-black uppercase text-[#F5F5F7]/60"
                 >
                   {activeTenant.id === 'modendo' ? 'CAFÉ' : 'HICH'}
                 </span>
               </div>
             </div>
-            <div className="h-6 w-[1.5px] bg-[#293444] mx-2.5" style={{ backgroundColor: activeTenant.palette.borderHairline }}></div>
+            <div className="h-6 w-[1px] bg-white/15 mx-2.5"></div>
             <div>
-              <h1 className="text-sm font-extrabold text-white flex items-center gap-1.5" style={{ color: activeTenant.palette.textPrimary }}>
+              <h1 className="text-sm font-extrabold text-[#F5F5F7] flex items-center gap-1.5">
                 <span>{activeTenant.brandNameFa}</span>
                 <span
-                  className="text-[10px] text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider"
+                  className="text-[10px] text-white px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider"
                   style={{ backgroundColor: activeTenant.palette.accentColor }}
                 >
                   {activeTenant.id === 'modendo' ? 'MODENDO CAFÉ' : 'ROASTERS'}
                 </span>
               </h1>
-              <p className="text-[11px] text-[#9EACB8] flex items-center gap-1" style={{ color: activeTenant.palette.textMuted }}>
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
+              <p className="text-[11px] text-[#F5F5F7]/60 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#005A3E] border border-emerald-400 animate-pulse inline-block"></span>
                 <span>{activeTenant.id === 'modendo' ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱' : (tenant.address || 'شعبه ۱: اکباتان - فاز ۱')}</span>
               </p>
             </div>
@@ -141,14 +135,14 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* ================= TOP-LEFT SECTOR (Physical Left in RTL) ================= */}
-        <div className="flex items-center gap-2.5 z-10">
+        <div className="flex items-center gap-2.5 z-10 shrink-0">
           {/* Subtle back-to-launcher icon button */}
           <button
             onClick={() => {
               playPosBeep('click');
               onTabChange('hub');
             }}
-            className="flex items-center justify-center w-8 h-8 rounded-xl bg-[rgba(20,32,54,0.7)] hover:bg-[rgba(30,48,80,0.9)] text-[#90D2ED] hover:text-white border border-white/15 transition cursor-pointer shadow-inner"
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#0F223D]/80 hover:bg-[#162E52] text-[#90D2ED] hover:text-white border border-white/15 transition cursor-pointer shadow-inner active:scale-95"
             title="بازگشت به لانچر برنامه‌ها (Hub)"
           >
             <LayoutGrid className="w-4 h-4" />
@@ -156,10 +150,10 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Live Clock */}
           <div className="hidden md:flex flex-col text-left pl-1">
-            <span className="text-xs font-mono font-bold text-white num-heavy leading-tight">
+            <span className="text-xs font-mono font-bold text-[#F5F5F7] num-heavy leading-tight">
               {liveClock || '00:00:00'}
             </span>
-            <span className="text-[10px] text-[#9EACB8] leading-tight">
+            <span className="text-[10px] text-[#F5F5F7]/60 leading-tight">
               {new Date().toLocaleDateString('fa-IR', { weekday: 'short', month: 'numeric', day: 'numeric' })}
             </span>
           </div>
@@ -167,14 +161,14 @@ export const Header: React.FC<HeaderProps> = ({
           {/* Operator Profile Badge */}
           <div
             onClick={() => onUserSwitchRequest ? onUserSwitchRequest(activeUser.id) : onLockTerminal?.()}
-            className="flex items-center gap-1.5 bg-[rgba(12,20,35,0.75)] hover:bg-[rgba(20,32,54,0.9)] border border-white/15 rounded-xl px-2.5 py-1.5 backdrop-blur-md shadow-inner cursor-pointer transition select-none"
+            className="flex items-center gap-1.5 bg-[#0F223D]/80 hover:bg-[#162E52] border border-white/15 rounded-xl px-2.5 py-1.5 backdrop-blur-md shadow-inner cursor-pointer transition select-none active:scale-95"
             title="تغییر کاربر یا قفل صندوق (کلیک جهت ورود PIN)"
           >
             <UserCheck className="w-3.5 h-3.5 text-[#90D2ED]" />
-            <span className="text-xs font-bold text-white max-w-[120px] truncate">
+            <span className="text-xs font-bold text-[#F5F5F7] max-w-[120px] truncate">
               {activeUser.fullName}
             </span>
-            <span className="text-[10px] bg-white/10 border border-white/10 px-1.5 py-0.5 rounded text-slate-300 font-medium">
+            <span className="text-[10px] bg-white/10 border border-white/10 px-1.5 py-0.5 rounded-md text-[#F5F5F7]/90 font-medium">
               {activeUser.role === 'OWNER'
                 ? 'مالک'
                 : activeUser.role === 'MANAGER'
@@ -183,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({
                 ? 'صندوق‌دار'
                 : 'باریستا'}
             </span>
-            <Lock className="w-3 h-3 text-amber-400/80" />
+            <Lock className="w-3 h-3 text-[#C5A880]" />
           </div>
 
           {/* Lock / Logout Button */}
@@ -192,10 +186,10 @@ export const Header: React.FC<HeaderProps> = ({
               playPosBeep('click');
               onLogout();
             }}
-            className="flex items-center gap-1.5 bg-[rgba(20,32,54,0.75)] hover:bg-rose-950/70 text-[#CAD5E2] hover:text-rose-200 border border-white/15 hover:border-rose-600/60 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer vision-haptic-press shadow-inner"
+            className="flex items-center gap-1.5 bg-[#0F223D]/80 hover:bg-[#D71921] text-[#F5F5F7] hover:text-white border border-white/15 hover:border-[#D71921] px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shadow-inner"
             title="خروج از حساب و بازگشت به صفحه لاگین"
           >
-            <LogOut className="w-3.5 h-3.5 text-rose-400" />
+            <LogOut className="w-3.5 h-3.5 text-[#D71921] group-hover:text-white" />
             <span className="hidden sm:inline">خروج</span>
           </button>
 
@@ -206,10 +200,10 @@ export const Header: React.FC<HeaderProps> = ({
                 playPosBeep('click');
                 onOpenBackupModal();
               }}
-              className="flex items-center gap-1 bg-[#1B222C] hover:bg-[#222B38] text-[#F3E9DD] border border-[#293444] rounded-xl px-2.5 py-1.5 text-xs font-medium transition cursor-pointer"
+              className="flex items-center gap-1 bg-[#0F223D]/80 hover:bg-[#162E52] text-[#F5F5F7] border border-white/15 rounded-xl px-2.5 py-1.5 text-xs font-medium transition cursor-pointer active:scale-95"
               title="پشتیبان‌گیری ابری و بازیابی اطلاعات"
             >
-              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              <Shield className="w-3.5 h-3.5 text-[#C5A880]" />
               <span className="hidden xl:inline">پشتیبان</span>
             </button>
           )}
