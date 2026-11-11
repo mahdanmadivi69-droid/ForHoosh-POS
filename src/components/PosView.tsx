@@ -676,6 +676,17 @@ export const PosView: React.FC<PosViewProps> = ({
     }
   };
 
+  const handleSettleTabDirectly = (tab: OpenTabRecord) => {
+    try {
+      handleRecallTabForEditing(tab);
+      setTimeout(() => {
+        handleStartCheckout();
+      }, 50);
+    } catch (e: any) {
+      alert(`خطا در تسویه مستقیم تب: ${e?.message || e}`);
+    }
+  };
+
   const handleHoldOrUpdateTab = () => {
     if (cartItems.length === 0) {
       playPosBeep('delete');
@@ -1372,6 +1383,7 @@ export const PosView: React.FC<PosViewProps> = ({
               playPosBeep('click');
               setIsOpenTabsModalOpen(true);
             }}
+            onHoldOrUpdateTab={handleHoldOrUpdateTab}
             activeShift={activeShift}
             onOpenTablePicker={() => setIsTablePickerOpen(true)}
             activeTenant={activeTenant}
@@ -1493,6 +1505,7 @@ export const PosView: React.FC<PosViewProps> = ({
           setOpenTabsCount(CatalogService.getOpenTabs(activeShift?.tenantId || currentTenantId).length);
         }}
         onRecallTab={handleRecallTabForEditing}
+        onSettleTab={handleSettleTabDirectly}
         activeTabId={activeTabId}
         tenantId={activeShift?.tenantId || currentTenantId}
       />

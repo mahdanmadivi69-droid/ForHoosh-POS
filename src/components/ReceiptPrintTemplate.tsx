@@ -113,8 +113,17 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
               />
             </div>
           )}
-          <h1 className="text-xl font-black tracking-wider text-black m-0 p-0">{displayTenantName}</h1>
-          <p className="text-xs font-bold tracking-widest text-gray-800 m-0 uppercase">{subBrand}</p>
+          {isModendo ? (
+            <>
+              <h1 className="text-xl font-black tracking-wider text-black m-0 p-0">{displayTenantName}</h1>
+              <p className="text-xs font-bold tracking-widest text-gray-800 m-0 uppercase">{subBrand}</p>
+            </>
+          ) : (
+            <div className="space-y-0.5">
+              <div className="text-center font-bold text-base text-black">قهوه‌فروشی ۱۰۰ هیچ</div>
+              <div dir="ltr" className="text-center text-xs tracking-wider text-neutral-400 font-mono">100 HICH COFFEE ROASTERS</div>
+            </div>
+          )}
           {displayHeaderNote && (
             <p className="text-[10px] font-bold text-gray-700 m-0">{displayHeaderNote}</p>
           )}
@@ -438,10 +447,15 @@ export function renderReceiptTemplateHtml(
       </div>` : ''}
 
       <div style="text-align: center; margin-bottom: 8px;">
-        <h1 style="font-size: 18px; font-weight: 900; letter-spacing: 1px; margin: 0 0 2px 0; color: #000;">${brandName}</h1>
-        <p style="font-size: 10px; font-weight: 800; letter-spacing: 2px; margin: 0 0 4px 0; text-transform: uppercase; color: #333;">${subBrand}</p>
-        ${headerNote ? `<p style="font-size: 10px; font-weight: 700; color: #333; margin: 0 0 2px 0;">${headerNote}</p>` : ''}
-        <p style="font-size: 10px; color: #444; margin: 0 0 2px 0;">${address}</p>
+        ${isModendo ? `
+          <h1 style="font-size: 18px; font-weight: 900; letter-spacing: 1px; margin: 0 0 2px 0; color: #000;">${brandName}</h1>
+          <p style="font-size: 10px; font-weight: 800; letter-spacing: 2px; margin: 0 0 4px 0; text-transform: uppercase; color: #333;">${subBrand}</p>
+        ` : `
+          <div style="text-align: center; font-weight: 700; font-size: 15px; color: #000; margin-bottom: 2px;">قهوه‌فروشی ۱۰۰ هیچ</div>
+          <div dir="ltr" style="text-align: center; font-size: 11px; letter-spacing: 1px; color: #666; font-family: monospace;">100 HICH COFFEE ROASTERS</div>
+        `}
+        ${headerNote ? `<p style="font-size: 10px; font-weight: 700; color: #333; margin: 2px 0;">${headerNote}</p>` : ''}
+        <p style="font-size: 10px; color: #444; margin: 2px 0;">${address}</p>
         <p style="font-size: 10px; color: #444; margin: 0; font-family: monospace;">تلفن: ${phone}</p>
       </div>
 

@@ -33,6 +33,7 @@ interface OpenTabsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onRecallTab: (tab: OpenTabRecord) => void;
+  onSettleTab?: (tab: OpenTabRecord) => void;
   activeTabId?: string | null;
   onNewTabRequest?: () => void;
   tenantId?: string;
@@ -42,6 +43,7 @@ export const OpenTabsModal: React.FC<OpenTabsModalProps> = ({
   isOpen,
   onClose,
   onRecallTab,
+  onSettleTab,
   activeTabId,
   onNewTabRequest,
   tenantId,
@@ -180,23 +182,40 @@ export const OpenTabsModal: React.FC<OpenTabsModalProps> = ({
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-white/10">
+                    {/* Action 1: بازخوانی (Resume) */}
                     <button
                       type="button"
                       onClick={() => handleRecall(tab)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md ${
                         isActive
                           ? 'bg-[#8C1318] text-white border border-[#9E8A5E]/50'
                           : 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] text-white hover:brightness-110 border border-white/20'
                       }`}
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
-                      <span>{isActive ? 'ادامه ویرایش' : 'بازیابی در سبد (Recall)'}</span>
+                      <span>{isActive ? 'ادامه ویرایش' : 'بازخوانی (Resume)'}</span>
                     </button>
+
+                    {/* Action 2: تسویه سریع (Settle) */}
+                    {onSettleTab && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playPosBeep('click');
+                          onSettleTab(tab);
+                          onClose();
+                        }}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold bg-[#D71921] hover:bg-[#B8141B] text-white border border-white/20 flex items-center gap-1.5 transition cursor-pointer shadow-md active:scale-95"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>تسویه سریع (Settle)</span>
+                      </button>
+                    )}
 
                     <button
                       type="button"
                       onClick={() => handleVoid(tab.tab_id, tab.table_or_customer)}
-                      className="p-2 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-800/40 transition cursor-pointer"
+                      className="p-1.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 border border-transparent hover:border-rose-800/40 transition cursor-pointer"
                       title="ابطال این تب"
                     >
                       <Trash2 className="w-4 h-4" />

@@ -81,57 +81,70 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* ================= CENTER BRAND LOCKUP (Strict Horizontal Center) ================= */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-auto">
-          <div
-            className="flex items-center bg-[#0F223D]/90 border border-white/15 px-3.5 py-1.5 rounded-2xl shadow-inner backdrop-blur-xl"
-            style={{
-              borderColor: activeTenant.palette.borderHairline || 'rgba(255,255,255,0.15)',
-            }}
-          >
-            {/* Tenant Logo Badge */}
-            <div className="flex items-center gap-2">
-              <div
-                className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center p-0.5 border border-white/15 bg-[#0B1524]"
-              >
-                <img
-                  src={activeTenant.receipt.logoPath}
-                  alt={activeTenant.brandNameEn}
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    const img = e.currentTarget;
-                    if (!img.src.endsWith('.svg')) {
-                      img.src = activeTenant.receipt.logoPath.replace('.png', '.svg');
-                    }
-                  }}
-                />
-              </div>
-              <div className="text-left font-black tracking-tighter leading-none pr-1">
-                <span className="text-xl font-black" style={{ color: activeTenant.palette.accentColor }}>
-                  {activeTenant.id === 'modendo' ? 'MODENDO' : '100'}
-                </span>
-                <span
-                  className="text-[9px] block tracking-widest font-black uppercase text-[#F5F5F7]/60"
+          {activeTenant.id === 'modendo' ? (
+            <div
+              className="flex items-center bg-[#0F223D]/90 border border-white/15 px-3.5 py-1.5 rounded-2xl shadow-inner backdrop-blur-xl"
+              style={{
+                borderColor: activeTenant.palette.borderHairline || 'rgba(255,255,255,0.15)',
+              }}
+            >
+              {/* Tenant Logo Badge */}
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center p-0.5 border border-white/15 bg-[#0B1524]"
                 >
-                  {activeTenant.id === 'modendo' ? 'CAFÉ' : 'HICH'}
-                </span>
+                  <img
+                    src={activeTenant.receipt.logoPath}
+                    alt={activeTenant.brandNameEn}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      if (!img.src.endsWith('.svg')) {
+                        img.src = activeTenant.receipt.logoPath.replace('.png', '.svg');
+                      }
+                    }}
+                  />
+                </div>
+                <div className="text-left font-black tracking-tighter leading-none pr-1">
+                  <span className="text-xl font-black" style={{ color: activeTenant.palette.accentColor }}>
+                    MODENDO
+                  </span>
+                  <span className="text-[9px] block tracking-widest font-black uppercase text-[#F5F5F7]/60">
+                    CAFÉ
+                  </span>
+                </div>
+              </div>
+              <div className="h-6 w-[1px] bg-white/15 mx-2.5"></div>
+              <div>
+                <h1 className="text-sm font-extrabold text-[#F5F5F7] flex items-center gap-1.5">
+                  <span>{activeTenant.brandNameFa}</span>
+                  <span
+                    className="text-[10px] text-white px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider"
+                    style={{ backgroundColor: activeTenant.palette.accentColor }}
+                  >
+                    MODENDO CAFÉ
+                  </span>
+                </h1>
+                <p className="text-[11px] text-[#F5F5F7]/60 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#005A3E] border border-emerald-400 animate-pulse inline-block"></span>
+                  <span>تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱</span>
+                </p>
               </div>
             </div>
-            <div className="h-6 w-[1px] bg-white/15 mx-2.5"></div>
-            <div>
-              <h1 className="text-sm font-extrabold text-[#F5F5F7] flex items-center gap-1.5">
-                <span>{activeTenant.brandNameFa}</span>
-                <span
-                  className="text-[10px] text-white px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider"
-                  style={{ backgroundColor: activeTenant.palette.accentColor }}
-                >
-                  {activeTenant.id === 'modendo' ? 'MODENDO CAFÉ' : 'ROASTERS'}
-                </span>
-              </h1>
-              <p className="text-[11px] text-[#F5F5F7]/60 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#005A3E] border border-emerald-400 animate-pulse inline-block"></span>
-                <span>{activeTenant.id === 'modendo' ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱' : (tenant.address || 'شعبه ۱: اکباتان - فاز ۱')}</span>
-              </p>
+          ) : (
+            /* 100 HICH Navy Badge Pill */
+            <div
+              dir="ltr"
+              className="flex flex-col items-center justify-center px-5 py-1.5 rounded-full bg-[#0F223D] border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+            >
+              <span className="text-sm font-black tracking-widest text-[#F5F5F7] uppercase font-sans leading-none">
+                100 HICH
+              </span>
+              <span className="text-[9px] font-bold tracking-[0.2em] text-[#90D2ED] uppercase font-mono leading-tight mt-0.5">
+                COFFEE ROASTERS
+              </span>
             </div>
-          </div>
+          )}
         </div>
 
         {/* ================= TOP-LEFT SECTOR (Physical Left in RTL) ================= */}

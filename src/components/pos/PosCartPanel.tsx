@@ -45,6 +45,7 @@ export interface PosCartPanelProps {
   handleCancelTabEditing: () => void;
   openTabsCount: number;
   onOpenTabsModal: () => void;
+  onHoldOrUpdateTab?: () => void;
   activeShift: { id: string } | null;
   onOpenTablePicker: () => void;
   activeTenant: TenantProfile;
@@ -87,6 +88,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
   handleCancelTabEditing,
   openTabsCount,
   onOpenTabsModal,
+  onHoldOrUpdateTab,
   activeShift,
   onOpenTablePicker,
   activeTenant,
@@ -552,43 +554,63 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
           </div>
         </div>
 
-        {/* Action Controls Split */}
-        <div className="flex items-center gap-2 pt-1.5">
-          <button
-            type="button"
-            onClick={handleClearCart}
-            title="پاک کردن سبد"
-            className="w-10 h-11 shrink-0 bg-[#0F223D]/80 hover:bg-[#D71921]/20 border border-white/12 text-[#F5F5F7]/60 hover:text-[#D71921] rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
+        {/* Action Controls Split: 2-Tier Architecture */}
+        <div className="space-y-2 pt-1.5">
+          {/* Top Row: [Clear] + [ثبت به عنوان تب باز] + [مشاهده تب‌ها (${count})] */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleClearCart}
+              title="پاک کردن سبد"
+              className="w-10 h-10 shrink-0 bg-[#0F223D]/80 hover:bg-[#D71921]/20 border border-white/12 text-[#F5F5F7]/60 hover:text-[#D71921] rounded-xl flex items-center justify-center transition cursor-pointer active:scale-95"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
 
-          {/* Button 1: ثبت تب / مشاهده تب‌ها */}
-          <button
-            type="button"
-            onClick={() => {
-              playPosBeep('click');
-              onOpenTabsModal();
-            }}
-            className="flex-1 h-11 px-2.5 rounded-xl bg-[#0F223D] hover:bg-[#162E52] border border-white/15 text-[#90D2ED] hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95"
-          >
-            <Layers className="w-4 h-4 shrink-0 text-[#90D2ED]" />
-            <span className="truncate">ثبت تب / مشاهده تب‌ها</span>
-            <span className="w-4 h-4 rounded-full bg-[#D71921] text-white flex items-center justify-center text-[10px] font-mono shrink-0">
-              {openTabsCount}
-            </span>
-          </button>
+            {/* Top Action 1: ثبت به عنوان تب باز (Secondary Glass) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (onHoldOrUpdateTab) {
+                  onHoldOrUpdateTab();
+                } else {
+                  playPosBeep('click');
+                  onOpenTabsModal();
+                }
+              }}
+              disabled={cartItems.length === 0 && !activeTabId}
+              className="flex-1 h-10 px-2.5 rounded-xl bg-[rgba(20,25,36,0.72)] hover:bg-[#162E52] border border-white/15 text-[#F5F5F7] text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Layers className="w-3.5 h-3.5 shrink-0 text-[#90D2ED]" />
+              <span className="truncate">{activeTabId ? 'ذخیره تغییرات تب' : 'ثبت به عنوان تب باز'}</span>
+            </button>
 
-          {/* Button 2: ثبت و پرداخت فوری (Crimson #D71921 CTA) */}
+            {/* Top Action 2: مشاهده تب‌ها (${count}) (Pill Badge) */}
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                onOpenTabsModal();
+              }}
+              className="h-10 px-3 rounded-xl bg-[#0F223D] hover:bg-[#162E52] border border-white/15 text-[#90D2ED] hover:text-white text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95 shrink-0"
+            >
+              <span>مشاهده تب‌ها</span>
+              <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-[#D71921] text-white flex items-center justify-center text-[10px] font-mono font-bold shrink-0">
+                {openTabsCount}
+              </span>
+            </button>
+          </div>
+
+          {/* Bottom Row: Full-width Crimson #D71921 [ثبت و پرداخت فوری] */}
           <button
             type="button"
             onClick={handleStartCheckout}
             disabled={cartItems.length === 0}
-            className="flex-[1.4] h-11 relative group overflow-hidden bg-[#D71921] hover:bg-[#B8141B] active:scale-[0.98] disabled:bg-stone-800 disabled:opacity-40 text-white font-black px-3 rounded-xl flex items-center justify-center gap-1.5 border border-white/30 shadow-[0_0_20px_rgba(215,25,33,0.6)] hover:shadow-[0_0_28px_rgba(215,25,33,0.85)] transition-all cursor-pointer text-xs"
+            className="w-full h-11 relative group overflow-hidden bg-[#D71921] hover:bg-[#B8141B] active:scale-[0.98] disabled:bg-stone-800 disabled:opacity-40 text-white font-black px-4 rounded-xl flex items-center justify-center gap-2 border border-white/30 shadow-[0_0_20px_rgba(215,25,33,0.6)] hover:shadow-[0_0_28px_rgba(215,25,33,0.85)] transition-all cursor-pointer text-xs"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full duration-1000 transition-transform pointer-events-none" />
             <CreditCard className="w-4 h-4 shrink-0" />
-            <span className="relative z-10 whitespace-nowrap">ثبت و پرداخت فوری</span>
+            <span className="relative z-10 whitespace-nowrap text-sm font-black">ثبت و پرداخت فوری</span>
           </button>
         </div>
       </div>

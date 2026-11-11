@@ -61,7 +61,8 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
   const [elevationAction, setElevationAction] = useState<ElevationAction | null>(null);
   const [pendingAppTarget, setPendingAppTarget] = useState<'zero-g' | 'settings' | null>(null);
 
-  const handleCardClick = (target: 'pos' | 'reports' | 'zero-g' | 'settings') => {
+  const handleCardClick = (e: React.MouseEvent, target: 'pos' | 'reports' | 'zero-g' | 'settings') => {
+    e.stopPropagation();
     playPosBeep('click');
 
     if (target === 'pos' || target === 'reports') {
@@ -183,7 +184,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* Card 1: POS & Register */}
           <div
-            onClick={() => handleCardClick('pos')}
+            onClick={(e) => handleCardClick(e, 'pos')}
             className="group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border border-[rgba(144,210,237,0.25)] hover:border-[rgba(144,210,237,0.6)] rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5"
             style={{
               boxShadow: 'inset 0 1px 1.5px 0 rgba(144,210,237,0.25), 0 20px 50px rgba(0,0,0,0.8)',
@@ -216,7 +217,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
 
           {/* Card 2: Reports & Shift Analytics */}
           <div
-            onClick={() => handleCardClick('reports')}
+            onClick={(e) => handleCardClick(e, 'reports')}
             className="group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border border-[rgba(144,210,237,0.25)] hover:border-[rgba(144,210,237,0.6)] rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5"
             style={{
               boxShadow: 'inset 0 1px 1.5px 0 rgba(144,210,237,0.25), 0 20px 50px rgba(0,0,0,0.8)',
@@ -249,7 +250,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
 
           {/* Card 3: Sensory Lab & BOM */}
           <div
-            onClick={() => handleCardClick('zero-g')}
+            onClick={(e) => handleCardClick(e, 'zero-g')}
             className={`group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5 ${
               isOwnerOrManager
                 ? 'border-[rgba(144,210,237,0.25)] hover:border-[rgba(144,210,237,0.6)]'
@@ -293,7 +294,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
 
           {/* Card 4: Settings Control Deck */}
           <div
-            onClick={() => handleCardClick('settings')}
+            onClick={(e) => handleCardClick(e, 'settings')}
             className={`group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5 ${
               isOwnerOrManager
                 ? 'border-[rgba(144,210,237,0.25)] hover:border-[rgba(144,210,237,0.6)]'

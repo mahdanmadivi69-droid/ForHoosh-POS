@@ -147,7 +147,7 @@ export default function App() {
   }, [activeUser.role, currentTab]);
   // 100 HICH Route Guard: strictly forbid floor-plan or executive-pl
   useEffect(() => {
-    if (currentTab === 'floor-plan' || currentTab === 'executive-pl' || currentTab === 'zero-g') {
+    if (currentTab === 'floor-plan' || currentTab === 'executive-pl') {
       setCurrentTab('pos');
     }
   }, [currentTab]);
