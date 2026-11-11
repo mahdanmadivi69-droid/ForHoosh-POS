@@ -1,5 +1,6 @@
 import { PinLockScreen } from './components/auth/PinLockScreen';
 import { AppLauncherHub } from './components/hub/AppLauncherHub';
+import { SensoryLabView } from './components/SensoryLabView';
 import { HichSettingsControlDeck } from './views/settings/HichSettingsControlDeck';
 import { AuthUserRecord } from './types/rbac-settings';
 /**
@@ -66,7 +67,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [pendingSwitchUserId, setPendingSwitchUserId] = useState<string | null>(null);
-  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('pos');
+  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('hub');
   const [isTenantConfigOpen, setIsTenantConfigOpen] = useState(false);
   const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -322,7 +323,7 @@ export default function App() {
           setIsAuthenticated(true);
           setIsLocked(false);
           setPendingSwitchUserId(null);
-          setCurrentTab('pos');
+          setCurrentTab('hub');
           refreshState();
           showToast(`ترمینال بازگشایی شد: خوش آمدید ${unlockedUser.fullName}`);
         }}
@@ -408,23 +409,10 @@ export default function App() {
       {/* Main View Area */}
       <main className="flex-1 min-h-0 overflow-hidden relative">
         {currentTab === 'zero-g' && (
-          FEATURES.ENABLE_ZERO_G_SMART_ORDERS ? (
-            <SmartOrdersContainer
-              onBackToStandardPos={() => setCurrentTab('pos')}
-            />
-          ) : (
-            <PosView
-              tenant={tenant}
-              categories={categories}
-              menuItems={menuItems}
-              activeShift={activeShift}
-              activeUser={activeUser}
-              onOrderCompleted={handleOrderCompleted}
-              onOpenShiftRequired={() => setIsShiftModalOpen(true)}
-              onOpenZReport={() => setIsZReportModalOpen(true)}
-              preselectedTableLabel={preselectedTableLabel}
-            />
-          )
+          <SensoryLabView
+            onBackToLauncher={() => setCurrentTab('hub')}
+            baristaName={activeUser.fullName}
+          />
         )}
 
         {currentTab === 'pos' && (

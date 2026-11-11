@@ -449,8 +449,8 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
       </div>
 
       {/* ================= DISCOUNT & ACCELERATORS ================= */}
-      <div className="px-3 pt-2 pb-1.5 border-t border-white/10 bg-[#0B1524]/60 shrink-0">
-        <div className="flex items-center justify-between text-[11px] text-[#F5F5F7]/70 mb-1.5">
+      <div className="px-3 pt-1.5 pb-1 border-t border-white/10 bg-[#0B1524]/60 shrink-0">
+        <div className="flex items-center justify-between text-[11px] text-[#F5F5F7]/70 mb-1">
           <span className="flex items-center gap-1.5">
             <span>تخفیف سریع فاکتور:</span>
             {!canEditFinancials && (
@@ -524,8 +524,8 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
         </div>
       </div>
 
-      {/* ================= FINANCIAL CALCULATIONS & SUMMARY ================= */}
-      <div className="p-3.5 bg-[#0B1524]/90 border-t border-white/12 space-y-2 rounded-b-3xl shrink-0">
+      {/* ================= FINANCIAL CALCULATIONS & SUMMARY (PERMANENTLY ANCHORED BOTTOM TIER) ================= */}
+      <div className="p-3 bg-[#0B1524]/95 border-t border-white/12 space-y-1.5 rounded-b-3xl shrink-0 pb-2">
         <div className="flex justify-between items-center text-xs text-[#F5F5F7]/70">
           <span>جمع اقلام:</span>
           <span className="font-bold text-[#F5F5F7] num-heavy font-mono">
@@ -542,7 +542,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
           </span>
         </div>
 
-        <div className="h-[1px] bg-white/10 my-1"></div>
+        <div className="h-[1px] bg-white/10 my-0.5"></div>
 
         <div className="flex justify-between items-baseline">
           <span className="text-sm font-extrabold text-[#F5F5F7]">مبلغ نهایی فاکتور:</span>
@@ -555,7 +555,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
         </div>
 
         {/* Action Controls Split: 2-Tier Architecture */}
-        <div className="space-y-2 pt-1.5">
+        <div className="space-y-1.5 pt-1">
           {/* Top Row: [Clear] + [ثبت به عنوان تب باز] + [مشاهده تب‌ها (${count})] */}
           <div className="flex items-center gap-2">
             <button
