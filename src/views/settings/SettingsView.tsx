@@ -548,7 +548,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       />
                       <button
                         type="button"
-                        onClick={() => handleRemoveHeaderLine(idx)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRemoveHeaderLine(idx);
+                        }}
                         className="p-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -586,7 +590,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       />
                       <button
                         type="button"
-                        onClick={() => handleRemoveFooterLine(idx)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleRemoveFooterLine(idx);
+                        }}
                         className="p-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 cursor-pointer"
                       >
                         <Trash2 className="w-3.5 h-3.5" />

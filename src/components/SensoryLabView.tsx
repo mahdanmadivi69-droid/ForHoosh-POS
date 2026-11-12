@@ -43,6 +43,7 @@ export interface CalibrationRecord {
   yieldOutGrams: number;
   timeSeconds: number;
   grindSize: string;
+  shotsRequired: number;
   brewRatio: string;
   roastDate?: string;
   tastingNotes: string;
@@ -71,6 +72,7 @@ export const SensoryLabView: React.FC<SensoryLabViewProps> = ({
   const [yieldOutGrams, setYieldOutGrams] = useState<number>(40.0);
   const [timeSeconds, setTimeSeconds] = useState<number>(28);
   const [grindSize, setGrindSize] = useState<string>('3.4');
+  const [shotsRequired, setShotsRequired] = useState<number>(2);
   const [tastingNotes, setTastingNotes] = useState<string>('اسیدیته شفاف سیب سرخ، بادی کرمی، شکلات تلخ و فینیش تمیز');
   const [savedRecords, setSavedRecords] = useState<CalibrationRecord[]>([]);
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
@@ -101,6 +103,7 @@ export const SensoryLabView: React.FC<SensoryLabViewProps> = ({
       yieldOutGrams,
       timeSeconds,
       grindSize,
+      shotsRequired,
       brewRatio: `1:${ratio}`,
       tastingNotes,
       baristaName,
@@ -333,12 +336,12 @@ export const SensoryLabView: React.FC<SensoryLabViewProps> = ({
                   </div>
                 </div>
 
-                {/* Metric 4: Grind Size Setting */}
+                {/* Metric 4: Universal Grind Size Setting */}
                 <div className="bg-[#0B1524]/80 border border-white/10 rounded-2xl p-4 shadow-inner">
                   <div className="flex items-center justify-between text-xs text-[#F5F5F7]/70 mb-2">
                     <span className="flex items-center gap-1.5 font-bold">
                       <Sliders className="w-3.5 h-3.5 text-amber-400" />
-                      درجه آسیاب (Mahlkönig EK43 / E65S)
+                      درجه آسیاب (Grind Size Step)
                     </span>
                     <span className="text-[10px] text-amber-400 font-mono">Step</span>
                   </div>
@@ -358,7 +361,7 @@ export const SensoryLabView: React.FC<SensoryLabViewProps> = ({
                         type="button"
                         onClick={() => {
                           const curr = parseFloat(grindSize) || 3.0;
-                          setGrindSize(Math.min(8.0, +(curr + 0.1).toFixed(1)).toString());
+                          setGrindSize(Math.min(12.0, +(curr + 0.1).toFixed(1)).toString());
                         }}
                         className="w-8 h-8 rounded-lg bg-[#0F223D] hover:bg-[#D71921] text-white font-bold flex items-center justify-center transition cursor-pointer"
                       >
@@ -367,6 +370,38 @@ export const SensoryLabView: React.FC<SensoryLabViewProps> = ({
                     </div>
                     <span className="text-2xl font-black text-amber-300 font-mono num-heavy">
                       {grindSize}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Metric 5: Calibration Attempts Required */}
+                <div className="bg-[#0B1524]/80 border border-white/10 rounded-2xl p-4 shadow-inner">
+                  <div className="flex items-center justify-between text-xs text-[#F5F5F7]/70 mb-2">
+                    <span className="flex items-center gap-1.5 font-bold">
+                      <Flame className="w-3.5 h-3.5 text-rose-400" />
+                      تعداد تست تا کالیبره شدن (Dial-In Shots)
+                    </span>
+                    <span className="text-[10px] text-rose-400 font-mono">تعداد شات</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setShotsRequired((prev) => Math.max(1, prev - 1))}
+                        className="w-8 h-8 rounded-lg bg-[#0F223D] hover:bg-[#D71921] text-white font-bold flex items-center justify-center transition cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShotsRequired((prev) => Math.min(10, prev + 1))}
+                        className="w-8 h-8 rounded-lg bg-[#0F223D] hover:bg-[#D71921] text-white font-bold flex items-center justify-center transition cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <span className="text-2xl font-black text-rose-300 font-mono num-heavy">
+                      {shotsRequired}
                     </span>
                   </div>
                 </div>
@@ -452,6 +487,7 @@ export const SensoryLabView: React.FC<SensoryLabViewProps> = ({
                     <th className="py-2 px-3">نسبت (Ratio)</th>
                     <th className="py-2 px-3">زمان</th>
                     <th className="py-2 px-3">درجه آسیاب</th>
+                    <th className="py-2 px-3">تعداد تست</th>
                     <th className="py-2 px-3">یادداشت طعمی</th>
                     <th className="py-2 px-3">باریستا</th>
                   </tr>
@@ -468,6 +504,7 @@ export const SensoryLabView: React.FC<SensoryLabViewProps> = ({
                       <td className="py-2.5 px-3 font-mono text-[#C5A880] font-bold">{rec.brewRatio}</td>
                       <td className="py-2.5 px-3 font-mono text-[#90D2ED]">{rec.timeSeconds}s</td>
                       <td className="py-2.5 px-3 font-mono text-amber-300 font-bold">{rec.grindSize}</td>
+                      <td className="py-2.5 px-3 font-mono text-rose-300 font-bold">{rec.shotsRequired || 1} شات</td>
                       <td className="py-2.5 px-3 text-[#F5F5F7]/70 max-w-xs truncate">{rec.tastingNotes}</td>
                       <td className="py-2.5 px-3 text-[#F5F5F7]/60">{rec.baristaName}</td>
                     </tr>

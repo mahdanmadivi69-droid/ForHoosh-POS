@@ -113,7 +113,15 @@ export function compileShiftReport(
   payments: Payment[],
   expenses: Expense[]
 ): ShiftReportSummary {
-  const shiftOrders = orders.filter((o) => o.shiftId === shift.id);
+  // STRICT shift-window aggregation: openedAt ≤ createdAt ≤ closedAt (open shift: no upper bound)
+  const windowStartMs = new Date(shift.openedAt).getTime();
+  const windowEndMs = shift.closedAt ? new Date(shift.closedAt).getTime() : Number.POSITIVE_INFINITY;
+  const isInShiftWindow = (iso: string): boolean => {
+    const t = new Date(iso).getTime();
+    return !isNaN(t) && t >= windowStartMs && t <= windowEndMs;
+  };
+
+  const shiftOrders = orders.filter((o) => o.shiftId === shift.id && isInShiftWindow(o.createdAt));
   const completedOrders = shiftOrders.filter((o) => o.status === 'COMPLETED');
   const cancelledOrders = shiftOrders.filter((o) => o.status === 'CANCELLED');
 
@@ -122,8 +130,26 @@ export function compileShiftReport(
   const discountsToman = completedOrders.reduce((sum, o) => sum + o.discountAmountToman, 0);
   const netRevenueToman = grossSalesToman - discountsToman;
 
+  // Voided/cancelled orders within the shift window (net value cancelled)
+  const cancelledAmountToman = cancelledOrders.reduce((sum, o) => sum + o.netTotalToman, 0);
+
+  // Cash refunds: CASH payments voided within the shift window (money returned to the drawer)
+  const cashRefundsToman = Math.round(
+    payments
+      .filter(
+        (p) =>
+          p.shiftId === shift.id &&
+          p.paymentMethod === 'CASH' &&
+          p.status === 'VOIDED' &&
+          isInShiftWindow(p.createdAt)
+      )
+      .reduce((sum, p) => sum + p.amountToman, 0)
+  );
+
   // Payments received for this shift
-  const shiftPayments = payments.filter((p) => p.shiftId === shift.id && p.status === 'SUCCESSFUL');
+  const shiftPayments = payments.filter(
+    (p) => p.shiftId === shift.id && p.status === 'SUCCESSFUL' && isInShiftWindow(p.createdAt)
+  );
   const cashReceivedToman = shiftPayments
     .filter((p) => p.paymentMethod === 'CASH')
     .reduce((sum, p) => sum + p.amountToman, 0);
@@ -145,11 +171,12 @@ export function compileShiftReport(
     .reduce((sum, e) => sum + e.amountToman, 0);
   const totalExpensesToman = cashDrawerExpensesToman + otherExpensesToman;
 
-  // Cash drawer formula
+  // Cash drawer formula (integer Toman):
+  // Expected Cash = Opening Float + Cash Sales − Cash Refunds − Cash Drawer Expenses
   const expectedCashToman = calculateExpectedCash(
     shift.openingCashToman,
     cashReceivedToman,
-    cashDrawerExpensesToman
+    Math.round(cashDrawerExpensesToman) + cashRefundsToman
   );
 
   const actualCashToman = shift.actualCountedCashToman;
@@ -166,6 +193,7 @@ export function compileShiftReport(
     orderCount: shiftOrders.length,
     completedOrderCount: completedOrders.length,
     cancelledOrderCount: cancelledOrders.length,
+    cancelledAmountToman,
     grossSalesToman,
     discountsToman,
     netRevenueToman,
@@ -173,6 +201,7 @@ export function compileShiftReport(
     cardReceivedToman,
     otherReceivedToman,
     totalCollectedToman,
+    cashRefundsToman,
     cashDrawerExpensesToman,
     otherExpensesToman,
     totalExpensesToman,

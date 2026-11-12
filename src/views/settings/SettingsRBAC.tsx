@@ -44,6 +44,17 @@ export const SettingsRBAC: React.FC = () => {
   const [pinChangeSuccess, setPinChangeSuccess] = useState<boolean>(false);
   const [pinChangeError, setPinChangeError] = useState<string | null>(null);
 
+  // Dynamic Staff & Role Management state
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState<boolean>(false);
+  const [newFullName, setNewFullName] = useState<string>('');
+  const [newUsername, setNewUsername] = useState<string>('');
+  const [newRole, setNewRole] = useState<AppUserRole>('BARISTA');
+  const [newCustomRoleTitle, setNewCustomRoleTitle] = useState<string>('');
+  const [newPin, setNewPin] = useState<string>('');
+  const [addUserError, setAddUserError] = useState<string | null>(null);
+  const [editingTitleUserId, setEditingTitleUserId] = useState<string | null>(null);
+  const [editingTitleValue, setEditingTitleValue] = useState<string>('');
+
   useEffect(() => {
     loadData();
   }, []);
@@ -83,6 +94,40 @@ export const SettingsRBAC: React.FC = () => {
       }, 1000);
     } catch (err: any) {
       setPinChangeError(err.message || 'خطا در تغییر پین‌کد');
+      audioFeedback.playError();
+    }
+  };
+
+  const handleAddUser = async () => {
+    if (!newFullName.trim() || !newUsername.trim()) {
+      setAddUserError('نام و نام کاربری الزامی است.');
+      audioFeedback.playError();
+      return;
+    }
+    if (newPin.length < 4) {
+      setAddUserError('پین‌کد باید حداقل ۴ رقم باشد.');
+      audioFeedback.playError();
+      return;
+    }
+
+    try {
+      await RBACService.addStaffUser({
+        fullName: newFullName.trim(),
+        username: newUsername.trim(),
+        role: newRole,
+        pin: newPin,
+        customRoleTitle: newCustomRoleTitle.trim() || undefined,
+      });
+      audioFeedback.playSuccess();
+      setIsAddUserModalOpen(false);
+      setNewFullName('');
+      setNewUsername('');
+      setNewPin('');
+      setNewCustomRoleTitle('');
+      setAddUserError(null);
+      await loadData();
+    } catch (err: any) {
+      setAddUserError(err.message || 'خطا در ثبت کاربر جدید');
       audioFeedback.playError();
     }
   };
@@ -173,27 +218,93 @@ export const SettingsRBAC: React.FC = () => {
           <div className="flex items-center justify-between border-b border-white/5 pb-3">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-white">کاربران احراز هویت‌شده و پین‌کدهای محلی</h3>
+              <h3 className="text-sm font-bold text-white">کاربران احراز هویت‌شده و نقش‌های سازمانی</h3>
             </div>
-            <span className="text-[10px] text-gray-400">IndexedDB: auth_users</span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddUserModalOpen(true);
+                  setAddUserError(null);
+                  audioFeedback.playTap();
+                }}
+                className="px-2.5 py-1 bg-[#D71921] hover:bg-[#b0141b] text-white text-[11px] font-bold rounded-lg flex items-center gap-1 transition cursor-pointer shadow-sm"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>افزودن پرسنل</span>
+              </button>
+              <span className="text-[10px] text-gray-400 font-mono">auth_users</span>
+            </div>
           </div>
 
           <div className="space-y-2.5">
             {users.map((user) => {
               const roleDef = ROLE_DEFINITIONS[user.role] || ROLE_DEFINITIONS.BARISTA;
+              const displayTitle = user.customRoleTitle || roleDef.titleFa;
 
               return (
                 <div
                   key={user.id}
                   className="bg-[#1F242C] p-3 rounded-xl border border-white/5 flex items-center justify-between gap-3"
                 >
-                  <div>
-                    <div className="text-xs font-bold text-white flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-xs font-bold text-white flex items-center flex-wrap gap-2">
                       <span>{user.fullName}</span>
                       <span className={`text-[9px] px-1.5 py-0.2 rounded font-bold border ${roleDef.badgeBg}`}>
-                        {user.role}
+                        {displayTitle}
                       </span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          setEditingTitleUserId(editingTitleUserId === user.id ? null : user.id);
+                          setEditingTitleValue(user.customRoleTitle || '');
+                        }}
+                        title="ویرایش یا حذف عنوان شغلی سفارشی"
+                        className="text-[10px] text-gray-400 hover:text-amber-300 transition cursor-pointer"
+                      >
+                        [ویرایش عنوان]
+                      </button>
                     </div>
+
+                    {editingTitleUserId === user.id && (
+                      <div className="flex items-center gap-1.5 mt-2 bg-black/40 p-1.5 rounded-lg border border-white/10">
+                        <input
+                          type="text"
+                          placeholder="عنوان شغلی دلخواه (می‌تواند خالی باشد)"
+                          value={editingTitleValue}
+                          onChange={(e) => setEditingTitleValue(e.target.value)}
+                          className="bg-[#161A1F] border border-white/20 rounded px-2 py-1 text-[11px] text-white flex-1"
+                        />
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            await RBACService.updateUserRoleTitle(user.id, editingTitleValue);
+                            setEditingTitleUserId(null);
+                            audioFeedback.playSuccess();
+                            await loadData();
+                          }}
+                          className="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded font-bold cursor-pointer"
+                        >
+                          ذخیره
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            e.preventDefault();
+                            setEditingTitleUserId(null);
+                          }}
+                          className="text-[10px] bg-white/10 hover:bg-white/20 text-white px-2 py-1 rounded cursor-pointer"
+                        >
+                          لغو
+                        </button>
+                      </div>
+                    )}
+
                     <div className="text-[10px] text-[#9EACB8] mt-1 flex items-center gap-2 font-mono">
                       <span>کاربری: {user.username}</span>
                       <span>•</span>
@@ -210,7 +321,7 @@ export const SettingsRBAC: React.FC = () => {
                       setPinChangeError(null);
                       audioFeedback.playTap();
                     }}
-                    className="px-2.5 py-1.5 rounded-lg bg-[#161A1F] hover:bg-[#252B34] text-xs font-bold text-amber-400 border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg bg-[#161A1F] hover:bg-[#252B34] text-xs font-bold text-amber-400 border border-amber-500/30 flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
                   >
                     <KeyRound className="w-3.5 h-3.5" />
                     <span>تغییر پین</span>
@@ -356,6 +467,114 @@ export const SettingsRBAC: React.FC = () => {
                     className="px-4 py-1.5 rounded-lg bg-[#D71921] hover:bg-[#B3141B] text-xs font-black text-white"
                   >
                     ذخیره پین‌کد
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isAddUserModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/70">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-[#1F242C] rounded-2xl border border-white/10 p-5 max-w-md w-full shadow-2xl space-y-4"
+              dir="rtl"
+            >
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-400" />
+                <span>تعریف کاربر / پرسنل جدید در سیستم</span>
+              </h3>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">نام کامل پرسنل:</label>
+                  <input
+                    type="text"
+                    value={newFullName}
+                    onChange={(e) => setNewFullName(e.target.value)}
+                    placeholder="مثال: علی صادقی"
+                    className="w-full bg-[#161A1F] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[#D71921] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">نام کاربری (انگلیسی):</label>
+                  <input
+                    type="text"
+                    value={newUsername}
+                    onChange={(e) => setNewUsername(e.target.value)}
+                    placeholder="ali"
+                    dir="ltr"
+                    className="w-full bg-[#161A1F] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:border-[#D71921] focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">سطح دسترسی اصلی:</label>
+                    <select
+                      value={newRole}
+                      onChange={(e) => setNewRole(e.target.value as AppUserRole)}
+                      className="w-full bg-[#161A1F] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[#D71921] focus:outline-none"
+                    >
+                      <option value="BARISTA">باریستا (L1)</option>
+                      <option value="CASHIER">صندوقدار (L1)</option>
+                      <option value="MANAGER">مدیر شیفت (L2)</option>
+                      <option value="ACCOUNTANT">حسابدار (L3)</option>
+                      <option value="OWNER">مالک / ادمین (L4)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-300 mb-1">عنوان شغلی (اختیاری):</label>
+                    <input
+                      type="text"
+                      value={newCustomRoleTitle}
+                      onChange={(e) => setNewCustomRoleTitle(e.target.value)}
+                      placeholder="سرپرست بار، روستر ارشد..."
+                      className="w-full bg-[#161A1F] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:border-[#D71921] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-300 mb-1">پین‌کد ورود (۴ تا ۶ رقم):</label>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    value={newPin}
+                    onChange={(e) => {
+                      if (/^\d*$/.test(e.target.value)) {
+                        setNewPin(e.target.value);
+                      }
+                    }}
+                    placeholder="****"
+                    dir="ltr"
+                    className="w-full bg-[#161A1F] border border-white/10 rounded-lg px-3 py-2 text-center text-lg tracking-widest text-white font-mono focus:border-[#D71921] focus:outline-none"
+                  />
+                </div>
+
+                {addUserError && (
+                  <div className="text-xs text-[#D71921] font-bold">{addUserError}</div>
+                )}
+
+                <div className="pt-2 flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddUserModalOpen(false)}
+                    className="px-3 py-1.5 rounded-lg bg-[#161A1F] text-xs font-bold text-gray-300 cursor-pointer"
+                  >
+                    انصراف
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddUser}
+                    className="px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-black text-white cursor-pointer"
+                  >
+                    ثبت پرسنل
                   </button>
                 </div>
               </div>

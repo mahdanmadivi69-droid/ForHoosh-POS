@@ -125,9 +125,9 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
         <div
           className="product-card-liquid-glass-overlay absolute inset-0 z-10 pointer-events-none"
           style={{
-            backdropFilter: 'blur(12px) saturate(160%)',
-            WebkitBackdropFilter: 'blur(12px) saturate(160%)',
-            background: 'linear-gradient(180deg, rgba(10, 14, 22, 0.40) 0%, rgba(6, 8, 12, 0.75) 100%)',
+            backdropFilter: 'blur(14px) saturate(190%)',
+            WebkitBackdropFilter: 'blur(14px) saturate(190%)',
+            background: 'linear-gradient(180deg, rgba(12, 17, 24, 0.35) 0%, rgba(10, 14, 20, 0.65) 100%)',
             boxShadow: 'inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35)',
           }}
         />
@@ -174,8 +174,8 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
 
           {/* Item Name & Details */}
           <div>
-            <h3 className="font-extrabold text-sm md:text-base text-[#F5F5F7]/92 group-hover:text-white transition-colors leading-snug line-clamp-1">
-              {item.nameFa}
+            <h3 className="font-extrabold text-sm md:text-base text-[#F5F5F7]/92 group-hover:text-white transition-colors leading-snug line-clamp-1 font-sans">
+              {item.hasDualBean ? item.nameFa.replace(/\s*\([^)]*۵۰\/۵۰[^)]*\)/gi, '').trim() : item.nameFa}
             </h3>
             {item.description && (
               <p className="text-[11px] text-[#F5F5F7]/70 line-clamp-1 mt-0.5">

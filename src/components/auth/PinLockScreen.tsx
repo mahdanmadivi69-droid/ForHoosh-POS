@@ -48,7 +48,7 @@ interface PinLockScreenProps {
 
 export const PinLockScreen: React.FC<PinLockScreenProps> = ({
   onUnlockSuccess,
-  venueTitle = 'قهوه‌فروشی ۱۰۰ هیچ (شعبه یوسف‌آباد)',
+  venueTitle = 'قهوه‌فروشی ۱۰۰ هیچ',
   deviceId = 'TERM-01-MAIN',
   initialUserId,
 }) => {
@@ -304,9 +304,6 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
             <span>{venueTitle}</span>
           </h1>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[11px] font-mono text-[#90D2ED] bg-[rgba(144,210,237,0.1)] px-2 py-0.5 rounded-full border border-[rgba(144,210,237,0.25)]">
-              {deviceId}
-            </span>
             <span className="text-[11px] text-slate-300 font-medium">قفل امنیتی ترمینال POS</span>
           </div>
         </div>

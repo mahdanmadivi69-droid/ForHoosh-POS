@@ -67,12 +67,12 @@ export const LiveReceiptPreview: React.FC<LiveReceiptPreviewProps> = ({
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-gray-300 via-gray-100 to-gray-300 opacity-60"></div>
 
         {/* Store Header */}
-        <div className="text-center space-y-1 mb-3">
-          <div className="text-xs font-black uppercase tracking-wider text-black font-mono">
-            {storeProfile.name_en || '100 HICH COFFEE ROASTERS'}
+        <div className="text-center space-y-0.5 mb-3">
+          <div className="text-center font-bold text-base text-black">
+            {storeProfile.name_fa || 'قهوه‌فروشی ۱۰۰ هیچ'}
           </div>
-          <div className="text-sm font-black text-black">
-            {storeProfile.name_fa || 'قهوه‌فروشی صَد هیچ'}
+          <div dir="ltr" className="text-center text-xs tracking-wider text-neutral-400 font-mono">
+            {storeProfile.name_en || '100 HICH COFFEE ROASTERS'}
           </div>
           <div className="text-[10px] text-gray-700 leading-tight">
             {storeProfile.address}

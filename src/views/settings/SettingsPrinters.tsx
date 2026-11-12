@@ -413,6 +413,7 @@ export const SettingsPrinters: React.FC<SettingsPrintersProps> = ({ onSelectedRo
                       </button>
                       <button
                         onClick={(e) => {
+                          e.preventDefault();
                           e.stopPropagation();
                           handleDeleteProfile(profile.id);
                         }}

@@ -49,8 +49,15 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
       ? 'نقدی'
       : payment?.terminalName || 'پوز ۱ بانک سامان';
 
+  // Daily receipt sequence (#001, #002, …) — falls back to the global invoice number.
+  const dailyReceiptNo = order.dailyReceiptNumber;
+  const receiptNoLabel =
+    dailyReceiptNo !== undefined && dailyReceiptNo > 0
+      ? String(dailyReceiptNo).padStart(3, '0')
+      : String(order.orderNumber || 0);
+
   const orderData: ReceiptOrderData = {
-    invoiceNo: order.orderNumber || 5,
+    invoiceNo: receiptNoLabel,
     dateTime: `${formattedDate} - ${formattedTime}`,
     orderType: orderTypeDisplay,
     cashier: cashierDisplay,
@@ -75,7 +82,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   const handlePrint = () => {
     playPosBeep('click');
     printThermalReceipt(orderData, {
-      documentTitle: `رسید فاکتور #${order.orderNumber || 5} - ${tenantName}`,
+      documentTitle: `رسید فاکتور #${receiptNoLabel} - ${tenantName}`,
       tenantAddress,
       tenantPhone,
     });

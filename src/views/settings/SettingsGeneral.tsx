@@ -419,7 +419,11 @@ export const SettingsGeneral: React.FC<SettingsGeneralProps> = ({ onSaved }) => 
                 />
                 <button
                   type="button"
-                  onClick={() => removeHeaderLine(idx)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeHeaderLine(idx);
+                  }}
                   className="p-1.5 text-gray-500 hover:text-rose-400 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -451,7 +455,11 @@ export const SettingsGeneral: React.FC<SettingsGeneralProps> = ({ onSaved }) => 
                 />
                 <button
                   type="button"
-                  onClick={() => removeFooterLine(idx)}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    removeFooterLine(idx);
+                  }}
                   className="p-1.5 text-gray-500 hover:text-rose-400 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />

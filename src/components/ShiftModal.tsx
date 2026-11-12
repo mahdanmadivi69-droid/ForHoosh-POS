@@ -5,8 +5,10 @@ import {
   formatToman,
   calculateExpectedCash,
   calculateCashDiscrepancy,
+  compileShiftReport,
   safeInt,
 } from '../services/financialMath';
+import { printQueueService } from '../services/printQueueService';
 import { ShiftSummaryReceipt } from './ShiftSummaryReceipt';
 
 interface ShiftModalProps {
@@ -60,8 +62,18 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
   let expectedCash = 0;
 
   if (activeShift) {
+    // STRICT shift-window aggregation: openedAt ≤ createdAt (open shift: no upper bound)
+    const windowStartMs = new Date(activeShift.openedAt).getTime();
+    const windowEndMs = activeShift.closedAt
+      ? new Date(activeShift.closedAt).getTime()
+      : Number.POSITIVE_INFINITY;
+    const inShiftWindow = (iso: string): boolean => {
+      const t = new Date(iso).getTime();
+      return !isNaN(t) && t >= windowStartMs && t <= windowEndMs;
+    };
     const shiftPayments = payments.filter(
-      (p) => p.shiftId === activeShift.id && p.status === 'SUCCESSFUL'
+      (p) =>
+        p.shiftId === activeShift.id && p.status === 'SUCCESSFUL' && inShiftWindow(p.createdAt)
     );
     cashReceived = shiftPayments
       .filter((p) => p.paymentMethod === 'CASH')
@@ -70,15 +82,29 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
       .filter((p) => p.paymentMethod === 'CARD_MANUAL')
       .reduce((sum, p) => sum + p.amountToman, 0);
 
+    // Cash refunds: CASH payments voided within the shift window (money back to drawer)
+    const cashRefunds = Math.round(
+      payments
+        .filter(
+          (p) =>
+            p.shiftId === activeShift.id &&
+            p.paymentMethod === 'CASH' &&
+            p.status === 'VOIDED' &&
+            inShiftWindow(p.createdAt)
+        )
+        .reduce((sum, p) => sum + p.amountToman, 0)
+    );
+
     const shiftExpenses = expenses.filter((e) => e.shiftId === activeShift.id);
     cashExpenses = shiftExpenses
       .filter((e) => e.isPaidFromCashDrawer)
       .reduce((sum, e) => sum + e.amountToman, 0);
 
+    // Integer drawer formula: Opening Float + Cash Sales − Cash Refunds − Drawer Expenses
     expectedCash = calculateExpectedCash(
       activeShift.openingCashToman,
-      cashReceived,
-      cashExpenses
+      Math.round(cashReceived),
+      Math.round(cashExpenses) + cashRefunds
     );
   }
 
@@ -113,6 +139,50 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
       discrepancyReason.trim() || undefined,
       closingNotes.trim() || undefined
     );
+
+    // NON-BLOCKING Z-REPORT (خلاصه شیفت): enqueue into the persistent ESC/POS
+    // printQueue — printing never blocks shift closure even if the printer is
+    // out of paper. The queued Z snapshot aggregates strictly completed orders
+    // within [openedAt, closedAt] with Cash/POS breakdown and voided orders.
+    try {
+      const closedAtIso = new Date().toISOString();
+      const closedShift: Shift = {
+        ...activeShift,
+        status: 'CLOSED',
+        closedAt: closedAtIso,
+        closedByUserId: activeUser.id,
+        closedByUserName: activeUser.fullName,
+        expectedClosingCashToman: Math.round(expectedCash),
+        actualCountedCashToman: Math.round(actualCountedCashInput),
+        cashDiscrepancyToman: Math.round(actualCountedCashInput) - Math.round(expectedCash),
+        discrepancyReason: discrepancyReason.trim() || undefined,
+        locked: true,
+      };
+      const zSummary = compileShiftReport(closedShift, orders, payments, expenses);
+      if (tenant) {
+        printQueueService.enqueueZReportPrint(
+          zSummary,
+          {
+            shiftId: activeShift.id,
+            openedAt: activeShift.openedAt,
+            closedAt: closedShift.closedAt,
+            openedBy: activeShift.openedByUserName,
+            closedBy: activeUser.fullName,
+            actualCountedCashToman: Math.round(actualCountedCashInput),
+            discrepancyReason: discrepancyReason.trim() || undefined,
+          },
+          tenant
+        );
+      }
+    } catch (zErr) {
+      console.warn('[ShiftModal] Z-Report enqueue failed:', zErr);
+    }
+
+    // Cleanly reset the closing form for the next shift
+    setActualCountedCashInput(0);
+    setDiscrepancyReason('');
+    setClosingNotes('');
+    setErrorMsg('');
     onClose();
   };
 

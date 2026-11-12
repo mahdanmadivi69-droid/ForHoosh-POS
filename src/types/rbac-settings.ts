@@ -49,6 +49,7 @@ export interface AuthUserRecord {
   fullName: string;
   phoneNumber?: string;
   role: AppUserRole;
+  customRoleTitle?: string; // Optional custom role title (can be blank)
   pinHash: string; // SHA-256 / PBKDF2 hashed PIN
   salt: string;    // Unique cryptographic salt
   isActive: boolean;

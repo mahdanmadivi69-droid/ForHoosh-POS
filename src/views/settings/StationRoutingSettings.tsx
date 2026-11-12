@@ -472,7 +472,11 @@ export const StationRoutingSettings: React.FC = () => {
                   </div>
 
                   <button
-                    onClick={() => handleRemoveOverride(itemId)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleRemoveOverride(itemId);
+                    }}
                     className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded-lg transition"
                     title="حذف استثنا"
                   >

@@ -38,9 +38,60 @@ export interface DecomposedOrderRecord {
   vatTotalToman: number;
   customerName?: string;
   customerPhone?: string;
+  /** Daily receipt sequence number (per tenant + local day, 1-based → #001). */
+  dailyReceiptNumber?: number;
+  /** Local calendar date key (YYYY-MM-DD) the daily receipt sequence belongs to. */
+  receiptDateKey?: string;
   synced: 0 | 1;
   createdAt: string; // ISO
   updatedAt: string; // ISO
+}
+
+export interface DecomposedPaymentRecord {
+  id: string;
+  clientGeneratedId: string;
+  orderId: string;
+  tenantId: string;
+  shiftId: string;
+  receivedByUserId: string;
+  receivedByUserName: string;
+  amountToman: number;
+  paymentMethod: 'CASH' | 'CARD_MANUAL' | 'OTHER';
+  referenceCode?: string;
+  terminalName?: string;
+  cashTenderedToman?: number;
+  changeDueToman?: number;
+  splitDetails?: {
+    partAMethod: string;
+    partAAmountToman: number;
+    partBMethod: string;
+    partBAmountToman: number;
+  };
+  status: 'SUCCESSFUL' | 'VOIDED';
+  createdAt: string;
+}
+
+export type PrintQueueStatus = 'pending' | 'printing' | 'failed' | 'printed';
+
+export interface DecomposedPrintQueueRecord {
+  id: string;
+  tenantId: string;
+  orderId: string;
+  kind: 'CUSTOMER_RECEIPT' | 'BAR_TICKET' | 'Z_REPORT';
+  /** Raw ESC/POS byte stream: ESC @ init → body (Persian raster / shaped text) → GS V paper cut. */
+  payload: ArrayBuffer;
+  status: PrintQueueStatus;
+  attempts: number;
+  lastError?: string;
+  /** Timestamp (ms) before which this job must not be retried (short backoff window). */
+  nextAttemptAt?: number;
+  /** Item line count baked into the payload (payload verification aid). */
+  itemCount: number;
+  /** Receipt number printed on the ticket (payload verification aid). */
+  receiptNumber: string;
+  createdAt: string;
+  updatedAt: string;
+  printedAt?: string;
 }
 
 export interface DecomposedOrderItemRecord {
@@ -72,6 +123,8 @@ export interface DecomposedShiftRecord {
   discrepancyToman?: number;
   status: 'OPEN' | 'CLOSED';
   notes?: string;
+  /** Immutable lock — set when the shift is closed; locked records must never be mutated. */
+  locked?: boolean;
 }
 
 export interface DecomposedInventoryItemRecord {
@@ -206,6 +259,8 @@ export interface DecomposedCustomerRecord {
 export class DexiePOSDatabase extends Dexie {
   public orders!: Table<DecomposedOrderRecord, string>;
   public orderItems!: Table<DecomposedOrderItemRecord, string>;
+  public payments!: Table<DecomposedPaymentRecord, string>;
+  public printQueue!: Table<DecomposedPrintQueueRecord, string>;
   public shifts!: Table<DecomposedShiftRecord, string>;
   public inventoryItems!: Table<DecomposedInventoryItemRecord, string>;
   public menuItems!: Table<DecomposedMenuItemRecord, string>;
@@ -270,6 +325,20 @@ export class DexiePOSDatabase extends Dexie {
     this.version(5).stores({
       customers:
         'id, tenantId, phone, name, createdAt, [tenantId+id], [tenantId+phone], [tenantId+name]',
+    });
+
+    // Version 6: Atomic Fast-Checkout Write Set — dedicated payments table + daily receipt sequence indices
+    this.version(6).stores({
+      orders:
+        'id, clientGeneratedId, tenantId, shiftId, status, createdAt, synced, tableSessionId, flowType, takeawayBillingMode, receiptDateKey, [tenantId+id], [tenantId+status], [tenantId+createdAt], [tenantId+shiftId], [tenantId+synced], [tenantId+tableSessionId], [tenantId+flowType], [tenantId+takeawayBillingMode], [tenantId+receiptDateKey]',
+      payments:
+        'id, orderId, tenantId, status, createdAt, [tenantId+orderId], [tenantId+createdAt]',
+    });
+
+    // Version 7: Bulletproof ESC/POS Thermal Print Queue — persistent, offline-tolerant, auto-retry
+    this.version(7).stores({
+      printQueue:
+        'id, orderId, tenantId, status, createdAt, updatedAt, [tenantId+status], [tenantId+orderId]',
     });
   }
 
@@ -526,6 +595,328 @@ export class DexiePOSDatabase extends Dexie {
       ];
       await this.venueTables.bulkPut(tables);
     }
+  }
+
+  // ===========================================================================
+  // Atomic Fast-Checkout Write (100 HICH Fast Checkout)
+  // One rw transaction covering: order creation, payment record and packaged
+  // retail/inventory stock deduction. Power loss or refresh mid-write rolls the
+  // whole checkout back — never a partial order. The daily receipt number
+  // (#001, #002, …) is allocated inside the same transaction: IndexedDB
+  // serializes overlapping rw transactions so rapid consecutive orders can
+  // never collide, and a rolled-back checkout never consumes a number (no gaps).
+  // ===========================================================================
+
+  public async persistPaidCheckoutAtomically(params: {
+    tenantId: string;
+    clientGeneratedId: string;
+    receiptDateKey: string;
+    order: {
+      id: string;
+      orderNumber: number;
+      shiftId: string;
+      orderType: 'DINE_IN' | 'TAKEAWAY' | 'DELIVERY';
+      tableLabel?: string;
+      customerName?: string;
+      customerPhone?: string;
+      grossAmountToman: number;
+      discountAmountToman: number;
+      netTotalToman: number;
+      createdByUserId: string;
+      createdByUserName: string;
+      createdAt: string;
+      updatedAt: string;
+    };
+    items: Array<{
+      id: string;
+      menuItemId: string;
+      itemNameSnapshot: string;
+      unitPriceSnapshotToman: number;
+      quantity: number;
+      subtotalToman: number;
+      notes?: string;
+    }>;
+    payment: {
+      id: string;
+      amountToman: number;
+      paymentMethod: 'CASH' | 'CARD_MANUAL' | 'OTHER';
+      referenceCode?: string;
+      terminalName?: string;
+      receivedByUserId: string;
+      receivedByUserName: string;
+      cashTenderedToman?: number;
+      changeDueToman?: number;
+      splitDetails?: {
+        partAMethod: string;
+        partAAmountToman: number;
+        partBMethod: string;
+        partBAmountToman: number;
+      };
+      createdAt: string;
+    };
+  }): Promise<{
+    dailyReceiptNumber: number;
+    stockDeductions: Array<{ inventoryItemId: string; deducted: number; remaining: number }>;
+  }> {
+    const { tenantId, clientGeneratedId, receiptDateKey, order, items, payment } = params;
+
+    // Integer Rial/Toman invariant: every monetary value entering the transaction is a whole Toman.
+    const gross = Math.round(order.grossAmountToman);
+    const discount = Math.max(0, Math.min(gross, Math.round(order.discountAmountToman)));
+    const net = gross - discount;
+
+    const paymentRecord: DecomposedPaymentRecord = {
+      id: payment.id,
+      clientGeneratedId,
+      orderId: order.id,
+      tenantId,
+      shiftId: order.shiftId,
+      receivedByUserId: payment.receivedByUserId,
+      receivedByUserName: payment.receivedByUserName,
+      amountToman: Math.round(payment.amountToman),
+      paymentMethod: payment.paymentMethod,
+      referenceCode: payment.referenceCode,
+      terminalName: payment.terminalName,
+      cashTenderedToman:
+        payment.cashTenderedToman !== undefined ? Math.round(payment.cashTenderedToman) : undefined,
+      changeDueToman:
+        payment.changeDueToman !== undefined ? Math.round(payment.changeDueToman) : undefined,
+      splitDetails: payment.splitDetails,
+      status: 'SUCCESSFUL',
+      createdAt: payment.createdAt,
+    };
+
+    return await this.transaction(
+      'rw',
+      [this.orders, this.orderItems, this.payments, this.inventoryItems, this.auditLogs],
+      async () => {
+        // 1. Idempotent replay guard — a retried checkout must not double-allocate or double-deduct.
+        const existingOrder = await this.orders.get(order.id);
+        if (existingOrder) {
+          const existingPayment = await this.payments
+            .where('[tenantId+orderId]')
+            .equals([tenantId, order.id])
+            .first();
+          if (!existingPayment) {
+            await this.payments.put(paymentRecord);
+          }
+          return {
+            dailyReceiptNumber: existingOrder.dailyReceiptNumber ?? order.orderNumber,
+            stockDeductions: [],
+          };
+        }
+
+        // 2. Sequential daily receipt number — allocated inside the transaction (see docblock).
+        const todaysReceiptedOrders = await this.orders
+          .where('[tenantId+receiptDateKey]')
+          .equals([tenantId, receiptDateKey])
+          .toArray();
+        const maxDailyReceiptNumber = todaysReceiptedOrders.reduce(
+          (max, o) =>
+            typeof o.dailyReceiptNumber === 'number' && o.dailyReceiptNumber > max
+              ? o.dailyReceiptNumber
+              : max,
+          0
+        );
+        const dailyReceiptNumber = maxDailyReceiptNumber + 1;
+
+        // 3. Order record (PAID snapshot)
+        const orderRecord: DecomposedOrderRecord = {
+          id: order.id,
+          clientGeneratedId,
+          tenantId,
+          shiftId: order.shiftId,
+          orderNumber: order.orderNumber,
+          dailyReceiptNumber,
+          receiptDateKey,
+          orderType: order.orderType,
+          tableLabel: order.tableLabel,
+          status: 'PAID',
+          grossAmountToman: gross,
+          discountAmountToman: discount,
+          netTotalToman: net,
+          paidAmountToman: Math.round(payment.amountToman),
+          vatTotalToman: 0,
+          customerName: order.customerName,
+          customerPhone: order.customerPhone,
+          synced: 0,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+        };
+        await this.orders.add(orderRecord);
+
+        // 4. Decomposed order line items
+        if (items.length > 0) {
+          await this.orderItems.bulkPut(
+            items.map((it) => ({
+              id: `${order.id}::item::${it.id}`,
+              orderId: order.id,
+              tenantId,
+              menuItemId: it.menuItemId,
+              itemNameSnapshot: it.itemNameSnapshot,
+              unitPriceSnapshotToman: Math.round(it.unitPriceSnapshotToman),
+              quantity: Math.max(0, Math.round(it.quantity)),
+              subtotalToman: Math.round(it.subtotalToman),
+              notes: it.notes,
+            }))
+          );
+        }
+
+        // 5. Payment record (split Cash + Card parts preserved verbatim)
+        await this.payments.put(paymentRecord);
+
+        // 6. Packaged retail / inventory stock deduction — integer-only, same atomic scope.
+        //    Deducts from mirrored decomposed inventory records when present; stock for
+        //    non-mirrored items stays under the legacy store's own deduction path.
+        const stockDeductions: Array<{ inventoryItemId: string; deducted: number; remaining: number }> = [];
+        for (const it of items) {
+          const qty = Math.round(it.quantity);
+          if (!it.menuItemId || qty <= 0) continue;
+          const invRecord = await this.inventoryItems.get(it.menuItemId);
+          if (invRecord && typeof invRecord.currentStock === 'number') {
+            const previous = Math.round(invRecord.currentStock);
+            const remaining = Math.max(0, previous - qty);
+            await this.inventoryItems.update(invRecord.id, {
+              currentStock: remaining,
+              updatedAt: order.updatedAt,
+            });
+            stockDeductions.push({ inventoryItemId: invRecord.id, deducted: previous - remaining, remaining });
+          }
+        }
+
+        // 7. Audit trail inside the same transaction
+        await this.auditLogs.add({
+          id: `audit-${order.id}-checkout`,
+          tenantId,
+          userId: order.createdByUserId,
+          userName: order.createdByUserName,
+          action: 'CHECKOUT_ATOMIC_COMMIT',
+          targetId: order.id,
+          details: `ثبت اتمیک تسویه: سفارش #${order.orderNumber} (فیش روزانه #${String(dailyReceiptNumber).padStart(3, '0')}) مبلغ ${net} تومان — اقلام: ${items.length}، کسور موجودی: ${stockDeductions.length}`,
+          timestamp: order.updatedAt,
+        });
+
+        return { dailyReceiptNumber, stockDeductions };
+      }
+    );
+  }
+
+  // ===========================================================================
+  // Persistent Print Queue (ESC/POS Thermal)
+  // Enqueue is fire-and-forget: saving the order NEVER waits on the printer.
+  // Failed jobs retry up to 3 attempts with short backoff, then surface to the
+  // barista for a 1-click reprint from the POS bar.
+  // ===========================================================================
+
+  public async enqueuePrintJob(job: DecomposedPrintQueueRecord): Promise<void> {
+    await this.transaction('rw', this.printQueue, async () => {
+      // Idempotency: never queue the same order + kind twice while a job is still active.
+      const existing = await this.printQueue
+        .where('[tenantId+orderId]')
+        .equals([job.tenantId, job.orderId])
+        .filter((j) => j.kind === job.kind && (j.status === 'pending' || j.status === 'printing'))
+        .first();
+      if (existing) return;
+      await this.printQueue.put(job);
+    });
+  }
+
+  /** Claims pending jobs whose backoff window has elapsed and flips them to 'printing'. */
+  public async claimPendingPrintJobs(tenantId: string, limit: number = 3): Promise<DecomposedPrintQueueRecord[]> {
+    const now = Date.now();
+    const candidates = await this.printQueue
+      .where('[tenantId+status]')
+      .equals([tenantId, 'pending'])
+      .filter((j) => j.nextAttemptAt === undefined || j.nextAttemptAt <= now)
+      .sortBy('createdAt');
+    const batch = candidates.slice(0, limit);
+    await Promise.all(
+      batch.map((j) =>
+        this.printQueue.update(j.id, { status: 'printing' as const, updatedAt: new Date().toISOString() })
+      )
+    );
+    return batch.map((j) => ({ ...j, status: 'printing' as const }));
+  }
+
+  public async markPrintJobPrinted(id: string): Promise<void> {
+    await this.printQueue.update(id, {
+      status: 'printed' as const,
+      lastError: undefined,
+      printedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  /** Increments attempts; retries with short backoff below maxAttempts, else parks as 'failed'. */
+  public async markPrintJobFailed(id: string, error: string, maxAttempts: number = 3): Promise<'pending' | 'failed'> {
+    return await this.transaction('rw', this.printQueue, async () => {
+      const job = await this.printQueue.get(id);
+      if (!job) return 'failed' as const;
+      const attempts = job.attempts + 1;
+      if (attempts >= maxAttempts) {
+        await this.printQueue.update(id, {
+          status: 'failed' as const,
+          attempts,
+          lastError: error,
+          updatedAt: new Date().toISOString(),
+        });
+        return 'failed' as const;
+      }
+      // Short exponential backoff: 2s after the 1st failure, 4s after the 2nd.
+      await this.printQueue.update(id, {
+        status: 'pending' as const,
+        attempts,
+        lastError: error,
+        nextAttemptAt: Date.now() + (attempts === 1 ? 2000 : 4000),
+        updatedAt: new Date().toISOString(),
+      });
+      return 'pending' as const;
+    });
+  }
+
+  /** 1-Click reprint: resets every failed job back to pending and returns the count. */
+  public async requeueFailedPrintJobs(tenantId: string): Promise<number> {
+    const failedJobs = await this.printQueue
+      .where('[tenantId+status]')
+      .equals([tenantId, 'failed'])
+      .toArray();
+    if (failedJobs.length === 0) return 0;
+    await this.printQueue.bulkPut(
+      failedJobs.map((j) => ({
+        ...j,
+        status: 'pending' as const,
+        attempts: 0,
+        lastError: undefined,
+        nextAttemptAt: undefined,
+        updatedAt: new Date().toISOString(),
+      }))
+    );
+    return failedJobs.length;
+  }
+
+  public async getPrintQueueStats(tenantId: string): Promise<Record<PrintQueueStatus, number>> {
+    const [pending, printing, failed, printed] = await Promise.all([
+      this.printQueue.where('[tenantId+status]').equals([tenantId, 'pending']).count(),
+      this.printQueue.where('[tenantId+status]').equals([tenantId, 'printing']).count(),
+      this.printQueue.where('[tenantId+status]').equals([tenantId, 'failed']).count(),
+      this.printQueue.where('[tenantId+status]').equals([tenantId, 'printed']).count(),
+    ]);
+    return { pending, printing, failed, printed };
+  }
+
+  /**
+   * Immutable shift lock: persists the CLOSED shift snapshot into Dexie. A record
+   * that is already closed/locked is rejected — closed shift numbers can never be
+   * mutated retroactively through this path.
+   */
+  public async persistClosedShiftImmutable(record: DecomposedShiftRecord): Promise<void> {
+    await this.transaction('rw', this.shifts, async () => {
+      const existing = await this.shifts.get(record.id);
+      if (existing && (existing.locked || existing.status === 'CLOSED')) {
+        throw new Error('این شیفت در پایگاه‌داده قفل شده است و قابل تغییر نیست.');
+      }
+      await this.shifts.put({ ...record, status: 'CLOSED', locked: true });
+    });
   }
 }
 

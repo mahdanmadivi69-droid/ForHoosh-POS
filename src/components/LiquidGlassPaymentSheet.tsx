@@ -53,6 +53,7 @@ interface LiquidGlassPaymentSheetProps {
   onClose: () => void;
   onConfirm: (result: SettlementResult) => void;
   tableOrCustomerLabel?: string;
+  isSubmitting?: boolean;
 }
 
 const COMMON_BANKNOTES_TOMAN = [50000, 100000, 200000, 500000, 1000000, 2000000];
@@ -63,6 +64,7 @@ export const LiquidGlassPaymentSheet: React.FC<LiquidGlassPaymentSheetProps> = (
   onClose,
   onConfirm,
   tableOrCustomerLabel,
+  isSubmitting = false,
 }) => {
   // Validate total adheres to Integer Toman
   const total = Math.round(Number(totalBalanceToman) || 0);
@@ -124,7 +126,7 @@ export const LiquidGlassPaymentSheet: React.FC<LiquidGlassPaymentSheetProps> = (
   const canConfirm = isSplitValid && isCashValid && total > 0;
 
   const handleFinalConfirm = () => {
-    if (!canConfirm) {
+    if (!canConfirm || isSubmitting) {
       playPosBeep('delete');
       return;
     }
@@ -492,7 +494,7 @@ export const LiquidGlassPaymentSheet: React.FC<LiquidGlassPaymentSheetProps> = (
 
           <button
             type="button"
-            disabled={!canConfirm}
+            disabled={!canConfirm || isSubmitting}
             onClick={handleFinalConfirm}
             className={`w-2/3 py-3 rounded-2xl font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
               canConfirm

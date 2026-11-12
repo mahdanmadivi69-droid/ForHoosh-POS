@@ -60,6 +60,8 @@ export interface OrderAggregate {
   tenantId: string;
   shiftId: string;
   orderNumber: number;
+  /** Daily receipt sequence number (per tenant + local day, 1-based → #001) — printed on the thermal receipt. */
+  dailyReceiptNumber?: number;
   orderType: OrderType;
   state: OrderState;
   tableLabel?: string;

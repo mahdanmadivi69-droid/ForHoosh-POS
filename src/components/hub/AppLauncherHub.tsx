@@ -51,7 +51,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
   onSelectApp,
   onLock,
   activeShift,
-  venueTitle = 'قهوه‌فروشی ۱۰۰ هیچ (شعبه یوسف‌آباد)',
+  venueTitle = 'قهوه‌فروشی ۱۰۰ هیچ',
   deviceId = 'TERM-01-MAIN',
 }) => {
   const isOwnerOrManager =
@@ -112,20 +112,24 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
 
       {/* Top Header Deck */}
       <header className="w-full max-w-7xl mx-auto flex items-center justify-between gap-4 z-10 py-2 border-b border-white/10">
+        {/* Left: Venue Identity with 100 HICH Badge */}
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#8C1318] to-[#450A0D] border border-[rgba(144,210,237,0.35)] flex items-center justify-center shadow-[0_0_20px_rgba(140,19,24,0.5)]">
-            <Coffee className="w-6 h-6 text-[#F5E8D0]" />
+          <div
+            dir="ltr"
+            className="px-3.5 py-1.5 rounded-2xl bg-[#0F223D] border border-white/20 shadow-[0_0_20px_rgba(15,34,61,0.6)] flex flex-col items-center justify-center"
+          >
+            <span className="text-xs font-black tracking-widest text-[#F5F5F7] uppercase font-sans leading-none">
+              100 HICH
+            </span>
+            <span className="text-[8px] font-bold tracking-[0.2em] text-[#90D2ED] uppercase font-mono leading-tight mt-0.5">
+              ROASTERS
+            </span>
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-lg font-black text-white tracking-tight">
-                {venueTitle}
-              </h1>
-              <span className="text-[10px] font-mono bg-white/10 border border-white/15 px-2 py-0.5 rounded-full text-[#90D2ED]">
-                {deviceId}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 font-medium">مرکز لانچر کاروند و مدیریت ماژولار</p>
+            <h1 className="text-base sm:text-lg font-black text-white tracking-tight leading-none">
+              {venueTitle}
+            </h1>
+            <p className="text-[11px] text-[#90D2ED]/80 font-medium mt-1">سامانه جامع مدیریت و فروش کافه</p>
           </div>
         </div>
 
@@ -171,17 +175,20 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
       </header>
 
       {/* Main 4-Way Glass Grid */}
-      <main className="w-full max-w-6xl mx-auto my-auto py-8 z-10">
-        <div className="text-center mb-8">
-          <span className="text-xs font-black tracking-widest text-[#90D2ED] uppercase block mb-1">
-            APPLICATION LAUNCHER HUB
-          </span>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-            ماژول عملیاتی مورد نظر خود را انتخاب کنید
+      <main className="w-full max-w-6xl mx-auto my-auto py-8 z-10 flex flex-col items-center">
+        {/* KarWand Monogram Brand Mark at Visual Golden Ratio */}
+        <div className="flex flex-col items-center justify-center mb-6">
+          <div
+            className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#8C1318] via-[#0F223D] to-[#0A1628] border border-white/20 shadow-[0_0_30px_rgba(215,25,33,0.35)] flex items-center justify-center p-2 mb-2 transition-transform hover:scale-105"
+          >
+            <span className="text-xl font-black tracking-tighter text-white font-mono">KW</span>
+          </div>
+          <h2 className="text-lg font-black text-white tracking-wide">
+            مرکز عملیات کاروند
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
           {/* Card 1: POS & Register */}
           <div
             onClick={(e) => handleCardClick(e, 'pos')}
@@ -199,9 +206,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
                 <h3 className="text-lg font-black text-white group-hover:text-[#90D2ED] transition-colors">
                   صندوق و ثبت سفارش
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
-                  دسترسی آزاد
-                </span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" title="دسترسی مجاز" />
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
@@ -232,9 +237,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
                 <h3 className="text-lg font-black text-white group-hover:text-[#90D2ED] transition-colors">
                   گزارش‌ها و تحلیل شیفت
                 </h3>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/60 text-emerald-400 border border-emerald-800/40">
-                  دسترسی آزاد
-                </span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" title="دسترسی مجاز" />
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
@@ -270,14 +273,9 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
                   سنسوری لب و فرمولاسیون
                 </h3>
                 {isOwnerOrManager ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-950/60 text-blue-400 border border-blue-800/40">
-                    مجاز (مدیر)
-                  </span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa] animate-pulse" title="مجاز (مدیر)" />
                 ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-950/60 text-amber-400 border border-amber-800/40 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
-                    <span>پین ادمین</span>
-                  </span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]" title="نیازمند پین مدیر" />
                 )}
               </div>
 
@@ -314,14 +312,9 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
                   کنترل دک و تنظیمات
                 </h3>
                 {isOwnerOrManager ? (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-950/60 text-blue-400 border border-blue-800/40">
-                    مجاز (مالک)
-                  </span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa] animate-pulse" title="مجاز (مالک)" />
                 ) : (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-950/60 text-rose-400 border border-rose-800/40 flex items-center gap-1">
-                    <Lock className="w-3 h-3" />
-                    <span>قفل ادمین</span>
-                  </span>
+                  <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" title="قفل ادمین" />
                 )}
               </div>
 

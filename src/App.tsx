@@ -327,7 +327,7 @@ export default function App() {
           refreshState();
           showToast(`ترمینال بازگشایی شد: خوش آمدید ${unlockedUser.fullName}`);
         }}
-        venueTitle="قهوه‌فروشی ۱۰۰ هیچ (شعبه یوسف‌آباد)"
+        venueTitle="قهوه‌فروشی ۱۰۰ هیچ"
         deviceId="TERM-01-MAIN"
       />
     );
@@ -341,7 +341,7 @@ export default function App() {
         onSelectApp={(tab: any) => setCurrentTab(tab)}
         onLock={handleLockTerminal}
         activeShift={activeShift}
-        venueTitle="قهوه‌فروشی ۱۰۰ هیچ (شعبه یوسف‌آباد)"
+        venueTitle="قهوه‌فروشی ۱۰۰ هیچ"
         deviceId="TERM-01-MAIN"
       />
     );

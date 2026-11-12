@@ -415,6 +415,7 @@ export class RBACService {
     role: AppUserRole;
     pin: string;
     phoneNumber?: string;
+    customRoleTitle?: string;
   }): Promise<AuthUserRecord> {
     await this.initDefaultUsers();
 
@@ -429,6 +430,7 @@ export class RBACService {
       username: params.username.trim().toLowerCase(),
       fullName: params.fullName.trim(),
       role: params.role,
+      customRoleTitle: params.customRoleTitle?.trim() || undefined,
       phoneNumber: params.phoneNumber?.trim(),
       pinHash: hash,
       salt,
@@ -439,6 +441,16 @@ export class RBACService {
 
     await db.authUsers.put(newRecord);
     return newRecord;
+  }
+
+  /**
+   * Updates custom role title of a staff user
+   */
+  public static async updateUserRoleTitle(userId: string, customRoleTitle?: string): Promise<void> {
+    await db.authUsers.update(userId, {
+      customRoleTitle: customRoleTitle?.trim() || undefined,
+      updatedAt: Date.now(),
+    });
   }
 
   /**

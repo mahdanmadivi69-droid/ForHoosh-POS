@@ -4,7 +4,7 @@
  */
 
 import { OrderAggregate } from '../types/order-domain';
-import { Tenant } from '../types/domain';
+import { Tenant, ShiftReportSummary } from '../types/domain';
 import { formatToman } from './financialMath';
 
 export interface PrinterConnectResult {
@@ -85,7 +85,12 @@ export function renderReceiptToCanvas(
   // Order Details
   ctx.textAlign = 'right';
   ctx.font = 'bold 22px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText(`شماره سفارش: #${order.orderNumber || 1001}`, width - 35, y);
+  const dailyReceiptNo = order.dailyReceiptNumber;
+  const receiptNumberText =
+    dailyReceiptNo !== undefined && dailyReceiptNo > 0
+      ? `#${String(dailyReceiptNo).padStart(3, '0')}`
+      : `#${order.orderNumber || 1001}`;
+  ctx.fillText(`شماره سفارش: ${receiptNumberText}`, width - 35, y);
 
   ctx.textAlign = 'left';
   const orderTypeFa = order.orderType === 'DINE_IN' ? 'سالن' : order.orderType === 'TAKEAWAY' ? 'بیرون‌بر' : 'ارسال';
@@ -311,15 +316,11 @@ export function convertCanvasToEscPosRaster(canvas: HTMLCanvasElement): Uint8Arr
 }
 
 /**
- * Direct WebUSB Printer Transport
+ * Shared USB transfer: open → claim first interface → write OUT endpoint → close.
+ * Used by both the user-gesture transport (requestDevice) and the background
+ * queue transport (previously-paired devices via getDevices).
  */
-export async function printDirectWebUSB(rawBytes: Uint8Array): Promise<PrinterConnectResult> {
-  if (typeof navigator === 'undefined' || !(navigator as any).usb) {
-    throw new Error('WebUSB در این مرورگر پشتیبانی نمی‌شود.');
-  }
-
-  const usb = (navigator as any).usb;
-  const device = await usb.requestDevice({ filters: [] });
+async function transferOutToUsbDevice(device: any, rawBytes: Uint8Array): Promise<void> {
   await device.open();
 
   if (device.configuration === null) {
@@ -338,28 +339,12 @@ export async function printDirectWebUSB(rawBytes: Uint8Array): Promise<PrinterCo
 
   await device.transferOut(endpoint.endpointNumber, rawBytes);
   await device.close();
-
-  return {
-    success: true,
-    type: 'WEB_USB',
-    message: 'فیش فاکتور با موفقیت مستقیماً به پرینتر حرارتی ارسال شد.',
-  };
 }
 
 /**
- * Direct Web Bluetooth Printer Transport
+ * Shared Bluetooth GATT writer: connect → find write characteristic → chunked 512B writes.
  */
-export async function printDirectWebBluetooth(rawBytes: Uint8Array): Promise<PrinterConnectResult> {
-  if (typeof navigator === 'undefined' || !(navigator as any).bluetooth) {
-    throw new Error('Web Bluetooth در این مرورگر پشتیبانی نمی‌شود.');
-  }
-
-  const bt = (navigator as any).bluetooth;
-  const device = await bt.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', 'e7810a71-73ae-499d-8c15-faa9aef0c3f2', 0xff00],
-  });
-
+async function writeChunksToBluetoothDevice(device: any, rawBytes: Uint8Array): Promise<void> {
   const server = await device.gatt.connect();
   const services = await server.getPrimaryServices();
   if (services.length === 0) {
@@ -380,10 +365,255 @@ export async function printDirectWebBluetooth(rawBytes: Uint8Array): Promise<Pri
     const chunk = rawBytes.slice(i, i + chunkSize);
     await writeChar.writeValue(chunk);
   }
+}
+
+/**
+ * Direct WebUSB Printer Transport (user-gesture: requestDevice)
+ */
+export async function printDirectWebUSB(rawBytes: Uint8Array): Promise<PrinterConnectResult> {
+  if (typeof navigator === 'undefined' || !(navigator as any).usb) {
+    throw new Error('WebUSB در این مرورگر پشتیبانی نمی‌شود.');
+  }
+
+  const usb = (navigator as any).usb;
+  const device = await usb.requestDevice({ filters: [] });
+  await transferOutToUsbDevice(device, rawBytes);
+
+  return {
+    success: true,
+    type: 'WEB_USB',
+    message: 'فیش فاکتور با موفقیت مستقیماً به پرینتر حرارتی ارسال شد.',
+  };
+}
+
+/**
+ * Background WebUSB Printer Transport — previously-paired devices only.
+ * Requires no user gesture, so the print queue can print automatically.
+ */
+export async function printPairedWebUSB(rawBytes: Uint8Array): Promise<PrinterConnectResult> {
+  if (typeof navigator === 'undefined' || !(navigator as any).usb?.getDevices) {
+    throw new Error('WebUSB در این مرورگر پشتیبانی نمی‌شود.');
+  }
+
+  const devices = await (navigator as any).usb.getDevices();
+  if (!devices || devices.length === 0) {
+    throw new Error('پرینتر USB جفت‌شده‌ای یافت نشد (پرینتر خاموش، unplugged یا بدون دسترسی قبلی است).');
+  }
+
+  let lastError: unknown = null;
+  for (const device of devices) {
+    try {
+      await transferOutToUsbDevice(device, rawBytes);
+      return {
+        success: true,
+        type: 'WEB_USB',
+        message: 'فیش از صف چاپ به پرینتر USB ارسال شد.',
+      };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('ارسال به پرینتر USB ناموفق بود.');
+}
+
+/**
+ * Direct Web Bluetooth Printer Transport (user-gesture: requestDevice)
+ */
+export async function printDirectWebBluetooth(rawBytes: Uint8Array): Promise<PrinterConnectResult> {
+  if (typeof navigator === 'undefined' || !(navigator as any).bluetooth) {
+    throw new Error('Web Bluetooth در این مرورگر پشتیبانی نمی‌شود.');
+  }
+
+  const bt = (navigator as any).bluetooth;
+  const device = await bt.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', 'e7810a71-73ae-499d-8c15-faa9aef0c3f2', 0xff00],
+  });
+
+  await writeChunksToBluetoothDevice(device, rawBytes);
 
   return {
     success: true,
     type: 'WEB_BLUETOOTH',
     message: 'فاکتور با موفقیت از طریق بلوتوث چاپ شد.',
   };
+}
+
+/**
+ * Background Web Bluetooth Printer Transport — previously-granted devices only.
+ * Requires no user gesture, so the print queue can print automatically.
+ */
+export async function printPairedWebBluetooth(rawBytes: Uint8Array): Promise<PrinterConnectResult> {
+  if (typeof navigator === 'undefined' || !(navigator as any).bluetooth?.getDevices) {
+    throw new Error('Web Bluetooth (getDevices) در این مرورگر پشتیبانی نمی‌شود.');
+  }
+
+  const devices = await (navigator as any).bluetooth.getDevices();
+  if (!devices || devices.length === 0) {
+    throw new Error('پرینتر بلوتوث جفت‌شده‌ای یافت نشد (پرینتر خاموش یا خارج از برد است).');
+  }
+
+  let lastError: unknown = null;
+  for (const device of devices) {
+    try {
+      await writeChunksToBluetoothDevice(device, rawBytes);
+      return {
+        success: true,
+        type: 'WEB_BLUETOOTH',
+        message: 'فیش از صف چاپ به پرینتر بلوتوث ارسال شد.',
+      };
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error('ارسال به پرینتر بلوتوث ناموفق بود.');
+}
+
+export interface ZReportMeta {
+  shiftId: string;
+  openedAt: string;
+  closedAt?: string;
+  openedBy: string;
+  closedBy?: string;
+  actualCountedCashToman?: number;
+  discrepancyReason?: string;
+}
+
+/**
+ * Renders the Z-Report (خلاصه شیفت) on the 576-dot 80mm canvas raster.
+ * Persian text is shaped by the canvas engine (same high-fidelity pipeline as
+ * the customer receipt); the caller converts it to an ESC/POS payload with the
+ * GS V paper cut via convertCanvasToEscPosRaster.
+ */
+export function renderZReportToCanvas(
+  report: ShiftReportSummary,
+  meta: ZReportMeta,
+  tenant: Tenant
+): HTMLCanvasElement {
+  const width = 576;
+  const height = 960;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Could not get 2D context from canvas');
+
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = '#000000';
+  ctx.direction = 'rtl';
+  ctx.textAlign = 'center';
+
+  const isModendo = !report.shiftId || report.shiftId.includes('modendo');
+  const brandTitle = isModendo ? 'MODENDO CAFE' : '100 HICH';
+  const brandContact = isModendo
+    ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱ | ۰۲۱-۸۸۹۹۷۷۶۶'
+    : 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس | ۰۲۱-۴۴۶۶۸۰۹۰';
+  const footerTagline = isModendo ? 'کافه مودندو' : 'صد هیچ، تمرکز محض روی اصالت قهوه';
+
+  let y = 45;
+  ctx.font = 'bold 28px Vazirmatn, Tahoma, sans-serif';
+  ctx.fillText(brandTitle, width / 2, y);
+  y += 26;
+  ctx.font = '13px Vazirmatn, Tahoma, sans-serif';
+  ctx.fillText(brandContact, width / 2, y);
+  y += 34;
+
+  ctx.font = 'bold 26px Vazirmatn, Tahoma, sans-serif';
+  ctx.fillText('خلاصه شیفت (Z-REPORT)', width / 2, y);
+  y += 30;
+  ctx.font = '14px Vazirmatn, Tahoma, sans-serif';
+  const openedDate = new Date(meta.openedAt).toLocaleString('fa-IR');
+  const closedDate = meta.closedAt ? new Date(meta.closedAt).toLocaleString('fa-IR') : '—';
+  ctx.fillText(`بازشده: ${openedDate}`, width / 2, y);
+  y += 22;
+  ctx.fillText(`بسته‌شده: ${closedDate}`, width / 2, y);
+  y += 22;
+  ctx.fillText(
+    `اپراتور: ${meta.openedBy}${meta.closedBy ? ` | بستن: ${meta.closedBy}` : ''}`,
+    width / 2,
+    y
+  );
+  y += 28;
+
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = '#000000';
+  ctx.beginPath();
+  ctx.moveTo(25, y);
+  ctx.lineTo(width - 25, y);
+  ctx.stroke();
+  y += 30;
+
+  const row = (label: string, value: string, bold = false) => {
+    ctx.font = bold ? 'bold 17px Vazirmatn, Tahoma, sans-serif' : '16px Vazirmatn, Tahoma, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText(label, width - 35, y);
+    ctx.textAlign = 'left';
+    ctx.fillText(value, 35, y);
+    y += 26;
+  };
+
+  ctx.font = 'bold 18px Vazirmatn, Tahoma, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('آمار سفارشات', width - 35, y);
+  y += 26;
+  row('تعداد کل سفارشات:', String(report.orderCount));
+  row('تسویه‌شده:', String(report.completedOrderCount));
+  row('ابطال‌شده:', `${report.cancelledOrderCount} عدد — ${formatToman(report.cancelledAmountToman)} تومان`);
+  y += 6;
+
+  ctx.lineWidth = 1;
+  drawDashedLine(ctx, 25, y, width - 25);
+  y += 28;
+
+  ctx.font = 'bold 18px Vazirmatn, Tahoma, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('گزارش فروش', width - 35, y);
+  y += 26;
+  row('فروش ناخالص:', `${formatToman(report.grossSalesToman)} تومان`);
+  row('تخفیف‌ها:', `${formatToman(report.discountsToman)} تومان`);
+  row('فروش خالص:', `${formatToman(report.netRevenueToman)} تومان`, true);
+  y += 6;
+
+  drawDashedLine(ctx, 25, y, width - 25);
+  y += 28;
+
+  ctx.font = 'bold 18px Vazirmatn, Tahoma, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('تفکیک دریافت‌ها', width - 35, y);
+  y += 26;
+  row('نقد (Cash):', `${formatToman(report.cashReceivedToman)} تومان`);
+  row('کارتخوان (POS):', `${formatToman(report.cardReceivedToman)} تومان`);
+  row('سایر (Transfer):', `${formatToman(report.otherReceivedToman)} تومان`);
+  row('جمع دریافتی:', `${formatToman(report.totalCollectedToman)} تومان`, true);
+  y += 6;
+
+  drawDashedLine(ctx, 25, y, width - 25);
+  y += 28;
+
+  ctx.font = 'bold 18px Vazirmatn, Tahoma, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillText('صندوق نقد', width - 35, y);
+  y += 26;
+  row('بازگشت وجه نقد:', `${formatToman(report.cashRefundsToman)} تومان`);
+  row('هزینه‌های نقدی:', `${formatToman(report.cashDrawerExpensesToman)} تومان`);
+  row('هزینه‌های غیرنقدی:', `${formatToman(report.otherExpensesToman)} تومان`);
+  row('موجودی محاسبه‌شده:', `${formatToman(report.expectedCashToman)} تومان`, true);
+  if (report.actualCashToman !== undefined) {
+    row('نقد شمرده‌شده:', `${formatToman(report.actualCashToman)} تومان`);
+    if (report.discrepancyToman !== undefined) {
+      const discText = `${report.discrepancyToman >= 0 ? '+' : ''}${formatToman(report.discrepancyToman)} تومان`;
+      row('مغایرت:', discText, true);
+    }
+    if (meta.discrepancyReason) {
+      row('علت مغایرت:', meta.discrepancyReason);
+    }
+  }
+
+  y += 12;
+  ctx.font = 'bold 14px Vazirmatn, Tahoma, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(footerTagline, width / 2, y);
+
+  return canvas;
 }

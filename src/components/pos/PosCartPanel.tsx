@@ -38,6 +38,7 @@ export interface PosCartPanelProps {
   netTotalToman: number;
   handleClearCart: () => void;
   handleStartCheckout: () => void;
+  isSubmittingOrder?: boolean;
   handleUpdateQuantity: (cartItemId: string, delta: number) => void;
   handleRemoveItem: (cartItemId: string) => void;
   // Tabs & Shift state
@@ -82,6 +83,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
   netTotalToman,
   handleClearCart,
   handleStartCheckout,
+  isSubmittingOrder = false,
   handleUpdateQuantity,
   handleRemoveItem,
   activeTabId,
@@ -140,22 +142,8 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
     <div
       className={`bg-[rgba(20,25,36,0.72)] backdrop-blur-[28px] border border-white/10 rounded-3xl shadow-2xl transition-all overflow-hidden flex flex-col h-full w-full ${className}`}
     >
-      {/* ================= CART HEADER & 100 HICH BRAND BADGE ================= */}
-      <div className="p-3 border-b border-white/10 bg-[#0B1524]/80 backdrop-blur-xl flex flex-col gap-2.5 shrink-0">
-        {/* Centered Brand Badge Capsule strictly above the title */}
-        <div className="flex justify-center w-full">
-          <div
-            dir="ltr"
-            className={`inline-flex items-center justify-center px-4 py-1 rounded-full border-2 border-white shadow-md text-center shrink-0 ${
-              is100Hich ? 'bg-[#071C3D]' : 'bg-[#005A3E]'
-            }`}
-          >
-            <span className="text-white font-black text-xs tracking-widest uppercase font-sans leading-none">
-              {is100Hich ? '100 HICH' : 'MODENDO CAFÉ'}
-            </span>
-          </div>
-        </div>
-
+      {/* ================= CART HEADER ================= */}
+      <div className="p-3 border-b border-white/10 bg-[#0B1524]/80 backdrop-blur-xl flex flex-col gap-2 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#D71921] animate-ping"></span>
@@ -605,7 +593,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
           <button
             type="button"
             onClick={handleStartCheckout}
-            disabled={cartItems.length === 0}
+            disabled={cartItems.length === 0 || isSubmittingOrder}
             className="w-full h-11 relative group overflow-hidden bg-[#D71921] hover:bg-[#B8141B] active:scale-[0.98] disabled:bg-stone-800 disabled:opacity-40 text-white font-black px-4 rounded-xl flex items-center justify-center gap-2 border border-white/30 shadow-[0_0_20px_rgba(215,25,33,0.6)] hover:shadow-[0_0_28px_rgba(215,25,33,0.85)] transition-all cursor-pointer text-xs"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full duration-1000 transition-transform pointer-events-none" />

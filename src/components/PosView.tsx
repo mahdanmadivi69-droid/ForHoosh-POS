@@ -73,6 +73,9 @@ import { LiquidGlassPaymentSheet, SettlementResult } from './LiquidGlassPaymentS
 import { CatalogService } from '../services/catalog/catalogService';
 import { OpenTabRecord } from '../db/schema';
 import { getCafeDatabase } from '../db/cafeDb';
+import { getDexiePOSDatabase } from '../db/DexiePOSDatabase';
+import { SmartOrdersStore } from '../services/storage';
+import { printQueueService } from '../services/printQueueService';
 import { usePrinterStore } from '../stores/usePrinterStore';
 import { PosMainLayout, PosCartPanel } from './pos';
 import { getProductWallpaper, getProductWallpaperStyle } from '../utils/productWallpapers';
@@ -264,6 +267,7 @@ export const PosView: React.FC<PosViewProps> = ({
   const [discountPercent, setDiscountPercent] = useState<number>(0);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
   const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
+  const [failedPrintCount, setFailedPrintCount] = useState<number>(0);
 
   // Modifier sheet modal state
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
@@ -371,6 +375,15 @@ export const PosView: React.FC<PosViewProps> = ({
     });
     return () => unsubscribe();
   }, []);
+
+  // Subscribe to persistent print queue stats + start the background auto-retry processor
+  useEffect(() => {
+    const unsubscribe = printQueueService.subscribe((stats) => {
+      setFailedPrintCount(stats.failed);
+    });
+    printQueueService.start(activeShift?.tenantId || currentTenantId);
+    return () => unsubscribe();
+  }, [activeShift?.tenantId, currentTenantId]);
 
   // Initialize station printer routing configuration for active tenant
   useEffect(() => {
@@ -761,6 +774,7 @@ export const PosView: React.FC<PosViewProps> = ({
 
   // Checkout submission
   const handleStartCheckout = () => {
+    if (isSubmittingOrder) return; // double-click / in-flight checkout guard
     playPosBeep('click');
     if (!activeShift) {
       onOpenShiftRequired();
@@ -776,7 +790,7 @@ export const PosView: React.FC<PosViewProps> = ({
     setIsCheckoutOpen(true);
   };
 
-  const handleConfirmPayment = (autoPrint = false, settleResult?: SettlementResult) => {
+  const handleConfirmPayment = async (autoPrint = false, settleResult?: SettlementResult) => {
     if (!activeShift || isSubmittingOrder) return;
     setIsSubmittingOrder(true);
 
@@ -828,6 +842,85 @@ export const PosView: React.FC<PosViewProps> = ({
       );
 
       if (result) {
+        // ATOMIC DEXIE CHECKOUT WRITE — a single db.transaction('rw') covering order creation,
+        // payment record and packaged retail/inventory stock deduction. Power loss or refresh
+        // mid-write rolls back completely; the daily receipt number is allocated inside the
+        // same transaction so rapid consecutive checkouts never duplicate or skip (#001…).
+        try {
+          const posDexieDb = getDexiePOSDatabase(activeShift.tenantId);
+          const nowForDateKey = new Date();
+          const receiptDateKey = `${nowForDateKey.getFullYear()}-${String(
+            nowForDateKey.getMonth() + 1
+          ).padStart(2, '0')}-${String(nowForDateKey.getDate()).padStart(2, '0')}`;
+          const effectiveChangeDueToman = Math.max(
+            0,
+            Math.round(effectiveCashTendered) - Math.round(netTotalToman)
+          );
+          const atomicResult = await posDexieDb.persistPaidCheckoutAtomically({
+            tenantId: activeShift.tenantId,
+            clientGeneratedId,
+            receiptDateKey,
+            order: {
+              id: result.order.id,
+              orderNumber: result.order.orderNumber,
+              shiftId: activeShift.id,
+              orderType,
+              tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
+              customerName: customerName.trim() || undefined,
+              customerPhone: customerPhone.trim() || undefined,
+              grossAmountToman,
+              discountAmountToman,
+              netTotalToman,
+              createdByUserId: activeUser.id,
+              createdByUserName: activeUser.fullName,
+              createdAt: result.order.createdAt,
+              updatedAt: result.order.updatedAt,
+            },
+            items: cartItems.map((it) => ({
+              id: it.id,
+              menuItemId: it.menuItemId,
+              itemNameSnapshot: it.itemNameSnapshot,
+              unitPriceSnapshotToman: it.unitPriceSnapshotToman,
+              quantity: it.quantity,
+              subtotalToman: it.subtotalToman,
+              notes: it.notes,
+            })),
+            payment: {
+              id: result.payment.id,
+              amountToman: netTotalToman,
+              paymentMethod: effectivePaymentMethod,
+              referenceCode: effectiveReferenceCode,
+              terminalName: effectiveTerminal,
+              receivedByUserId: activeUser.id,
+              receivedByUserName: activeUser.fullName,
+              cashTenderedToman: effectivePaymentMethod === 'CASH' ? effectiveCashTendered : undefined,
+              changeDueToman: effectivePaymentMethod === 'CASH' ? effectiveChangeDueToman : undefined,
+              splitDetails: settleResult?.splitDetails
+                ? {
+                    partAMethod: settleResult.splitDetails.partAMethod,
+                    partAAmountToman: settleResult.splitDetails.partAAmountToman,
+                    partBMethod: settleResult.splitDetails.partBMethod,
+                    partBAmountToman: settleResult.splitDetails.partBAmountToman,
+                  }
+                : undefined,
+              createdAt: result.payment.createdAt,
+            },
+          });
+
+          result.order.dailyReceiptNumber = atomicResult.dailyReceiptNumber;
+          const storedOrders = SmartOrdersStore.getOrders();
+          const storedIdx = storedOrders.findIndex((o) => o.id === result.order.id);
+          if (storedIdx >= 0) {
+            storedOrders[storedIdx] = {
+              ...storedOrders[storedIdx],
+              dailyReceiptNumber: atomicResult.dailyReceiptNumber,
+            };
+            SmartOrdersStore.saveOrders(storedOrders);
+          }
+        } catch (atomicErr) {
+          console.warn('[PosView] Atomic checkout write failed — legacy mirror kept:', atomicErr);
+        }
+
         // Automatically deduct raw BOM materials upon order settlement
         // If completing a recalled open tab, settle and close it in place!
         if (activeTabId) {
@@ -905,6 +998,7 @@ export const PosView: React.FC<PosViewProps> = ({
           tenantId: activeShift.tenantId,
           shiftId: activeShift.id,
           orderNumber: result.order.orderNumber,
+          dailyReceiptNumber: result.order.dailyReceiptNumber,
           orderType,
           state: 'PAID',
           tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
@@ -955,6 +1049,17 @@ export const PosView: React.FC<PosViewProps> = ({
         // 3. Station Printing & Routing (Bypassed when printer.enabled = false for 100 HICH)
         usePrinterStore.getState().dispatchOrder(orderAggregate).catch((err) => {
           console.warn('[PosView] Station printer routing dispatch:', err);
+        });
+
+        // 4. NON-BLOCKING ESC/POS thermal receipt queue — persists the job in the Dexie
+        //    printQueue table and prints in the background with auto-retry. Checkout and
+        //    order saving never wait on the thermal printer (offline/unplugged/no paper OK).
+        printQueueService.enqueueReceiptPrint(orderAggregate, tenant, {
+          cashTendered: effectivePaymentMethod === 'CASH' ? effectiveCashTendered : undefined,
+          changeDue:
+            effectivePaymentMethod === 'CASH'
+              ? Math.max(0, Math.round(effectiveCashTendered) - Math.round(netTotalToman))
+              : undefined,
         });
 
         setCompletedReceiptOrder(result.order);
@@ -1058,6 +1163,25 @@ export const PosView: React.FC<PosViewProps> = ({
     }
   };
 
+  // 1-Click reprint trigger: re-queue every failed thermal receipt and print again
+  const handleReprintFailedPrints = () => {
+    playPosBeep('click');
+    const tenantIdForQueue = activeShift?.tenantId || currentTenantId;
+    printQueueService
+      .reprintFailed(tenantIdForQueue)
+      .then((count) => {
+        showTableToast(
+          count > 0
+            ? `${count} فیش ناموفق برای چاپ مجدد صف شد`
+            : 'فیش ناموفقی برای چاپ مجدد وجود ندارد'
+        );
+      })
+      .catch((err: unknown) => {
+        console.warn('[PosView] Reprint failed jobs error:', err);
+        showTableToast('خطا در صف‌گذاری چاپ مجدد فیش‌ها');
+      });
+  };
+
   const totalCartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
@@ -1119,6 +1243,20 @@ export const PosView: React.FC<PosViewProps> = ({
 
             {/* Pinned Search Box & Item Count */}
             <div className="flex items-center gap-2 mb-1.5 shrink-0">
+              {failedPrintCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleReprintFailedPrints}
+                  title="چاپ مجدد فیش‌های ناموفق (پس از بارگذاری کاغذ)"
+                  className="h-8 px-2.5 rounded-lg bg-[#3d1015] hover:bg-[#571119] border border-rose-500/40 text-rose-300 hover:text-rose-200 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
+                >
+                  <span aria-hidden="true">🖨</span>
+                  <span>چاپ مجدد</span>
+                  <span className="min-w-[16px] h-[16px] px-1 rounded-full bg-[#D71921] text-white flex items-center justify-center text-[9px] font-mono font-bold shrink-0">
+                    {failedPrintCount}
+                  </span>
+                </button>
+              )}
               {stockAlertStats.totalLowStock > 0 && (
                 <button
                   type="button"
@@ -1374,6 +1512,7 @@ export const PosView: React.FC<PosViewProps> = ({
             netTotalToman={netTotalToman}
             handleClearCart={handleClearCart}
             handleStartCheckout={handleStartCheckout}
+            isSubmittingOrder={isSubmittingOrder}
             handleUpdateQuantity={handleUpdateQuantity}
             handleRemoveItem={handleRemoveItem}
             activeTabId={activeTabId}
@@ -1494,6 +1633,7 @@ export const PosView: React.FC<PosViewProps> = ({
         totalBalanceToman={netTotalToman}
         onClose={() => setIsCheckoutOpen(false)}
         onConfirm={handleConfirmSettlement}
+        isSubmitting={isSubmittingOrder}
         tableOrCustomerLabel={orderType === 'DINE_IN' ? tableLabel : customerName || 'مشتری بیرون‌بر'}
       />
 

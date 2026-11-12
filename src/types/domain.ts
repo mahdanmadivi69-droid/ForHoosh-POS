@@ -89,6 +89,8 @@ export interface Shift {
   discrepancyReason?: string;
   status: ShiftStatus;
   notes?: string;
+  /** Immutable lock — set on close; a closed shift's numbers must never be mutated retroactively. */
+  locked?: boolean;
 }
 
 export type OrderStatus = 'DRAFT' | 'PREPARING' | 'COMPLETED' | 'CANCELLED';
@@ -115,6 +117,8 @@ export interface Order {
   createdByUserId: string;
   createdByUserName: string;
   orderNumber: number;
+  /** Daily receipt sequence number (per tenant + local day, 1-based → #001). Allocated inside the atomic checkout Dexie transaction. */
+  dailyReceiptNumber?: number;
   orderType: OrderType;
   tableLabel?: string;
   customerName?: string;
@@ -183,6 +187,8 @@ export interface ShiftReportSummary {
   orderCount: number;
   completedOrderCount: number;
   cancelledOrderCount: number;
+  // ارزش خالص سفارشات ابطال‌شده در پنجره شیفت
+  cancelledAmountToman: number;
 
   // گزارش مالی فروش
   grossSalesToman: number;
@@ -194,6 +200,9 @@ export interface ShiftReportSummary {
   cardReceivedToman: number;
   otherReceivedToman: number;
   totalCollectedToman: number;
+
+  // بازگشت وجه نقد (پرداخت‌های نقدی ابطال‌شده در پنجره شیفت)
+  cashRefundsToman: number;
 
   // هزینه‌ها
   cashDrawerExpensesToman: number;

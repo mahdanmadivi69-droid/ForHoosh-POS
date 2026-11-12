@@ -15,7 +15,7 @@ import {
   AuditLog,
 } from '../types/domain';
 import { InvoiceSequenceService } from './invoiceSequence';
-import { getDexiePOSDatabase } from '../db/DexiePOSDatabase';
+import { getDexiePOSDatabase, DecomposedShiftRecord } from '../db/DexiePOSDatabase';
 import { hashPassword, verifyPassword, SecureCredential } from './credentials';
 import { normalizeDigits } from '../utils/digitNormalizer';
 
@@ -2164,16 +2164,26 @@ export class SmartOrdersStore {
 
     const user = this.getActiveUser();
     const shift = shifts[idx];
-    const discrepancy = actualCountedCashToman - expectedCashToman;
+
+    // Immutable lock: a closed (locked) shift can never be closed or mutated again
+    if (shift.status === 'CLOSED' || shift.locked) {
+      throw new Error('این شیفت قبلاً بسته و قفل شده است و اعداد آن قابل تغییر نیست.');
+    }
+
+    // Integer Toman invariant — zero floating-point drift in the drawer numbers
+    const actualCounted = Math.round(actualCountedCashToman);
+    const expectedCash = Math.round(expectedCashToman);
+    const discrepancy = actualCounted - expectedCash;
 
     shift.status = 'CLOSED';
     shift.closedAt = new Date().toISOString();
     shift.closedByUserId = user.id;
     shift.closedByUserName = user.fullName;
-    shift.expectedClosingCashToman = expectedCashToman;
-    shift.actualCountedCashToman = actualCountedCashToman;
+    shift.expectedClosingCashToman = expectedCash;
+    shift.actualCountedCashToman = actualCounted;
     shift.cashDiscrepancyToman = discrepancy;
     shift.discrepancyReason = discrepancyReason;
+    shift.locked = true;
     if (notes) shift.notes = (shift.notes ? shift.notes + ' | ' : '') + notes;
 
     shifts[idx] = shift;
@@ -2182,6 +2192,35 @@ export class SmartOrdersStore {
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem(activeShiftKey);
       localStorage.removeItem(STORAGE_KEYS.ACTIVE_SHIFT_ID);
+    }
+
+    // Immutable closed-shift mirror in Dexie (fire-and-forget — never blocks closure).
+    // persistClosedShiftImmutable rejects any later write against the locked record.
+    try {
+      const dexieShift: DecomposedShiftRecord = {
+        id: shift.id,
+        tenantId: shift.tenantId || this.getActiveTenantId(),
+        openedAt: shift.openedAt,
+        closedAt: shift.closedAt,
+        openedByUserId: shift.openedByUserId,
+        openedByUserName: shift.openedByUserName,
+        closedByUserId: shift.closedByUserId,
+        closedByUserName: shift.closedByUserName,
+        openingCashToman: shift.openingCashToman,
+        expectedClosingCashToman: shift.expectedClosingCashToman,
+        actualCountedCashToman: shift.actualCountedCashToman,
+        discrepancyToman: shift.cashDiscrepancyToman,
+        status: 'CLOSED',
+        notes: shift.notes,
+        locked: true,
+      };
+      getDexiePOSDatabase(dexieShift.tenantId)
+        .persistClosedShiftImmutable(dexieShift)
+        .catch((err) => {
+          console.warn('[storage] Dexie closed-shift lock mirror failed:', err);
+        });
+    } catch {
+      // ignore mirror errors — shift closure must never block on the persistence layer
     }
 
     this.addAuditLog(
@@ -2233,9 +2272,17 @@ export class SmartOrdersStore {
             paidAmountToman: o.netTotalToman,
             vatTotalToman: 0,
             customerName: o.customerName,
+            dailyReceiptNumber: o.dailyReceiptNumber,
+            receiptDateKey: (() => {
+              const d = new Date(o.createdAt);
+              return isNaN(d.getTime())
+                ? undefined
+                : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            })(),
             createdAt: o.createdAt,
             updatedAt: o.updatedAt,
-            synced: (o as any).synced ?? false,
+            // IndexedDB keys cannot be booleans — normalize to 0|1 so the mirror write never silently fails.
+            synced: (o as any).synced === 1 || (o as any).synced === true ? 1 : 0,
           }))
         ).catch(() => {});
       } catch {
