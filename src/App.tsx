@@ -48,8 +48,14 @@ import { dailyBackupScheduler } from './services/dailyBackupScheduler';
 import { ExecutivePLBoard } from './components/ExecutivePLBoard';
 import { TenantConfigBuilder } from './components/TenantConfigBuilder';
 import { getActiveTenant } from './config/tenantConfig';
+import { initCrashLogger } from './utils/telemetry/crashLogger';
+import { UpdateToast } from './components/UpdateToast';
 
-export default function App() {
+// Crash telemetry: attaches global window 'error' / 'unhandledrejection' listeners
+// exactly once at app startup (idempotent guard lives inside the logger itself).
+initCrashLogger('0.15.1');
+
+function App() {
   const activeTenant = getActiveTenant();
   const [tenant, setTenant] = useState<Tenant>(SmartOrdersStore.getTenant());
   const [allUsers, setAllUsers] = useState<User[]>(SmartOrdersStore.getUsers());
@@ -550,3 +556,17 @@ export default function App() {
     </div>
   );
 }
+
+/**
+ * Root wrapper: mounts the GitHub-release UpdateToast above every app state
+ * (lock screen included). The toast is self-positioning (fixed bottom-left)
+ * and renders null while no update is available.
+ */
+const AppWithUpdateToast: React.FC = () => (
+  <>
+    <App />
+    <UpdateToast currentVersion="0.15.1" />
+  </>
+);
+
+export default AppWithUpdateToast;
