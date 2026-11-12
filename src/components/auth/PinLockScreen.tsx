@@ -290,10 +290,7 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
 
       {/* Main Glass Lock Terminal */}
       <div
-        className="w-full max-w-md bg-[rgba(12,25,48,0.92)] border border-[rgba(144,210,237,0.32)] rounded-[32px] p-6 sm:p-7 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.9)] backdrop-blur-[34px] flex flex-col items-center relative z-10"
-        style={{
-          boxShadow: 'inset 0 1px 1.5px 0 rgba(144,210,237,0.35), 0 24px 60px -15px rgba(0, 0, 0, 0.90)',
-        }}
+        className="liquid-glass-panel w-full max-w-md p-6 sm:p-7 flex flex-col items-center relative z-10"
       >
         {/* Terminal Header */}
         <div className="text-center mb-5 flex flex-col items-center">
@@ -332,9 +329,14 @@ export const PinLockScreen: React.FC<PinLockScreenProps> = ({
                   }`}
                 >
                   <span className="text-xs font-bold truncate w-full text-center">{u.fullName}</span>
-                  <span className="text-[10px] opacity-60 truncate w-full text-center">
-                    {isOwner ? 'مالک / مدیر' : u.role}
-                  </span>
+                  <span
+                    className={`w-2 h-2 rounded-full mt-0.5 ${
+                      isOwner
+                        ? 'bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse'
+                        : 'bg-sky-400 shadow-[0_0_8px_#38bdf8]'
+                    }`}
+                    title={isOwner ? 'مالک / مدیر' : u.role}
+                  />
                 </button>
               );
             })}

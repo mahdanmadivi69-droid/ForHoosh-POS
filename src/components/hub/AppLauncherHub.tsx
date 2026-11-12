@@ -176,17 +176,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
 
       {/* Main 4-Way Glass Grid */}
       <main className="w-full max-w-6xl mx-auto my-auto py-8 z-10 flex flex-col items-center">
-        {/* KarWand Monogram Brand Mark at Visual Golden Ratio */}
-        <div className="flex flex-col items-center justify-center mb-6">
-          <div
-            className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#8C1318] via-[#0F223D] to-[#0A1628] border border-white/20 shadow-[0_0_30px_rgba(215,25,33,0.35)] flex items-center justify-center p-2 mb-2 transition-transform hover:scale-105"
-          >
-            <span className="text-xl font-black tracking-tighter text-white font-mono">KW</span>
-          </div>
-          <h2 className="text-lg font-black text-white tracking-wide">
-            مرکز عملیات کاروند
-          </h2>
-        </div>
+        {/* Launcher heading removed per final polish spec — app grid retained below */}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 w-full">
           {/* Card 1: POS & Register */}

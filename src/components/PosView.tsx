@@ -1200,10 +1200,10 @@ export const PosView: React.FC<PosViewProps> = ({
                   playPosBeep('click');
                   setSelectedCategoryId('all');
                 }}
-                className={`px-3.5 py-2 text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`vision-glass-pill px-4 py-2 text-xs whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                   selectedCategoryId === 'all'
-                    ? 'rounded-t-lg bg-gradient-to-t from-[#162238] to-[#223554] border-t-2 border-x border-b-0 border-[#D71921] text-[#F5F5F7] font-black relative -bottom-[2px] z-10 shadow-lg'
-                    : 'rounded-t-lg bg-[#0B1524]/70 text-[#F5F5F7]/70 hover:text-white border-t border-x border-b border-white/10 hover:bg-[#0F223D]/50'
+                    ? 'active font-black relative z-10'
+                    : 'text-[#F5F5F7]/70 hover:text-white'
                 }`}
               >
                 <span className="text-[#D71921]">⚡</span>
@@ -1228,10 +1228,10 @@ export const PosView: React.FC<PosViewProps> = ({
                       playPosBeep('click');
                       setSelectedCategoryId(cat.id);
                     }}
-                    className={`px-3.5 py-2 text-xs whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`vision-glass-pill px-4 py-2 text-xs whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
                       isActive
-                        ? 'rounded-t-lg bg-gradient-to-t from-[#162238] to-[#223554] border-t-2 border-x border-b-0 border-[#D71921] text-[#F5F5F7] font-black relative -bottom-[2px] z-10 shadow-lg'
-                        : 'rounded-t-lg bg-[#0B1524]/70 text-[#F5F5F7]/70 hover:text-white border-t border-x border-b border-white/10 hover:bg-[#0F223D]/50'
+                        ? 'active font-black relative z-10'
+                        : 'text-[#F5F5F7]/70 hover:text-white'
                     }`}
                   >
                     <span>{icon}</span>
@@ -1281,7 +1281,7 @@ export const PosView: React.FC<PosViewProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="جستجوی دان، ۵۰/۵۰، کرک تی، نوشیدنی..."
-                  className="w-full bg-[#0B1524]/90 border border-white/12 text-[#F5F5F7] text-xs rounded-xl pr-8 pl-3 py-2 focus:outline-none focus:border-[#D71921] transition-colors placeholder:text-[#F5F5F7]/40 shadow-inner"
+                  className="glass-pill w-full text-[#F5F5F7] text-xs rounded-full pr-8 pl-3 py-2 focus:outline-none focus:border-[#D71921] transition-colors placeholder:text-[#F5F5F7]/40"
                 />
                 <Search className="w-3.5 h-3.5 text-[#F5F5F7]/60 absolute right-2.5 top-2.5" />
               </div>

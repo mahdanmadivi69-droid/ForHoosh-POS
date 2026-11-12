@@ -16,6 +16,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={localappdata}\KarWand POS
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
+SetupIconFile=..\src-tauri\icons\icon.ico
 
 OutputDir=..\dist-installer
 OutputBaseFilename=KarWand-Setup-v{#MyAppVersion}
@@ -35,13 +36,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "autostart"; Description: "Launch KarWand POS automatically on Windows login"; GroupDescription: "Terminal Automation:"; Flags: checkedonce
 
 [Files]
+Source: "..\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist-win\KarWandLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist-win\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
-Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--autostart --kiosk"; Tasks: autostart
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
+Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--autostart --kiosk"; IconFilename: "{app}\icon.ico"; Tasks: autostart
 
 [Run]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""KarWand POS LAN Print Gateway (Port 9100)"" dir=in action=allow protocol=TCP localport=9100"; Flags: runhidden

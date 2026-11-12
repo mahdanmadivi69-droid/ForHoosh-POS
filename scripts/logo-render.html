@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'VazirmatnLocal'; src: url('../public/fonts/Vazirmatn-Bold.woff2') format('woff2'); font-weight: 700; }
+  @font-face { font-family: 'VazirmatnLocal'; src: url('../public/fonts/Vazirmatn-SemiBold.woff2') format('woff2'); font-weight: 600; }
+  @font-face { font-family: 'VazirmatnLocal'; src: url('../public/fonts/Vazirmatn-Regular.woff2') format('woff2'); font-weight: 400; }
+  body { background: #222; margin: 0; padding: 20px; display: flex; gap: 20px; align-items: flex-start; }
+  canvas { outline: 1px dashed #888; }
+</style>
+</head>
+<body>
+<script>
+const FONT_STACK = "'VazirmatnLocal', 'Vazirmatn', Tahoma, 'Segoe UI', sans-serif";
+
+function goldGradient(x, S, x0, y0, x1, y1) {
+  const g = x.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, '#E0CFA0');
+  g.addColorStop(0.45, '#C9B37E');
+  g.addColorStop(1, '#8F7A50');
+  return g;
+}
+
+function drawMonogramTile(x, cx, cy, size, opts) {
+  const half = size / 2;
+  const r = size * 0.225;
+  const tx = cx - half, ty = cy - half;
+
+  x.save();
+  x.beginPath();
+  x.roundRect(tx, ty, size, size, r);
+  const bg = x.createLinearGradient(0, ty, 0, ty + size);
+  bg.addColorStop(0, '#1B2534');
+  bg.addColorStop(0.55, '#10161F');
+  bg.addColorStop(1, '#0A0D11');
+  x.fillStyle = bg;
+  x.fill();
+  x.clip();
+
+  const glow = x.createRadialGradient(cx - size * 0.15, cy - size * 0.2, 4, cx - size * 0.15, cy - size * 0.2, size * 0.75);
+  glow.addColorStop(0, 'rgba(201,179,126,0.18)');
+  glow.addColorStop(1, 'rgba(201,179,126,0)');
+  x.fillStyle = glow;
+  x.fillRect(tx, ty, size, size);
+
+  const gold = goldGradient(x, size, cx - half, cy - half, cx + half, cy + half);
+  x.textAlign = 'center';
+  x.textBaseline = 'alphabetic';
+  x.shadowColor = 'rgba(0,0,0,0.55)';
+  x.shadowBlur = size * 0.02;
+  x.shadowOffsetY = size * 0.012;
+  x.fillStyle = gold;
+  x.font = '700 ' + Math.round(size * 0.30) + 'px ' + FONT_STACK;
+  x.fillText('کاروند', cx + size * 0.055, cy + size * 0.155);
+  x.font = '700 ' + Math.round(size * 0.60) + 'px ' + FONT_STACK;
+  x.fillText('K', cx - size * 0.055, cy + size * 0.125);
+  x.shadowColor = 'transparent';
+  x.shadowBlur = 0;
+  x.shadowOffsetY = 0;
+
+  const lip = x.createLinearGradient(0, ty, 0, ty + size * 0.10);
+  lip.addColorStop(0, 'rgba(255,255,255,0.30)');
+  lip.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = lip;
+  x.beginPath();
+  x.roundRect(tx + 2, ty + 2, size - 4, size * 0.10, [r - 2, r - 2, 0, 0]);
+  x.fill();
+  x.restore();
+
+  x.save();
+  x.beginPath();
+  x.roundRect(tx + 1, ty + 1, size - 2, size - 2, r - 1);
+  x.lineWidth = Math.max(1.5, size * 0.004);
+  x.strokeStyle = 'rgba(201,179,126,0.60)';
+  x.stroke();
+  x.restore();
+}
+
+async function renderKarWand() {
+  const S = 512;
+  const c = document.createElement('canvas');
+  c.width = S; c.height = S;
+  const x = c.getContext('2d');
+  x.clearRect(0, 0, S, S);
+  drawMonogramTile(x, S / 2, S / 2, S * 0.94);
+  document.body.appendChild(c);
+  const dataUrl = c.toDataURL('image/png');
+  window.__karwand_b64 = dataUrl.split(',')[1];
+  return window.__karwand_b64.length;
+}
+
+async function render100Hich() {
+  const W = 1200, H = 360;
+  const c = document.createElement('canvas');
+  c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.clearRect(0, 0, W, H);
+
+  drawMonogramTile(x, W - 190, H / 2, 250);
+
+  x.fillStyle = 'rgba(201,179,126,0.65)';
+  x.fillRect(W - 350, H / 2 - 90, 2.5, 180);
+
+  x.textBaseline = 'alphabetic';
+  x.textAlign = 'right';
+  x.fillStyle = '#F5F5F7';
+  x.font = '700 128px ' + FONT_STACK;
+  if ('letterSpacing' in x) x.letterSpacing = '4px';
+  x.fillText('100 HICH', W - 400, H / 2 + 8);
+  if ('letterSpacing' in x) x.letterSpacing = '16px';
+  x.fillStyle = '#90D2ED';
+  x.font = '700 40px ' + FONT_STACK;
+  x.fillText('COFFEE ROASTERS', W - 400, H / 2 + 96);
+  if ('letterSpacing' in x) x.letterSpacing = '0px';
+
+  document.body.appendChild(c);
+  const dataUrl = c.toDataURL('image/png');
+  window.__hich_b64 = dataUrl.split(',')[1];
+  return window.__hich_b64.length;
+}
+
+window.__renderAll = async function () {
+  try { await document.fonts.load("700 100px 'VazirmatnLocal'"); } catch (e) {}
+  try { await document.fonts.ready; } catch (e) {}
+  const a = await renderKarWand();
+  const b = await render100Hich();
+  return { karwand: a, hich: b, fontLoaded: document.fonts.check("700 100px 'VazirmatnLocal'") };
+};
+</script>
+</body>
+</html>

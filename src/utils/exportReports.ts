@@ -65,9 +65,9 @@ export function generateOrdersExcelHTML(orders: Order[], venueName: string = 'ق
       ? 'لغو شده'
       : o.status === 'COMPLETED'
       ? 'تکمیل شده'
-      : o.status === 'IN_PREPARATION'
+      : o.status === 'PREPARING'
       ? 'در حال آماده‌سازی'
-      : o.status === 'PENDING'
+      : o.status === 'DRAFT'
       ? 'در انتظار'
       : o.status;
     const orderTypeFa = o.orderType === 'DINE_IN' ? 'سالن' : 'بیرون‌بر';
@@ -166,7 +166,7 @@ export function generateExpensesExcelHTML(expenses: Expense[], venueName: string
 
   const rows = expenses.map((e, idx) => {
     const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
-    const paymentSourceFa = e.paymentSource === 'CASH_DRAWER' ? 'صندوق نقدی' : 'کارت‌خوان / غیرنقدی';
+    const paymentSourceFa = e.isPaidFromCashDrawer ? 'صندوق نقدی' : 'کارت‌خوان / غیرنقدی';
 
     return `
       <tr style="background-color: ${rowBg}; text-align: center; border-bottom: 1px solid #E2E8F0;">

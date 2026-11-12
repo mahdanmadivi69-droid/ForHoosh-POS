@@ -37,6 +37,44 @@
   --motion-ticket-stiffness: 420;
   --motion-ticket-damping: 32;
   --motion-ticket-mass: 0.7;
+
+  /* ===== KarWand Liquid Glass Dark Theme — Brand Tokens v2 (100 HICH Edition) ===== */
+  --kw-canvas-core: #0A0D11;
+  --kw-canvas-halo: #131B29;
+  --kw-carmine: #D71921;
+  --kw-carmine-deep: #B8141B;
+  --kw-maroon: #3D0C11;
+  --kw-gold: #9E8A5E;
+  --kw-platinum: #E5E4E2;
+  --kw-hairline: rgba(255, 255, 255, 0.10);
+  --kw-specular: rgba(255, 255, 255, 0.22);
+  --kw-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --glass-base: linear-gradient(165deg, rgba(255, 255, 255, 0.07) 0%, rgba(16, 20, 28, 0.78) 45%, rgba(10, 13, 17, 0.92) 100%);
+  --glass-blur: 24px;
+  --glass-saturate: 160%;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.10);
+  --glass-specular: rgba(255, 255, 255, 0.22);
+  --glow-accent: rgba(215, 25, 33, 0.25);
+}
+
+/* Tenant-scoped token layer — mirrors the 100 HICH brand grammar; future tenants override here */
+[data-theme='100hich'] {
+  --kw-canvas-core: #0A0D11;
+  --kw-canvas-halo: #131B29;
+  --kw-carmine: #D71921;
+  --kw-carmine-deep: #B8141B;
+  --kw-maroon: #3D0C11;
+  --kw-gold: #9E8A5E;
+  --kw-platinum: #E5E4E2;
+  --kw-hairline: rgba(255, 255, 255, 0.10);
+  --kw-specular: rgba(255, 255, 255, 0.22);
+  --kw-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --glass-base: linear-gradient(165deg, rgba(255, 255, 255, 0.07) 0%, rgba(16, 20, 28, 0.78) 45%, rgba(10, 13, 17, 0.92) 100%);
+  --glass-blur: 24px;
+  --glass-saturate: 160%;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.10);
+  --glass-specular: rgba(255, 255, 255, 0.22);
+  --glow-accent: rgba(215, 25, 33, 0.25);
 }
 
 /* Strict Viewport Freeze: Zero page-level bounce, elasticity, or scroll */
@@ -191,12 +229,13 @@ body, button, input, select, textarea {
 
 /* VisionOS Glass Navigation Pills (Categories, Filters) */
 .vision-glass-pill {
-  background: rgba(255, 255, 255, 0.06);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 1px 0.8px 0 rgba(255, 255, 255, 0.25);
-  transition: all 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(16, 20, 28, 0.72) 100%);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--kw-hairline);
+  border-radius: 9999px;
+  box-shadow: inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.16), 0 6px 18px -8px rgba(0, 0, 0, 0.6);
+  transition: transform 180ms var(--kw-press-ease), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
   will-change: transform, box-shadow;
 }
 
@@ -209,13 +248,12 @@ body, button, input, select, textarea {
 
 .vision-glass-pill.active,
 .vision-glass-pill-active {
-  background: linear-gradient(135deg, #8C1318 0%, #6E0D12 100%) !important;
-  border-color: #9E8A5E !important;
+  background: linear-gradient(180deg, rgba(215, 25, 33, 0.30) 0%, rgba(140, 19, 24, 0.40) 100%) !important;
+  border-color: rgba(215, 25, 33, 0.6) !important;
   color: #FFFFFF !important;
-  box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.45),
-    0 0 22px rgba(140, 19, 24, 0.65),
-    0 0 12px rgba(158, 138, 94, 0.45) !important;
+  box-shadow:
+    0 0 16px rgba(215, 25, 33, 0.25),
+    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.18) !important;
   font-weight: 700;
 }
 
@@ -226,12 +264,11 @@ body, button, input, select, textarea {
 
 /* Primary Checkout Trigger Button with Liquid Gold & Velvet Carmine Glow */
 .vision-checkout-cta {
-  background: linear-gradient(135deg, #8C1318 0%, #6E0D12 100%);
-  border: 1px solid rgba(158, 138, 94, 0.55);
-  box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
-    0 0 25px rgba(140, 19, 24, 0.6),
-    0 0 14px rgba(158, 138, 94, 0.4),
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 38%), #D71921;
+  border: 1px solid rgba(215, 25, 33, 0.55);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.28),
+    0 10px 24px -8px rgba(215, 25, 33, 0.55),
     0 12px 28px -6px rgba(0, 0, 0, 0.75);
   transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1),
               box-shadow 0.22s cubic-bezier(0.32, 0.72, 0, 1),
@@ -240,22 +277,28 @@ body, button, input, select, textarea {
 }
 
 .vision-checkout-cta:hover:not(:disabled) {
-  background: linear-gradient(135deg, #A5171D 0%, #7E1015 100%);
-  border-color: #9E8A5E;
-  box-shadow: 
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.55),
-    0 0 32px rgba(140, 19, 24, 0.75),
-    0 0 18px rgba(158, 138, 94, 0.55),
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 38%), var(--kw-carmine-deep);
+  border-color: rgba(215, 25, 33, 0.8);
+  box-shadow:
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35),
+    0 0 26px rgba(215, 25, 33, 0.45),
     0 16px 36px -6px rgba(0, 0, 0, 0.85);
 }
 
 .vision-checkout-cta:active:not(:disabled) {
-  transform: scale(0.96) !important;
+  transform: scale(0.97) !important;
   box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.6),
-    0 0 18px rgba(140, 19, 24, 0.7),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
+    0 0 18px rgba(215, 25, 33, 0.5),
     0 4px 12px rgba(0, 0, 0, 0.9) !important;
-  transition-duration: 80ms !important;
+  transition-duration: 180ms !important;
+}
+
+.vision-checkout-cta:disabled {
+  background: #1c1917 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: none !important;
+  opacity: 0.4;
 }
 
 /* Retrofit Existing Glass Classes to Liquid VisionOS Specifications */
@@ -281,14 +324,14 @@ body, button, input, select, textarea {
 }
 
 /* Universal Base Formula for Liquid Glass Elements - HWEI / VISIONOS SPEC */
-.liquid-glass-surface, .liquid-glass, .vision-glass-slab {
+.liquid-glass-surface, .liquid-glass, .liquid-glass-card, .liquid-glass-panel, .vision-glass-slab {
   background: var(--glass-base, rgba(15, 22, 34, 0.72)) !important;
-  backdrop-filter: blur(var(--glass-blur, 34px)) saturate(var(--glass-saturate, 190%)) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur, 34px)) saturate(var(--glass-saturate, 190%)) !important;
-  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.12)) !important;
+  backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 160%)) !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 160%)) !important;
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.10)) !important;
   box-shadow: 
-    0 24px 64px rgba(0, 0, 0, 0.55),
-    inset 0 1px 1px rgba(255, 255, 255, 0.18) !important;
+    inset 0 1px 1px 0 var(--kw-specular),
+    0 10px 28px -6px rgba(0, 0, 0, 0.65) !important;
   border-radius: var(--glass-radius, 28px) !important;
   position: relative;
   overflow: hidden;
@@ -298,12 +341,12 @@ body, button, input, select, textarea {
 }
 
 .liquid-glass-btn, .tactile-press, button.vision-haptic-press {
-  transition: transform 0.15s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.15s cubic-bezier(0.32, 0.72, 0, 1) !important;
+  transition: transform 180ms var(--kw-press-ease), border-color 180ms ease, box-shadow 180ms ease !important;
 }
 
 .liquid-glass-btn:active, .tactile-press:active, button.vision-haptic-press:active, .liquid-glass:not(.catalog-card-tilt):active {
-  transform: scale(0.93) !important;
-  box-shadow: 0 0 20px rgba(215, 25, 33, 0.35) !important;
+  transform: scale(0.97) !important;
+  box-shadow: inset 0 1px 1px 0 var(--kw-specular), 0 0 16px rgba(215, 25, 33, 0.25) !important;
 }
 
 .liquid-glass:hover {
@@ -323,6 +366,37 @@ body, button, input, select, textarea {
   opacity: var(--sheen-opacity, 0);
   transition: opacity 0.3s ease;
   z-index: 10;
+}
+
+/* =========================================================================
+   KARWAND LIQUID GLASS DARK THEME — OBSIDIAN CANVAS & TOKEN BRIDGE (v2)
+   ========================================================================= */
+
+/* Deep obsidian radial canvas: halo halo above the horizon, obsidian floor */
+body {
+  background-image: radial-gradient(circle at 50% 0%, var(--kw-canvas-halo) 0%, var(--kw-canvas-core) 65%);
+  background-attachment: fixed;
+}
+
+/* Pill capsule grammar (mission-specified class names resolve to the unified system) */
+.glass-pill {
+  border-radius: 9999px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(16, 20, 28, 0.72) 100%);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid var(--kw-hairline);
+  box-shadow: inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.16), 0 6px 18px -8px rgba(0, 0, 0, 0.6);
+}
+
+.glass-pill-active {
+  border-color: rgba(215, 25, 33, 0.6);
+  box-shadow: 0 0 16px rgba(215, 25, 33, 0.25), inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.18);
+}
+
+/* Carmine primary CTA with soft specular top highlight + deep shadow */
+.kw-cta-carmine {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 38%), var(--kw-carmine);
+  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.28), 0 10px 24px -8px rgba(215, 25, 33, 0.55);
 }
 
 /* =========================================================================

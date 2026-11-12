@@ -140,7 +140,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
 
   return (
     <div
-      className={`bg-[rgba(20,25,36,0.72)] backdrop-blur-[28px] border border-white/10 rounded-3xl shadow-2xl transition-all overflow-hidden flex flex-col h-full w-full ${className}`}
+      className={`liquid-glass-panel rounded-3xl transition-all flex flex-col h-full w-full ${className}`}
     >
       {/* ================= CART HEADER ================= */}
       <div className="p-3 border-b border-white/10 bg-[#0B1524]/80 backdrop-blur-xl flex flex-col gap-2 shrink-0">
@@ -542,8 +542,8 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
           </div>
         </div>
 
-        {/* Action Controls Split: 2-Tier Architecture */}
-        <div className="space-y-1.5 pt-1">
+        {/* Action Controls Split: 2-Tier Architecture — pinned to the panel bottom, never clipped */}
+        <div className="shrink-0 space-y-1.5 pt-1">
           {/* Top Row: [Clear] + [ثبت به عنوان تب باز] + [مشاهده تب‌ها (${count})] */}
           <div className="flex items-center gap-2">
             <button
@@ -594,7 +594,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
             type="button"
             onClick={handleStartCheckout}
             disabled={cartItems.length === 0 || isSubmittingOrder}
-            className="w-full h-11 relative group overflow-hidden bg-[#D71921] hover:bg-[#B8141B] active:scale-[0.98] disabled:bg-stone-800 disabled:opacity-40 text-white font-black px-4 rounded-xl flex items-center justify-center gap-2 border border-white/30 shadow-[0_0_20px_rgba(215,25,33,0.6)] hover:shadow-[0_0_28px_rgba(215,25,33,0.85)] transition-all cursor-pointer text-xs"
+            className="vision-checkout-cta tactile-press w-full h-11 relative group overflow-hidden text-white font-black px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer text-xs disabled:cursor-not-allowed"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full duration-1000 transition-transform pointer-events-none" />
             <CreditCard className="w-4 h-4 shrink-0" />

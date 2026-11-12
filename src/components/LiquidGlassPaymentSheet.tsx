@@ -172,9 +172,9 @@ export const LiquidGlassPaymentSheet: React.FC<LiquidGlassPaymentSheetProps> = (
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md select-none">
       <div
-        className="w-full max-w-lg bg-[rgba(12,25,48,0.92)] border border-[rgba(144,210,237,0.32)] rounded-3xl p-6 shadow-[0_24px_60px_-15px_rgba(0,0,0,0.9)] backdrop-blur-[34px] flex flex-col text-right relative overflow-hidden"
+        className="liquid-glass-panel w-full max-w-lg p-6 flex flex-col text-right relative"
         style={{
-          boxShadow: 'inset 0 1px 1.5px 0 rgba(144,210,237,0.35), 0 24px 60px -15px rgba(0, 0, 0, 0.90)',
+          boxShadow: undefined,
         }}
       >
         {/* Header */}
@@ -496,10 +496,10 @@ export const LiquidGlassPaymentSheet: React.FC<LiquidGlassPaymentSheetProps> = (
             type="button"
             disabled={!canConfirm || isSubmitting}
             onClick={handleFinalConfirm}
-            className={`w-2/3 py-3 rounded-2xl font-black text-xs transition flex items-center justify-center gap-2 cursor-pointer shadow-lg ${
-              canConfirm
-                ? 'bg-gradient-to-r from-[#8C1318] to-[#6E0D12] text-white hover:brightness-110 border border-[#9E8A5E]/60 shadow-[0_4px_20px_rgba(140,19,24,0.6)]'
-                : 'bg-white/5 text-slate-500 border-white/5 cursor-not-allowed opacity-50'
+            className={`w-2/3 py-3 rounded-2xl font-black text-xs transition flex items-center justify-center gap-2 shadow-lg ${
+              canConfirm && !isSubmitting
+                ? 'vision-checkout-cta tactile-press text-white'
+                : 'bg-white/5 text-slate-500 border border-white/5 cursor-not-allowed opacity-50'
             }`}
           >
             <CheckCircle2 className="w-4 h-4" />

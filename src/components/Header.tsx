@@ -46,6 +46,8 @@ export const Header: React.FC<HeaderProps> = ({
   const { status: syncStatus, triggerFlush } = useOutboxSync(tenant.id);
   const isManager = isManagerOrOwner(activeUser.role);
   const [liveClock, setLiveClock] = useState<string>('');
+  // Brand logo fallback state (UI-only): if /100hich-logo.png fails, the center pill falls back to text
+  const [brandLogoFailed, setBrandLogoFailed] = useState<boolean>(false);
 
   useEffect(() => {
     const update = () => {
@@ -135,14 +137,25 @@ export const Header: React.FC<HeaderProps> = ({
             /* 100 HICH Navy Badge Pill */
             <div
               dir="ltr"
-              className="flex flex-col items-center justify-center px-5 py-1.5 rounded-full bg-[#0F223D] border border-white/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)] backdrop-blur-xl"
+              className="flex items-center justify-center px-4 py-1.5 rounded-full glass-pill shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
             >
-              <span className="text-sm font-black tracking-widest text-[#F5F5F7] uppercase font-sans leading-none">
-                100 HICH
-              </span>
-              <span className="text-[9px] font-bold tracking-[0.2em] text-[#90D2ED] uppercase font-mono leading-tight mt-0.5">
-                COFFEE ROASTERS
-              </span>
+              {!brandLogoFailed ? (
+                <img
+                  src="/100hich-logo.png"
+                  alt="100 HICH COFFEE ROASTERS"
+                  className="h-10 w-auto max-w-[280px] object-contain"
+                  onError={() => setBrandLogoFailed(true)}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center">
+                  <span className="text-sm font-black tracking-widest text-[#F5F5F7] uppercase font-sans leading-none">
+                    100 HICH
+                  </span>
+                  <span className="text-[9px] font-bold tracking-[0.2em] text-[#90D2ED] uppercase font-mono leading-tight mt-0.5">
+                    COFFEE ROASTERS
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

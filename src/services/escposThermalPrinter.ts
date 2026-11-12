@@ -60,14 +60,14 @@ export function renderReceiptToCanvas(
     : 'صد هیچ، تمرکز محض روی اصالت قهوه';
   const footerWeb = isModendo ? 'MODENDO.CAFE' : '100HICH.IR';
 
-  // Header
-  ctx.font = 'bold 28px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText(brandTitle, width / 2, y);
-  y += 32;
+  // Header — Line 1 (RTL Persian) then Line 2 (LTR English) so scripts never flip
+  ctx.font = 'bold 26px Vazirmatn, Tahoma, sans-serif';
+  ctx.fillText(isModendo ? brandTitle : 'قهوه‌فروشی ۱۰۰ هیچ', width / 2, y);
+  y += 30;
 
-  ctx.font = 'bold 16px Vazirmatn, Tahoma, sans-serif';
-  ctx.fillText(brandSub, width / 2, y);
-  y += 28;
+  ctx.font = 'bold 15px Vazirmatn, Tahoma, sans-serif';
+  ctx.fillText(isModendo ? brandSub : '100 HICH COFFEE ROASTERS', width / 2, y);
+  y += 26;
 
   ctx.font = '14px Vazirmatn, Tahoma, sans-serif';
   ctx.fillText(brandContact, width / 2, y);

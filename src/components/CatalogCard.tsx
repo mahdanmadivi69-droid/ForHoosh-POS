@@ -92,6 +92,16 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
 
   const wallpaperUrl = getProductWallpaper(item);
 
+  // Strip parenthetical suffixes already shown by the badge pill (e.g. "(۵۰/۵۰)") — display title only
+  const displayNameFa = (() => {
+    if (item.badge && item.badge.trim()) {
+      const badgeNorm = item.badge.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const stripped = item.nameFa.replace(new RegExp(`\\s*\\([^)]*${badgeNorm}[^)]*\\)`, 'gi'), '').trim();
+      if (stripped) return stripped;
+    }
+    return item.hasDualBean ? item.nameFa.replace(/\s*\([^)]*۵۰\/۵۰[^)]*\)/gi, '').trim() : item.nameFa;
+  })();
+
   return (
     <div
       style={{ perspective: '1200px' }}
@@ -175,7 +185,7 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
           {/* Item Name & Details */}
           <div>
             <h3 className="font-extrabold text-sm md:text-base text-[#F5F5F7]/92 group-hover:text-white transition-colors leading-snug line-clamp-1 font-sans">
-              {item.hasDualBean ? item.nameFa.replace(/\s*\([^)]*۵۰\/۵۰[^)]*\)/gi, '').trim() : item.nameFa}
+              {displayNameFa}
             </h3>
             {item.description && (
               <p className="text-[11px] text-[#F5F5F7]/70 line-clamp-1 mt-0.5">

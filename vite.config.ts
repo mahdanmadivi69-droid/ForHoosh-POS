@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+        includeAssets: ['icon.svg', 'apple-touch-icon.png', 'karwand-logo.png', 'karwand-logo.ico', '100hich-logo.png'],
         manifest: {
           id: basePath,
           name: appName,
@@ -55,14 +55,14 @@ export default defineConfig(({ mode }) => {
           scope: basePath,
           icons: [
             {
-              src: '/pwa-192x192.png',
-              sizes: '192x192',
+              src: '/karwand-logo.png',
+              sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: '/pwa-512x512.png',
-              sizes: '512x512',
+              src: '/pwa-192x192.png',
+              sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
