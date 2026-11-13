@@ -34,17 +34,19 @@ import {
   BookOpen,
   ScrollText,
   PieChart,
+  Gamepad2,
 } from 'lucide-react';
 import { AuthUserRecord, ElevationAction } from '../../types/rbac-settings';
 import { Shift, User } from '../../types/domain';
 import { PinAuthModal } from '../modals/PinAuthModal';
 import { playPosBeep } from '../../services/soundEffects';
 import { formatToman } from '../../services/financialMath';
+import { getActiveTenant } from '../../config/tenantConfig';
 
 interface AppLauncherHubProps {
   activeUser: AuthUserRecord | User;
   onSelectApp: (
-    tab: 'pos' | 'reports' | 'zero-g' | 'settings' | 'inventory' | 'menu' | 'audit' | 'executive-pl'
+    tab: 'pos' | 'reports' | 'zero-g' | 'settings' | 'inventory' | 'menu' | 'audit' | 'executive-pl' | 'floor-plan'
   ) => void;
   onLock: () => void;
   activeShift: Shift | null;
@@ -62,6 +64,8 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
 }) => {
   const isOwnerOrManager =
     activeUser.role === 'OWNER' || activeUser.role === 'MANAGER' || (activeUser.role as string) === 'owner';
+  const activeTenant = getActiveTenant();
+  const isModendo = activeTenant.id === 'modendo';
 
   // State for PIN Elevation Modal
   const [elevationAction, setElevationAction] = useState<ElevationAction | null>(null);
@@ -69,12 +73,12 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
 
   const handleCardClick = (
     e: React.MouseEvent,
-    target: 'pos' | 'reports' | 'zero-g' | 'settings' | 'inventory' | 'menu' | 'audit' | 'executive-pl'
+    target: 'pos' | 'reports' | 'zero-g' | 'settings' | 'inventory' | 'menu' | 'audit' | 'executive-pl' | 'floor-plan'
   ) => {
     e.stopPropagation();
     playPosBeep('click');
 
-    if (target === 'pos' || target === 'reports') {
+    if (target === 'pos' || target === 'reports' || target === 'floor-plan') {
       onSelectApp(target);
       return;
     }
@@ -133,10 +137,10 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
             className="px-3.5 py-1.5 rounded-2xl bg-[#0F223D] border border-white/20 shadow-[0_0_20px_rgba(15,34,61,0.6)] flex flex-col items-center justify-center"
           >
             <span className="text-xs font-black tracking-widest text-[#F5F5F7] uppercase font-sans leading-none">
-              100 HICH
+              {isModendo ? 'MODENDO' : '100 HICH'}
             </span>
             <span className="text-[8px] font-bold tracking-[0.2em] text-[#90D2ED] uppercase font-mono leading-tight mt-0.5">
-              ROASTERS
+              {isModendo ? 'GAMING LOUNGE' : 'ROASTERS'}
             </span>
           </div>
           <div>
@@ -456,6 +460,39 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
               <ChevronLeft className="w-4 h-4" />
             </div>
           </div>
+
+          {/* Card 9 (Modendo Gaming Lounge Edition only): Station & Table Session Manager */}
+          {isModendo && (
+            <div
+              onClick={(e) => handleCardClick(e, 'floor-plan')}
+              className="group relative bg-[rgba(8,24,19,0.85)] hover:bg-[rgba(10,36,28,0.92)] border border-[rgba(104,166,145,0.35)] hover:border-[#68A691]/70 rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5"
+              style={{
+                boxShadow: 'inset 0 1px 1.5px 0 rgba(104,166,145,0.3), 0 20px 50px rgba(0,0,0,0.8)',
+              }}
+            >
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#005A3E] to-[#03110C] border border-[#68A691]/50 flex items-center justify-center shadow-[0_0_20px_rgba(0,122,84,0.5)] mb-4 group-hover:scale-105 transition-transform">
+                  <Gamepad2 className="w-7 h-7 text-[#A8E6CF]" />
+                </div>
+
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-black text-white group-hover:text-[#A8E6CF] transition-colors">
+                    ایستگاه‌های گیمینگ و پلن سالن
+                  </h3>
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" title="دسترسی مجاز" />
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  پادهای PS5، غرفه‌های VIP و میزهای کافه؛ تایمر زنده سشن، توقف/ادامه، انتقال میز و تسویه ترکیبی گیمینگ + F&B.
+                </p>
+              </div>
+
+              <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-xs font-bold text-[#A8E6CF] group-hover:translate-x-[-4px] transition-transform">
+                <span>مدیریت ایستگاه‌ها و سشن‌ها</span>
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </div>
+          )}
         </div>
       </main>
 

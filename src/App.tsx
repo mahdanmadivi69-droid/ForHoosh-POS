@@ -53,7 +53,7 @@ import { UpdateToast } from './components/UpdateToast';
 
 // Crash telemetry: attaches global window 'error' / 'unhandledrejection' listeners
 // exactly once at app startup (idempotent guard lives inside the logger itself).
-initCrashLogger('0.15.1');
+initCrashLogger('0.16.0');
 
 function App() {
   const activeTenant = getActiveTenant();
@@ -152,12 +152,16 @@ function App() {
       showToast('دسترسی به بخش مدیریت منو، انبارداری، حسابرسی و گزارش مالی فقط برای مدیر و مالک مجاز است.');
     }
   }, [activeUser.role, currentTab]);
-  // 100 HICH Route Guard: strictly forbid floor-plan or executive-pl
+  // Route Guard: the Gaming Lounge Station map (floor-plan) is Modendo-only;
+  // executive-pl stays blocked (inherited behavior) until the owner enables it.
   useEffect(() => {
-    if (currentTab === 'floor-plan' || currentTab === 'executive-pl') {
+    if (currentTab === 'floor-plan' && activeTenant.id !== 'modendo') {
       setCurrentTab('pos');
     }
-  }, [currentTab]);
+    if (currentTab === 'executive-pl') {
+      setCurrentTab('pos');
+    }
+  }, [currentTab, activeTenant.id]);
 
 
   // User Authentication Handlers
@@ -333,7 +337,7 @@ function App() {
           refreshState();
           showToast(`ترمینال بازگشایی شد: خوش آمدید ${unlockedUser.fullName}`);
         }}
-        venueTitle="قهوه‌فروشی ۱۰۰ هیچ"
+        venueTitle={activeTenant.brandNameFa}
         deviceId="TERM-01-MAIN"
       />
     );
@@ -347,7 +351,7 @@ function App() {
         onSelectApp={(tab: any) => setCurrentTab(tab)}
         onLock={handleLockTerminal}
         activeShift={activeShift}
-        venueTitle="قهوه‌فروشی ۱۰۰ هیچ"
+        venueTitle={activeTenant.brandNameFa}
         deviceId="TERM-01-MAIN"
       />
     );
@@ -435,6 +439,17 @@ function App() {
           />
         )}
 
+
+
+        {currentTab === 'floor-plan' && (
+          <FloorPlanView
+            onBackToPos={() => setCurrentTab('hub')}
+            onSelectTableForOrder={(tableLabel: string) => {
+              setPreselectedTableLabel(tableLabel);
+              setCurrentTab('pos');
+            }}
+          />
+        )}
 
 
         {currentTab === 'reports' && (
@@ -565,7 +580,7 @@ function App() {
 const AppWithUpdateToast: React.FC = () => (
   <>
     <App />
-    <UpdateToast currentVersion="0.15.1" />
+    <UpdateToast currentVersion="0.16.0" />
   </>
 );
 

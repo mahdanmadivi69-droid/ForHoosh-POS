@@ -699,6 +699,7 @@ export class OpenTabService {
       referenceCode?: string;
       cashTendered?: number;
       splitCount?: number;
+      sessionChargeToman?: number; // Mission v0.16: hourly gaming charge settled together with F&B
     },
     tenantId?: string
   ): { success: boolean; closedTab: TableSessionTab } {
@@ -714,6 +715,9 @@ export class OpenTabService {
     const tab = tabs[tabIndex];
     const effectiveTenantId = tab.tenantId || tId;
     const now = new Date().toISOString();
+    // Mission v0.16: strict integer combined settlement total (F&B + gaming charge)
+    const sessionChargeToman = Math.max(0, Math.round(options.sessionChargeToman || 0));
+    const combinedSettlementToman = tab.total_due + sessionChargeToman;
 
     // Ensure all rounds are marked deducted strictly for this tenant
     tab.rounds.forEach((round) => {
@@ -758,9 +762,9 @@ export class OpenTabService {
             subtotalToman: it.subtotal,
             notes: it.notes,
           })),
-          grossAmountToman: tab.subtotal,
+          grossAmountToman: tab.subtotal + sessionChargeToman,
           discountAmountToman: tab.discount,
-          netTotalToman: tab.total_due,
+          netTotalToman: combinedSettlementToman,
         });
 
         SmartOrdersStore.recordPayment({
@@ -768,7 +772,7 @@ export class OpenTabService {
           orderId: createdOrder.id,
           shiftId: activeShift.id,
           receivedByUserId: activeUser.id,
-          amountToman: tab.total_due,
+          amountToman: combinedSettlementToman,
           paymentMethod: options.paymentMethod === 'CASH' ? 'CASH' : 'CARD_MANUAL',
           referenceCode: options.referenceCode,
           terminalName: options.terminalName || 'پوز ۱ (بانک سامان)',
@@ -781,6 +785,49 @@ export class OpenTabService {
 
     playPosBeep('success');
     return { success: true, closedTab };
+  }
+
+  /**
+   * Mission v0.16: transfer an open tab (with all its accumulated rounds and
+   * totals) to another station/table — pairs with floorPlanService.transferSession.
+   */
+  public transferTab(
+    tabId: string,
+    toTableId: string,
+    toTableLabel?: string,
+    tenantId?: string
+  ): TableSessionTab | null {
+    const tId = this.getActiveTenantId(tenantId);
+    this.loadStateForTenant(tId);
+    const tabs = this.tenantTabs.get(tId) || [];
+
+    const tabIndex = tabs.findIndex((t) => t.tab_id === tabId);
+    if (tabIndex === -1) return null;
+
+    const tab = tabs[tabIndex];
+    if (tab.status === 'settled') return null;
+
+    // Target table must not carry another active tab for this tenant
+    const targetOccupied = tabs.some(
+      (t) =>
+        t.status !== 'settled' &&
+        t.tab_id !== tabId &&
+        (t.table_id === toTableId || t.table_label === toTableId)
+    );
+    if (targetOccupied) return null;
+
+    const matchedTable = DEFAULT_TABLES.find((t) => t.id === toTableId || t.label === toTableId);
+    const updatedTab: TableSessionTab = {
+      ...tab,
+      table_id: toTableId,
+      table_label: toTableLabel || matchedTable?.label || toTableId,
+    };
+
+    tabs[tabIndex] = updatedTab;
+    this.tenantTabs.set(tId, tabs);
+    this.persistTabs(tId);
+    playPosBeep('click');
+    return updatedTab;
   }
 
   /**

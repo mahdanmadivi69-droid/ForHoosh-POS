@@ -11,6 +11,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useMemo, useCallback } from 'react';
 import { TenantManifest, TenantProvisioner, TenantThemeConfig } from '../services/TenantProvisioner';
+import { getActiveTenant } from '../config/tenantConfig';
 
 export interface TenantThemeContextType {
   activeTenant: TenantManifest | null;
@@ -70,6 +71,44 @@ const DEFAULT_100HICH_MANIFEST: TenantManifest = {
   version: 'v13.0',
 };
 
+const DEFAULT_MODENDO_MANIFEST: TenantManifest = {
+  tenantId: 'tenant-modendo-01',
+  brandNameEn: 'Modendo Gaming Lounge',
+  brandNameFa: 'کافه گیمینگ مودندو',
+  taglineFa: 'دنیای بردگیم و هیجان کنسول PS5 در لانژ زمردی مودندو',
+  currency: 'IRR',
+  taxInclusive: true,
+  sections: [
+    { id: 'sec_mod_ps5', nameEn: 'PS5 Gaming Pods', nameFa: 'ایستگاه‌های PS5', tableCount: 4, tablePrefix: 'PS5-' },
+    { id: 'sec_mod_vip', nameEn: 'VIP Gaming Booths', nameFa: 'غرفه‌های VIP گیمینگ', tableCount: 2, tablePrefix: 'VIP-' },
+    { id: 'sec_mod_cafe', nameEn: 'Cafe Tables', nameFa: 'میزهای کافه', tableCount: 6, tablePrefix: 'T' },
+  ],
+  printers: [
+    {
+      id: 'prn_mod_counter_01',
+      alias: 'Modendo Counter Thermal Printer',
+      station: 'BAR',
+      ipAddress: '192.168.1.211',
+      port: 9100,
+      paperWidth: '80mm',
+      enableBuzzer: true,
+      enableCutter: true,
+      isDefault: true,
+    },
+  ],
+  theme: {
+    primaryColor: '#005A3E',
+    secondaryColor: '#0F2922',
+    accentColor: '#68A691',
+    surfaceBase: '#081813',
+    surfaceCard: 'rgba(8, 24, 19, 0.72)',
+    logoUrl: '/karwand-logo.png',
+  },
+  hmacSecret: 'modendo-manifest-default-hmac-local-only-v13',
+  createdAt: '2026-11-13T00:00:00Z',
+  version: 'v13.0',
+};
+
 const TenantThemeContext = createContext<TenantThemeContextType | undefined>(undefined);
 
 // Helper: Convert HEX (#RRGGBB) to "R, G, B" string for CSS rgba() usage
@@ -102,6 +141,9 @@ function applyThemeToDom(theme: TenantThemeConfig, tenantId: string, brandName: 
 
   // Set active tenant data attribute for CSS scoping
   root.setAttribute('data-tenant', tenantId);
+
+  // Mission v0.16: mirror the canonical theme switch on dataset.theme
+  root.dataset.theme = /modendo/i.test(tenantId) ? 'modendo' : '100hich';
 
   // Brand Identifiers
   root.style.setProperty('--brand-tenant-id', tenantId);
@@ -143,13 +185,29 @@ export const TenantThemeProvider: React.FC<TenantThemeProviderProps> = ({
     const loaded = TenantProvisioner.getAllManifests();
     if (loaded.length === 0) {
       TenantProvisioner.saveManifest(DEFAULT_100HICH_MANIFEST);
-      return [DEFAULT_100HICH_MANIFEST];
+      TenantProvisioner.saveManifest(DEFAULT_MODENDO_MANIFEST);
+      return [DEFAULT_100HICH_MANIFEST, DEFAULT_MODENDO_MANIFEST];
+    }
+    if (!loaded.some((t) => t.tenantId === DEFAULT_MODENDO_MANIFEST.tenantId)) {
+      TenantProvisioner.saveManifest(DEFAULT_MODENDO_MANIFEST);
+      loaded.push(DEFAULT_MODENDO_MANIFEST);
     }
     return loaded;
   });
 
   const [activeTenantId, setActiveTenantId] = useState<string>(() => {
     if (initialTenantId) return initialTenantId;
+    // Mission v0.16: build-time tenant switch wins over stale localStorage
+    // (dedicated Modendo edition installs must never boot as 100 HICH).
+    const envTenantId =
+      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) ||
+      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ACTIVE_TENANT) ||
+      '';
+    if (envTenantId) {
+      return /modendo/i.test(envTenantId)
+        ? DEFAULT_MODENDO_MANIFEST.tenantId
+        : DEFAULT_100HICH_MANIFEST.tenantId;
+    }
     if (typeof localStorage !== 'undefined') {
       try {
         const stored = localStorage.getItem('cafeos_active_tenant_id');

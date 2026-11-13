@@ -14,6 +14,7 @@ import {
 import { User, Tenant } from '../types/domain';
 import { SmartOrdersStore } from '../services/storage';
 import { playPosBeep } from '../services/soundEffects';
+import { getActiveTenant } from '../config/tenantConfig';
 
 interface LoginViewProps {
   tenant: Tenant;
@@ -108,9 +109,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center gap-3 bg-[#081425] border border-[#293444] px-4 py-2.5 rounded-xl shadow-inner mb-4">
             <div className="text-left font-black tracking-tighter leading-none pr-1">
-              <span className="text-3xl font-black text-white">100</span>
+              <span className="text-3xl font-black text-white">
+                {getActiveTenant().id === 'modendo' ? 'MODENDO' : '100'}
+              </span>
               <span className="text-[10px] block text-[#D71921] tracking-widest font-black uppercase">
-                HICH
+                {getActiveTenant().id === 'modendo' ? 'GAMING LOUNGE' : 'HICH'}
               </span>
             </div>
             <div className="h-7 w-[1.5px] bg-[#293444] mx-1"></div>
@@ -336,7 +339,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ tenant, onLoginSuccess }) 
         {/* Footer info */}
         <div className="mt-6 text-center text-[11px] text-[#526071] flex items-center justify-center gap-1.5">
           <Coffee className="w-3 h-3 text-[#D71921]" />
-          <span>نسخه پایلوت ۱۰۰هیچ • طراحی شده برای صندوق‌های لمسی و کیبورد</span>
+          <span>
+            {getActiveTenant().id === 'modendo'
+              ? 'نسخه کافه گیمینگ مودندو • طراحی شده برای صندوق‌های لمسی و کیبورد'
+              : 'نسخه پایلوت ۱۰۰هیچ • طراحی شده برای صندوق‌های لمسی و کیبورد'}
+          </span>
         </div>
       </div>
     </div>

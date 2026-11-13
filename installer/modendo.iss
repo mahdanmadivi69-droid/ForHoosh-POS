@@ -79,9 +79,9 @@ begin
     JsonContent :=
       '{' + #13#10 +
       '  "tenantId": "tenant-modendo-01",' + #13#10 +
-      '  "brandNameFa": "کافه بازی و لانج مودندو",' + #13#10 +
-      '  "brandNameEn": "MODENDO BOARDGAME & GAMING CAFE",' + #13#10 +
-      '  "theme": "emerald-lounge",' + #13#10 +
+      '  "brandNameFa": "کافه گیمینگ مودندو",' + #13#10 +
+      '  "brandNameEn": "MODENDO GAMING LOUNGE",' + #13#10 +
+      '  "theme": "modendo",' + #13#10 +
       '  "features": {' + #13#10 +
       '    "takeaway": true,' + #13#10 +
       '    "openTabs": true,' + #13#10 +

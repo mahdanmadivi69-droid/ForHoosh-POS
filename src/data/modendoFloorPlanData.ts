@@ -5,6 +5,16 @@
 
 import { ModendoFloorPlanSchema } from '../types/floor-plan';
 
+/**
+ * Single source of truth for Modendo hourly gaming rates (strict integer Toman).
+ * Tier keys match TableEntity.pricing_tier_id across floor plan, Dexie seeds and menu.
+ */
+export const MODENDO_PRICING_TIERS: Record<string, number> = {
+  tier_ps5_standard: 90000, // PS5-1..4 pods (per hour)
+  tier_vip_suite: 150000, // VIP-1 & VIP-2 gaming/streaming booths (per hour)
+  tier_boardgame_table: 45000, // Boardgame tables with game_timer (per hour)
+};
+
 export const INITIAL_MODENDO_FLOOR_PLAN: ModendoFloorPlanSchema = {
   modendo_schema_version: '6.3',
   generated_at: '2026-11-01T11:45:00Z',
@@ -85,6 +95,30 @@ export const INITIAL_MODENDO_FLOOR_PLAN: ModendoFloorPlanSchema = {
       geometry: { x: 255, y: 535, width: 48, height: 56, rotation: 0 },
       capabilities: { game_timer: true, token_required: false, mergeable: false },
       pricing_tier_id: 'tier_ps5_standard',
+      status: 'AVAILABLE',
+    },
+    {
+      id: 'VIP-1',
+      zone_id: 'vip_booth',
+      display_name: 'VIP Gaming Booth 1',
+      level: 0,
+      billing_mode: 'hourly_timer',
+      capacity: { nominal: 4, max: 8 },
+      geometry: { x: 330, y: 535, width: 56, height: 56, rotation: 0 },
+      capabilities: { game_timer: true, token_required: false, mergeable: false },
+      pricing_tier_id: 'tier_vip_suite',
+      status: 'AVAILABLE',
+    },
+    {
+      id: 'VIP-2',
+      zone_id: 'vip_booth',
+      display_name: 'VIP Gaming Booth 2',
+      level: 0,
+      billing_mode: 'hourly_timer',
+      capacity: { nominal: 4, max: 8 },
+      geometry: { x: 395, y: 535, width: 56, height: 56, rotation: 0 },
+      capabilities: { game_timer: true, token_required: false, mergeable: false },
+      pricing_tier_id: 'tier_vip_suite',
       status: 'AVAILABLE',
     },
     {
@@ -221,5 +255,23 @@ export const INITIAL_MODENDO_FLOOR_PLAN: ModendoFloorPlanSchema = {
       capabilities: { game_timer: false, token_required: false, mergeable: false },
       status: 'AVAILABLE',
     },
+    // --- میزهای کافه T1..T6 (Cafe Tables — Mission Section C) ---
+    ...[1, 2, 3, 4, 5, 6].map((num) => ({
+      id: `T${num}`,
+      zone_id: 'main_hall' as const,
+      display_name: `میز کافه T${num}`,
+      level: 1 as const,
+      billing_mode: 'standard_table' as const,
+      capacity: { nominal: num % 2 === 0 ? 6 : 4, max: num % 2 === 0 ? 8 : 6 },
+      geometry: {
+        x: 500 + (num - 1) * 52,
+        y: 380,
+        width: 44,
+        height: 44,
+        rotation: 0,
+      },
+      capabilities: { game_timer: false, token_required: false, mergeable: true },
+      status: 'AVAILABLE' as const,
+    })),
   ],
 };

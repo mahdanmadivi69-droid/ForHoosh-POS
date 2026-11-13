@@ -5,7 +5,7 @@
 
 export type BillingMode = 'standard_table' | 'token' | 'hourly_timer';
 
-export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'GAMING_ACTIVE' | 'AWAITING_BILL';
+export type TableStatus = 'AVAILABLE' | 'OCCUPIED' | 'GAMING_ACTIVE' | 'AWAITING_BILL' | 'PAUSED';
 
 export interface TableGeometry {
   x: number;
@@ -28,7 +28,7 @@ export interface TableCapabilities {
 
 export interface TableEntity {
   id: string;
-  zone_id: 'lower_lobby' | 'ps_room' | 'lounge' | 'main_hall' | 'bar_counter' | 'terrace';
+  zone_id: 'lower_lobby' | 'ps_room' | 'vip_booth' | 'lounge' | 'main_hall' | 'bar_counter' | 'terrace';
   display_name: string;
   level: 0 | 1;
   billing_mode: BillingMode;
@@ -41,6 +41,8 @@ export interface TableEntity {
   currentOrderId?: string;
   currentBillAmount?: number;
   sessionStartTime?: string; // ISO string for timer
+  pausedMs?: number; // accumulated paused duration (integer ms) — excluded from billing
+  pausedAt?: string; // ISO timestamp while session is paused (frozen timer)
   activeGuestsCount?: number;
   assignedToken?: string;
 }

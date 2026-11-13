@@ -122,8 +122,8 @@ console.log('\n[Suite 3: Floor Plan v6.3 & Hourly Billing Calculations]');
   const level0 = tables.filter((t) => t.level === 0);
   const level1 = tables.filter((t) => t.level === 1);
 
-  assert(level0.length === 7, 'Level 0 has 7 entities (Lobby sofa/table, LZ-ZONE, 4 PS5 pods)');
-  assert(level1.length === 11, 'Level 1 has 11 entities (BAR-01, M-01..04, M-Side, T-01..05)');
+  assert(level0.length === 9, 'Level 0 has 9 entities (Lobby sofa/table, LZ-ZONE, 4 PS5 pods, VIP-1/VIP-2 booths)');
+  assert(level1.length === 17, 'Level 1 has 17 entities (BAR-01, M-01..04, M-Side, T-01..05, Cafe Tables T1..T6)');
 
   // Gaming Hourly Math Simulation
   // Scenario 1: PS5 Pod for 2 hours and 30 minutes (2.5 hours) @ 120,000 Toman/hr

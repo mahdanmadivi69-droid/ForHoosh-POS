@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { TableEntity, TableStatus, TableGeometry } from '../../types/floor-plan';
 import { floorPlanService } from '../../services/floorPlanService';
+import { calculateSessionElapsedSeconds } from '../../services/financialMath';
 import { playPosBeep } from '../../services/soundEffects';
 import { ZERO_G_PHYSICS, MotionConfig } from '../../modules/smart-orders/utils/zeroGMotionTokens';
 
@@ -122,14 +123,29 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
 
   const selectedTable = tables.find((t) => t.id === selectedTableId);
 
-  // Format active session elapsed time (HH:MM:SS)
-  const formatElapsedTime = (startTimeStr?: string) => {
-    if (!startTimeStr) return '00:00:00';
-    const start = new Date(startTimeStr).getTime();
-    const diff = Math.max(0, Math.floor((nowTime - start) / 1000));
-    const h = String(Math.floor(diff / 3600)).padStart(2, '0');
-    const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
-    const s = String(diff % 60).padStart(2, '0');
+  // Format active session elapsed time (HH:MM:SS) — excludes paused budget
+  // (Mission v0.16) and freezes at the pause instant while paused.
+  const formatElapsedTime = (tableOrStart?: TableEntity | string) => {
+    if (!tableOrStart) return '00:00:00';
+    if (typeof tableOrStart === 'string') {
+      // Legacy string call-site (raw ISO start, no pause info)
+      const start = new Date(tableOrStart).getTime();
+      const diff = Math.max(0, Math.floor((nowTime - start) / 1000));
+      const h = String(Math.floor(diff / 3600)).padStart(2, '0');
+      const m = String(Math.floor((diff % 3600) / 60)).padStart(2, '0');
+      const s = String(diff % 60).padStart(2, '0');
+      return `${h}:${m}:${s}`;
+    }
+    const table = tableOrStart;
+    if (!table.sessionStartTime) return '00:00:00';
+    const elapsed = calculateSessionElapsedSeconds(
+      table.sessionStartTime,
+      table.pausedAt ? new Date(table.pausedAt).getTime() : nowTime,
+      table.pausedMs || 0
+    );
+    const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
+    const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
+    const s = String(elapsed % 60).padStart(2, '0');
     return `${h}:${m}:${s}`;
   };
 
@@ -163,6 +179,16 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
   // Status Color Logic (Section 4.1 & 5)
   const getTableColorConfig = (table: TableEntity) => {
     const status = table.status || 'AVAILABLE';
+
+    if (status === 'PAUSED') {
+      return {
+        bg: 'rgba(245, 158, 11, 0.22)',
+        border: '#F59E0B', // Amber — frozen session
+        glow: '0 0 12px rgba(245, 158, 11, 0.5)',
+        badgeBg: '#B45309',
+        label: 'توقف موقت',
+      };
+    }
 
     if (status === 'GAMING_ACTIVE' || table.billing_mode === 'hourly_timer' && status !== 'AVAILABLE') {
       return {
@@ -500,8 +526,8 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                       {table.display_name}
                     </text>
 
-                    {/* PS5 Active Timer Badge */}
-                    {isPS5 && table.status === 'GAMING_ACTIVE' && (
+                    {/* PS5 Active Timer Badge (frozen when session is paused) */}
+                    {isPS5 && (table.status === 'GAMING_ACTIVE' || table.status === 'PAUSED') && (
                       <g transform={`translate(${cx - 32}, ${cy + 6})`}>
                         <rect width="64" height="16" rx="4" fill="#1E3A8A" stroke="#3B82F6" strokeWidth="1" />
                         <text
@@ -513,7 +539,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                           textAnchor="middle"
                           fontFamily="monospace"
                         >
-                          {formatElapsedTime(table.sessionStartTime)}
+                          {formatElapsedTime(table)}
                         </text>
                       </g>
                     )}
@@ -630,7 +656,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                   {selectedTable.billing_mode === 'hourly_timer' && (
                     <span className="text-blue-400 font-mono tracking-mono flex items-center gap-1 font-bold">
                       <Clock className="w-3 h-3" />
-                      {formatElapsedTime(selectedTable.sessionStartTime)}
+                      {formatElapsedTime(selectedTable)}
                     </span>
                   )}
                   {selectedTable.assignedToken && (

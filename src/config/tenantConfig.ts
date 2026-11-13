@@ -6,6 +6,8 @@ export interface TenantProfile {
     primaryBg: string;
     surfaceBg: string;
     accentColor: string;
+    accentHover?: string;
+    mintHighlight?: string;
     accentGlow: string;
     textPrimary: string;
     textMuted: string;
@@ -50,12 +52,14 @@ export const TENANT_PROFILES: Record<string, TenantProfile> = {
   },
   'modendo': {
     id: 'modendo',
-    brandNameFa: 'کافه مودندو',
-    brandNameEn: 'Modendo Café',
+    brandNameFa: 'کافه گیمینگ مودندو',
+    brandNameEn: 'Modendo Gaming Lounge',
     palette: {
       primaryBg: '#081813',
       surfaceBg: '#0F2922',
       accentColor: '#005A3E',
+      accentHover: '#007A54',
+      mintHighlight: '#68A691',
       accentGlow: 'rgba(0, 122, 84, 0.45)',
       textPrimary: '#F8EED9',
       textMuted: '#9BB1A8',
@@ -67,8 +71,8 @@ export const TENANT_PROFILES: Record<string, TenantProfile> = {
       quickTables: ['M-01', 'M-02', 'M-03', 'M-04', 'M-05', 'M-06', 'BAR', 'VIP'],
     },
     receipt: {
-      logoPath: '/tenants/modendo/logo.png',
-      headerNoteFa: 'لحظاتی خوش و ماندگار در کافه مودندو',
+      logoPath: '/karwand-logo.png',
+      headerNoteFa: 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو',
       printKitchenTicket: true,
     },
   },
@@ -99,6 +103,14 @@ export function getActiveTenant(): TenantProfile {
       // ignore
     }
   }
-  const envTenant = (import.meta as any).env?.VITE_ACTIVE_TENANT;
-  return TENANT_PROFILES[envTenant] || TENANT_PROFILES['100hich'];
+  // Modendo Edition: VITE_TENANT_ID is the primary build-time tenant switch
+  // (mission: default tenant 'modendo'); VITE_ACTIVE_TENANT kept as legacy fallback.
+  const envTenant =
+    (import.meta as any).env?.VITE_TENANT_ID ||
+    (import.meta as any).env?.VITE_ACTIVE_TENANT;
+  if (envTenant && TENANT_PROFILES[envTenant]) {
+    return TENANT_PROFILES[envTenant];
+  }
+  // Default tenant for the Modendo Gaming Lounge Edition build
+  return TENANT_PROFILES['modendo'] || TENANT_PROFILES['100hich'];
 }

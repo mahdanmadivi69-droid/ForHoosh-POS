@@ -1632,6 +1632,9 @@ export class SmartOrdersStore {
   static getActiveTenantId(): string {
     const envTenant = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) || '';
     if (envTenant) {
+      // Normalize short tenant keys ('modendo') to canonical store IDs ('tenant-modendo-01')
+      if (/modendo/i.test(envTenant)) return 'tenant-modendo-01';
+      if (/100hich/i.test(envTenant)) return 'tenant-100hich-01';
       return envTenant;
     }
     return load<string>(STORAGE_KEYS.ACTIVE_TENANT_ID, 'tenant-modendo-01');

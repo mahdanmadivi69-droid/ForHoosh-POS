@@ -9,7 +9,7 @@ import {
   TableStatus,
   TableGeometry,
 } from '../types/floor-plan';
-import { INITIAL_MODENDO_FLOOR_PLAN } from '../data/modendoFloorPlanData';
+import { INITIAL_MODENDO_FLOOR_PLAN, MODENDO_PRICING_TIERS } from '../data/modendoFloorPlanData';
 import { INITIAL_100HICH_FLOOR_PLAN } from '../data/100hichFloorPlanData';
 import { SmartOrdersStore } from './storage';
 
@@ -230,6 +230,8 @@ class FloorPlanServiceClass {
 
     table.status = newStatus;
     table.sessionStartTime = new Date().toISOString();
+    table.pausedMs = undefined;
+    table.pausedAt = undefined;
     if (typeof tokenOrGuestCount === 'string') {
       table.assignedToken = tokenOrGuestCount;
     } else if (typeof tokenOrGuestCount === 'number') {
@@ -249,6 +251,8 @@ class FloorPlanServiceClass {
 
     table.status = 'AVAILABLE';
     table.sessionStartTime = undefined;
+    table.pausedMs = undefined;
+    table.pausedAt = undefined;
     table.currentOrderId = undefined;
     table.currentBillAmount = 0;
     table.assignedToken = undefined;
@@ -258,11 +262,99 @@ class FloorPlanServiceClass {
   }
 
   /**
-   * Resets entire layout to initial specification seed
+   * Resets entire layout to the tenant's initial specification seed
+   * (bugfix: previously always forced the Modendo plan even for 100 HICH).
    */
   public resetToDefault(): void {
-    this.schema = JSON.parse(JSON.stringify(INITIAL_MODENDO_FLOOR_PLAN));
+    this.schema = JSON.parse(JSON.stringify(this.getDefaultPlan()));
     this.notify();
+  }
+
+  /**
+   * Mission v0.16: strict integer hourly rate lookup from pricing tier registry.
+   * Falls back to boardgame rate for untagged timer tables, 0 for non-hourly tables.
+   */
+  public getHourlyRateForTable(table: TableEntity | undefined | null): number {
+    if (!table || table.billing_mode !== 'hourly_timer') {
+      if (!table?.capabilities.game_timer) return 0;
+      return MODENDO_PRICING_TIERS['tier_boardgame_table'] ?? 45000;
+    }
+    if (table.pricing_tier_id && MODENDO_PRICING_TIERS[table.pricing_tier_id] !== undefined) {
+      return MODENDO_PRICING_TIERS[table.pricing_tier_id];
+    }
+    return MODENDO_PRICING_TIERS['tier_ps5_standard'] ?? 90000;
+  }
+
+  /**
+   * Mission v0.16: pause a live session. Wall-clock elapsed billing time is
+   * frozen by accumulating pausedMs and stamping pausedAt; resume clears pausedAt.
+   */
+  public pauseSession(id: string): boolean {
+    const table = this.schema.tables.find((t) => t.id === id);
+    if (!table || !table.sessionStartTime || table.pausedAt) return false;
+
+    table.pausedAt = new Date().toISOString();
+    if (table.status === 'GAMING_ACTIVE' || table.status === 'OCCUPIED') {
+      table.status = 'PAUSED';
+    }
+    this.notify();
+    return true;
+  }
+
+  /**
+   * Mission v0.16: resume a paused session (frozen timer continues from the
+   * exact second it stopped — no billable time is lost or gained).
+   */
+  public resumeSession(id: string): boolean {
+    const table = this.schema.tables.find((t) => t.id === id);
+    if (!table || !table.sessionStartTime || !table.pausedAt) return false;
+
+    const pausedUntilMs = new Date(table.pausedAt).getTime();
+    const resumeMs = Date.now();
+    table.pausedMs = (table.pausedMs || 0) + Math.max(0, resumeMs - pausedUntilMs);
+    table.pausedAt = undefined;
+    if (table.status === 'PAUSED') {
+      table.status = table.billing_mode === 'hourly_timer' ? 'GAMING_ACTIVE' : 'OCCUPIED';
+    }
+    this.notify();
+    return true;
+  }
+
+  /**
+   * Mission v0.16: transfer an active session (and its accumulated runtime
+   * state) to another AVAILABLE table/station without resetting the timer.
+   */
+  public transferSession(fromTableId: string, toTableId: string): boolean {
+    const from = this.schema.tables.find((t) => t.id === fromTableId);
+    const to = this.schema.tables.find((t) => t.id === toTableId);
+    if (!from || !to || from.id === to.id) return false;
+    if (!from.sessionStartTime) return false; // nothing to transfer
+    if (to.sessionStartTime || (to.status && to.status !== 'AVAILABLE')) return false;
+
+    to.status = from.status === 'PAUSED'
+      ? 'PAUSED'
+      : to.billing_mode === 'hourly_timer'
+        ? 'GAMING_ACTIVE'
+        : 'OCCUPIED';
+    to.sessionStartTime = from.sessionStartTime;
+    to.pausedMs = from.pausedMs;
+    to.pausedAt = from.pausedAt;
+    to.currentOrderId = from.currentOrderId;
+    to.currentBillAmount = from.currentBillAmount;
+    to.activeGuestsCount = from.activeGuestsCount;
+    to.assignedToken = from.assignedToken;
+
+    from.status = 'AVAILABLE';
+    from.sessionStartTime = undefined;
+    from.pausedMs = undefined;
+    from.pausedAt = undefined;
+    from.currentOrderId = undefined;
+    from.currentBillAmount = 0;
+    from.activeGuestsCount = undefined;
+    from.assignedToken = undefined;
+
+    this.notify();
+    return true;
   }
 }
 

@@ -719,4 +719,47 @@ export function countStockAlerts(
   return { totalLowStock, outOfStockCount, warningCount, healthyCount };
 }
 
+/**
+ * Mission v0.16 (Modendo Gaming Lounge): exact integer elapsed billable seconds
+ * for an hourly gaming session. Paused durations (pausedMs) are excluded from
+ * billing; while a session is paused the timer is frozen at pausedAt.
+ *
+ * All arithmetic stays in the integer domain: milliseconds are truncated to
+ * whole seconds only AFTER subtracting the paused budget.
+ */
+export function calculateSessionElapsedSeconds(
+  sessionStartIso: string,
+  nowMs: number = Date.now(),
+  pausedMs: number = 0
+): number {
+  const startMs = new Date(sessionStartIso).getTime();
+  if (!isFinite(startMs)) return 0;
+  const cleanPaused = Math.max(0, Math.round(pausedMs || 0));
+  const rawElapsedMs = Math.max(0, Math.round(nowMs) - startMs - cleanPaused);
+  return Math.floor(rawElapsedMs / 1000);
+}
+
+/**
+ * Mission v0.16 (Modendo Gaming Lounge): exact integer prorated hourly session
+ * cost in Toman. Zero floating-point operations: the product
+ * (elapsedSeconds × hourlyRateToman) is reduced modulo 3600 with half-up
+ * rounding applied to the remainder only.
+ *
+ *   cost = round_half_up(elapsed × rate / 3600)
+ */
+export function calculateHourlySessionCostToman(
+  hourlyRateToman: number,
+  elapsedSeconds: number
+): number {
+  const rate = Math.max(0, Math.round(hourlyRateToman || 0));
+  const seconds = Math.max(0, Math.round(elapsedSeconds || 0));
+  if (rate === 0 || seconds === 0) return 0;
+
+  const totalTomanSeconds = seconds * rate; // integer product, well under 2^53 for realistic ranges
+  const wholeHours = Math.floor(totalTomanSeconds / 3600);
+  const remainder = totalTomanSeconds - wholeHours * 3600; // integer remainder in [0, 3599]
+  const halfUpRounded = remainder * 2 >= 3600 ? 1 : 0; // integer half-up rounding
+  return wholeHours + halfUpRounded;
+}
+
 

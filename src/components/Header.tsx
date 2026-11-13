@@ -100,8 +100,8 @@ export const Header: React.FC<HeaderProps> = ({
                     className="w-full h-full object-contain"
                     onError={(e) => {
                       const img = e.currentTarget;
-                      if (!img.src.endsWith('.svg')) {
-                        img.src = activeTenant.receipt.logoPath.replace('.png', '.svg');
+                      if (!img.src.endsWith('icon.svg')) {
+                        img.src = '/icon.svg';
                       }
                     }}
                   />
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
                     MODENDO
                   </span>
                   <span className="text-[9px] block tracking-widest font-black uppercase text-[#F5F5F7]/60">
-                    CAFÉ
+                    GAMING LOUNGE
                   </span>
                 </div>
               </div>
@@ -123,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className="text-[10px] text-white px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider"
                     style={{ backgroundColor: activeTenant.palette.accentColor }}
                   >
-                    MODENDO CAFÉ
+                    GAMING LOUNGE
                   </span>
                 </h1>
                 <p className="text-[11px] text-[#F5F5F7]/60 flex items-center gap-1">
