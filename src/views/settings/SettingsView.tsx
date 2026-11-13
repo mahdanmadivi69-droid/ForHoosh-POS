@@ -21,6 +21,9 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { RBACService } from '../../services/RBACService';
+import { SettingsPrinters } from './SettingsPrinters';
+import { SettingsRBAC } from './SettingsRBAC';
 import {
   Sliders,
   Receipt,
@@ -37,6 +40,8 @@ import {
   Lock,
   Unlock,
   Radio,
+  Users,
+  Volume2,
   Wifi,
   Instagram,
   Download,
@@ -51,6 +56,7 @@ import {
 } from 'lucide-react';
 import {
   AppUserRole,
+  AuthUserRecord,
   RollWidthMm,
   StoreProfileConfig,
   FiscalRulesConfig,
@@ -77,13 +83,21 @@ interface SettingsViewProps {
   onRoleSwitch?: (role: AppUserRole) => void;
 }
 
+const STAFF_ROLE_LABELS: Record<AppUserRole, string> = {
+  OWNER: 'مالک',
+  ACCOUNTANT: 'حسابدار',
+  MANAGER: 'مدیر شیفت',
+  CASHIER: 'باریستا / صندوق‌دار',
+  BARISTA: 'باریستا',
+};
+
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUserRole,
   currentUserName,
   onBackToPos,
 }) => {
   // Navigation / Tab state within settings
-  const [activeSettingsSection, setActiveSettingsSection] = useState<'fiscal' | 'template' | 'rules' | 'lan_persistence'>('fiscal');
+  const [activeSettingsSection, setActiveSettingsSection] = useState<'fiscal' | 'template' | 'rules' | 'lan_persistence' | 'staff' | 'printers' | 'prefs' | 'rbac'>('fiscal');
   const [selectedRollWidth, setSelectedRollWidth] = useState<RollWidthMm>(80);
 
   // Core Form State
@@ -128,6 +142,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [pcPosPort, setPcPosPort] = useState<number>(1024);
   const [pcPosAutoDispatch, setPcPosAutoDispatch] = useState<boolean>(true);
 
+  // Staff & Shift Access State (کارکنان و دسترسی شیفت)
+  const [staffUsers, setStaffUsers] = useState<AuthUserRecord[]>([]);
+  const [staffLoading, setStaffLoading] = useState<boolean>(false);
+  const [newStaffName, setNewStaffName] = useState<string>('');
+  const [newStaffRole, setNewStaffRole] = useState<AppUserRole>('CASHIER');
+  const [newStaffPin, setNewStaffPin] = useState<string>('');
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [pinEditUserId, setPinEditUserId] = useState<string | null>(null);
+  const [pinEditValue, setPinEditValue] = useState<string>('');
+
+  // Sound & System Preferences State
+  const [systemPreferences, setSystemPreferences] = useState<SystemPreferencesConfig>({
+    audio_feedback_enabled: true,
+    auto_open_table_selector_after_settle: false,
+    kds_sound_alert_interval_sec: 30,
+  });
+
   // UI Status
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveSuccessMessage, setSaveSuccessMessage] = useState<string | null>(null);
@@ -142,6 +173,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         if (loaded.store_profile) setStoreProfile(loaded.store_profile);
         if (loaded.fiscal_rules) setFiscalRules(loaded.fiscal_rules);
         if (loaded.receipt_template) setReceiptTemplate(loaded.receipt_template);
+        if (loaded.system_preferences) setSystemPreferences(loaded.system_preferences);
 
         // Load operational rules from localStorage
         const ceiling = localStorage.getItem('karwand_cashier_discount_ceiling');
@@ -168,6 +200,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     initLoad();
   }, []);
 
+  // Load staff accounts whenever the Staff & Shift Access tab opens (or on mount)
+  useEffect(() => {
+    const loadStaff = async () => {
+      try {
+        setStaffLoading(true);
+        const users = await RBACService.getAllUsers();
+        setStaffUsers(users);
+      } catch (err) {
+        console.warn('[SettingsView] Staff list load failed:', err);
+      } finally {
+        setStaffLoading(false);
+      }
+    };
+    loadStaff();
+  }, [activeSettingsSection]);
+
   // Save all settings
   const handleSaveAll = async () => {
     setIsSaving(true);
@@ -176,6 +224,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         store_profile: storeProfile,
         fiscal_rules: fiscalRules,
         receipt_template: receiptTemplate,
+        system_preferences: systemPreferences,
       };
       await SettingsService.saveSettings(payload);
 
@@ -244,6 +293,71 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     audioFeedback.playTap();
   };
 
+  // Staff & Shift Access mutations (کارکنان و دسترسی شیفت)
+  const refreshStaffList = async () => {
+    const users = await RBACService.getAllUsers();
+    setStaffUsers(users);
+  };
+
+  const handleAddStaff = async () => {
+    const name = newStaffName.trim();
+    const pin = newStaffPin.trim();
+    if (!name) {
+      setStaffError('نام کارمند را وارد کنید.');
+      return;
+    }
+    if (!/^\d{4}$/.test(pin)) {
+      setStaffError('پین‌کد باید دقیقاً ۴ رقم عددی باشد.');
+      return;
+    }
+    try {
+      setStaffError(null);
+      const username = `staff-${Date.now().toString(36)}`.toLowerCase();
+      await RBACService.addStaffUser({ fullName: name, username, role: newStaffRole, pin });
+      audioFeedback.playSuccess();
+      setNewStaffName('');
+      setNewStaffPin('');
+      setNewStaffRole('CASHIER');
+      await refreshStaffList();
+    } catch (err: any) {
+      setStaffError(err?.message || 'خطا در افزودن کارمند');
+      audioFeedback.playError();
+    }
+  };
+
+  const handleUpdateStaffPin = async (userId: string) => {
+    const pin = pinEditValue.trim();
+    if (!/^\d{4}$/.test(pin)) {
+      setStaffError('پین‌کد باید دقیقاً ۴ رقم عددی باشد.');
+      return;
+    }
+    try {
+      setStaffError(null);
+      await RBACService.updateUserPin(userId, pin);
+      audioFeedback.playSuccess();
+      setPinEditUserId(null);
+      setPinEditValue('');
+    } catch (err: any) {
+      setStaffError(err?.message || 'خطا در تغییر پین');
+      audioFeedback.playError();
+    }
+  };
+
+  const handleDeleteStaff = async (user: AuthUserRecord) => {
+    if (user.role === 'OWNER') {
+      setStaffError('حذف حساب کاربری مالک مجاز نیست.');
+      return;
+    }
+    try {
+      setStaffError(null);
+      await RBACService.deleteStaffUser(user.id);
+      audioFeedback.playTap();
+      await refreshStaffList();
+    } catch (err: any) {
+      setStaffError(err?.message || 'خطا در حذف کارمند');
+    }
+  };
+
   // One-click Export JSON
   const handleExportJson = () => {
     try {
@@ -306,7 +420,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   return (
     <div
       dir="rtl"
-      className="min-h-screen bg-[#070A0F] text-white p-3 md:p-6 font-sans select-none space-y-6"
+      className="w-full pb-12 bg-[#070A0F] text-white p-3 md:p-6 font-sans select-none space-y-6"
     >
       {/* Top Header Bar with Liquid Glass */}
       <header className="liquid-glass p-4 rounded-3xl flex items-center justify-between gap-4">
@@ -358,7 +472,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
            ========================================================================= */}
         <section className="lg:col-span-7 xl:col-span-8 space-y-6">
           {/* Segmented Section Switcher */}
-          <div className="liquid-glass p-1.5 rounded-2xl grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-bold">
+          <div className="liquid-glass p-1.5 rounded-2xl grid grid-cols-2 sm:grid-cols-8 gap-1.5 text-xs font-bold">
             <button
               type="button"
               onClick={() => {
@@ -421,6 +535,70 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             >
               <Monitor className="w-3.5 h-3.5 text-[#90D2ED]" />
               <span>پوز شبکه و بکاپ</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setActiveSettingsSection('staff');
+              }}
+              className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsSection === 'staff'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white shadow-md border border-[#90D2ED]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 text-[#90D2ED]" />
+              <span>کارکنان و دسترسی شیفت</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setActiveSettingsSection('printers');
+              }}
+              className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsSection === 'printers'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white shadow-md border border-[#90D2ED]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Printer className="w-3.5 h-3.5 text-[#90D2ED]" />
+              <span>چاپگرها و ایستگاه‌ها</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setActiveSettingsSection('prefs');
+              }}
+              className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsSection === 'prefs'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white shadow-md border border-[#90D2ED]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Volume2 className="w-3.5 h-3.5 text-[#90D2ED]" />
+              <span>صدا و ترجیحات</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setActiveSettingsSection('rbac');
+              }}
+              className={`py-2 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer ${
+                activeSettingsSection === 'rbac'
+                  ? 'bg-gradient-to-r from-[#8C1318] to-[#5a0c10] text-white shadow-md border border-[#90D2ED]/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-[#90D2ED]" />
+              <span>مجوزها و RBAC</span>
             </button>
           </div>
 
@@ -805,6 +983,264 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* SECTION 5: STAFF & SHIFT LOGIN PINs (کارکنان و دسترسی شیفت) */}
+          {activeSettingsSection === 'staff' && (
+            <div className="liquid-glass p-5 rounded-3xl space-y-5">
+              <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                <Users className="w-4 h-4 text-[#90D2ED]" />
+                <h2 className="text-sm font-black text-white">کارکنان و دسترسی شیفت (Staff &amp; Shift Login PINs)</h2>
+              </div>
+
+              {/* Add Staff Form */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">نام و نام خانوادگی:</label>
+                  <input
+                    type="text"
+                    value={newStaffName}
+                    onChange={(e) => setNewStaffName(e.target.value)}
+                    placeholder="مثلاً: سارا محمدی"
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED]"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">نقش:</label>
+                  <select
+                    value={newStaffRole}
+                    onChange={(e) => setNewStaffRole(e.target.value as AppUserRole)}
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED] cursor-pointer"
+                  >
+                    <option value="CASHIER">باریستا / صندوق‌دار</option>
+                    <option value="MANAGER">مدیر شیفت</option>
+                    <option value="OWNER">مالک</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-300 block mb-1.5">پین ورود (۴ رقم):</label>
+                  <input
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={newStaffPin}
+                    onChange={(e) => setNewStaffPin(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="****"
+                    dir="ltr"
+                    className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3 py-2 text-xs text-white text-center font-mono tracking-[0.5em] focus:outline-none focus:border-[#90D2ED]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    void handleAddStaff();
+                  }}
+                  className="h-[38px] py-2 px-3 rounded-xl vision-checkout-cta tactile-press text-white text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>افزودن کارمند</span>
+                </button>
+              </div>
+
+              {staffError && (
+                <div className="bg-rose-950/50 border border-rose-800/60 text-rose-300 text-xs font-bold p-2.5 rounded-xl">
+                  {staffError}
+                </div>
+              )}
+
+              {/* Staff List */}
+              <div className="space-y-2">
+                {staffLoading && <p className="text-xs text-slate-400">در حال بارگذاری فهرست کارکنان...</p>}
+                {staffUsers.map((u) => (
+                  <div
+                    key={u.id}
+                    className={`flex flex-wrap items-center gap-2 p-3 rounded-xl border ${
+                      u.isActive ? 'bg-white/5 border-white/10' : 'bg-black/30 border-white/5 opacity-60'
+                    }`}
+                  >
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        u.isActive
+                          ? u.role === 'OWNER'
+                            ? 'bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse'
+                            : 'bg-sky-400 shadow-[0_0_8px_#38bdf8]'
+                          : 'bg-slate-600'
+                      }`}
+                      title={u.isActive ? 'حساب فعال' : 'حساب غیرفعال'}
+                    />
+                    <div className="min-w-0 flex-1">
+                      <span className="text-xs font-black text-white block truncate">{u.fullName}</span>
+                      <span className="text-[10px] text-slate-400 font-mono truncate block">
+                        {STAFF_ROLE_LABELS[u.role] || u.role}
+                        {u.customRoleTitle ? ` • ${u.customRoleTitle}` : ''}
+                        {` • ${u.username}`}
+                        {!u.isActive ? ' • غیرفعال' : ''}
+                      </span>
+                    </div>
+
+                    {pinEditUserId === u.id ? (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="password"
+                          inputMode="numeric"
+                          maxLength={4}
+                          value={pinEditValue}
+                          onChange={(e) => setPinEditValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                          placeholder="پین جدید"
+                          dir="ltr"
+                          className="w-24 bg-[#0D1015]/80 border border-[#90D2ED]/50 rounded-lg px-2 py-1.5 text-xs text-white text-center font-mono focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            void handleUpdateStaffPin(u.id);
+                          }}
+                          className="px-2 py-1.5 rounded-lg bg-emerald-900/50 border border-emerald-700/50 text-emerald-300 text-[11px] font-bold cursor-pointer hover:bg-emerald-800/60"
+                        >
+                          ذخیره
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPinEditUserId(null);
+                            setPinEditValue('');
+                          }}
+                          className="px-2 py-1.5 rounded-lg bg-white/5 border border-white/10 text-slate-400 text-[11px] cursor-pointer hover:text-white"
+                        >
+                          انصراف
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPinEditUserId(u.id);
+                            setPinEditValue('');
+                          }}
+                          title="تغییر پین ورود کارمند"
+                          className="px-2.5 py-1.5 rounded-lg bg-[#0F223D]/80 border border-white/15 text-[#90D2ED] text-[11px] font-bold flex items-center gap-1 cursor-pointer hover:bg-[#162E52]"
+                        >
+                          <Lock className="w-3 h-3" />
+                          <span>تغییر پین</span>
+                        </button>
+                        {u.role !== 'OWNER' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              void handleDeleteStaff(u);
+                            }}
+                            title="حذف حساب کارمند (مالک قابل حذف نیست)"
+                            className="p-2 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {!staffLoading && staffUsers.length === 0 && (
+                  <p className="text-xs text-slate-400">هیچ کارمندی ثبت نشده است — فرم بالا را تکمیل کنید.</p>
+                )}
+              </div>
+
+              <p className="text-[10px] text-slate-500 leading-relaxed">
+                کارکنان افزوده‌شده بلافاصله پس از «خروج» در صفحه قفل PIN قابل انتخاب هستند و با پین ۴ رقمی وارد می‌شوند. حساب مالک قابل حذف نیست.
+              </p>
+            </div>
+          )}
+
+          {/* SECTION 6: PRINTERS & STATION ROUTING */}
+          {activeSettingsSection === 'printers' && (
+            <div className="liquid-glass p-5 rounded-3xl space-y-4">
+              <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                <Printer className="w-4 h-4 text-[#90D2ED]" />
+                <h2 className="text-sm font-black text-white">چاپگرها، ایستگاه‌ها و مسیریابی چاپ (Printers &amp; Routing)</h2>
+              </div>
+              <SettingsPrinters />
+            </div>
+          )}
+
+          {/* SECTION 7: SOUND & SYSTEM PREFERENCES */}
+          {activeSettingsSection === 'prefs' && (
+            <div className="liquid-glass p-5 rounded-3xl space-y-5">
+              <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                <Volume2 className="w-4 h-4 text-[#90D2ED]" />
+                <h2 className="text-sm font-black text-white">صدا و ترجیحات سیستم (Sound &amp; System Preferences)</h2>
+              </div>
+
+              <label className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-xl p-3 cursor-pointer">
+                <span className="text-xs font-bold text-slate-200">بازخورد صوتی صندوق (بیپ اسکن و تأیید):</span>
+                <input
+                  type="checkbox"
+                  checked={systemPreferences.audio_feedback_enabled}
+                  onChange={(e) =>
+                    setSystemPreferences({ ...systemPreferences, audio_feedback_enabled: e.target.checked })
+                  }
+                  className="accent-[#D71921] w-4 h-4 cursor-pointer"
+                />
+              </label>
+
+              <label className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-xl p-3 cursor-pointer">
+                <span className="text-xs font-bold text-slate-200">بازشدن خودکار انتخاب میز پس از تسویه:</span>
+                <input
+                  type="checkbox"
+                  checked={systemPreferences.auto_open_table_selector_after_settle}
+                  onChange={(e) =>
+                    setSystemPreferences({
+                      ...systemPreferences,
+                      auto_open_table_selector_after_settle: e.target.checked,
+                    })
+                  }
+                  className="accent-[#D71921] w-4 h-4 cursor-pointer"
+                />
+              </label>
+
+              <div>
+                <label className="text-xs font-bold text-slate-300 block mb-1.5">
+                  فاصله هشدار صوتی آشپزخانه/KDS (ثانیه):
+                </label>
+                <input
+                  type="number"
+                  min="5"
+                  max="300"
+                  value={systemPreferences.kds_sound_alert_interval_sec}
+                  onChange={(e) =>
+                    setSystemPreferences({
+                      ...systemPreferences,
+                      kds_sound_alert_interval_sec: parseInt(e.target.value, 10) || 30,
+                    })
+                  }
+                  className="w-full bg-[#0D1015]/80 border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#90D2ED] font-mono"
+                />
+              </div>
+
+              <p className="text-[10px] text-slate-500">
+                این ترجیحات همراه سایر تنظیمات با دکمه «ذخیره تمامی تنظیمات» ذخیره میشوند.
+              </p>
+            </div>
+          )}
+
+          {/* SECTION 8: PERMISSIONS & RBAC */}
+          {activeSettingsSection === 'rbac' && (
+            <div className="liquid-glass p-5 rounded-3xl space-y-4">
+              <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+                <ShieldCheck className="w-4 h-4 text-[#90D2ED]" />
+                <h2 className="text-sm font-black text-white">سطوح دسترسی و مجوزها (Permissions &amp; RBAC)</h2>
+              </div>
+              <SettingsRBAC />
             </div>
           )}
         </section>

@@ -58,6 +58,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
 
   const orderData: ReceiptOrderData = {
     invoiceNo: receiptNoLabel,
+    tenantId: order.tenantId,
     dateTime: `${formattedDate} - ${formattedTime}`,
     orderType: orderTypeDisplay,
     cashier: cashierDisplay,
@@ -129,6 +130,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
             >
               <ReceiptPrintTemplate
                 order={orderData}
+                tenantId={order.tenantId}
                 tenantName={tenantName}
                 tenantAddress={tenantAddress}
                 tenantPhone={tenantPhone}

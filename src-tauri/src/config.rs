@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
@@ -58,13 +58,13 @@ impl Default for PrinterConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct HardwareProfile {
     #[serde(rename = "cashierPrinter")]
     pub cashier_printer: PrinterConfig,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct OfflineEngineConfig {
     #[serde(rename = "indexedDbPrefix")]
     pub indexed_db_prefix: String,
@@ -76,12 +76,16 @@ pub struct OfflineEngineConfig {
 pub struct VenueConfig {
     #[serde(rename = "tenantId")]
     pub tenant_id: String,
+    #[serde(default)]
     #[serde(rename = "hardwareProfile")]
     pub hardware_profile: HardwareProfile,
+    #[serde(default)]
     #[serde(rename = "offlineEngine")]
     pub offline_engine: OfflineEngineConfig,
+    /// Accepts both numeric epochs and the installer's ISO-like timestamp string.
+    #[serde(default)]
     #[serde(rename = "installedAt")]
-    pub installed_at: Option<u64>,
+    pub installed_at: Option<serde_json::Value>,
 }
 
 impl Default for VenueConfig {

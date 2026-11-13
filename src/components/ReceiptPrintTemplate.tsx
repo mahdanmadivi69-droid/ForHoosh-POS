@@ -12,6 +12,7 @@ export interface ReceiptItem {
 
 export interface ReceiptOrderData {
   invoiceNo: string | number;
+  tenantId?: string;
   dateTime: string;
   orderType: string;
   cashier: string;
@@ -30,6 +31,7 @@ export interface ReceiptOrderData {
 
 export interface ReceiptPrintTemplateProps {
   order: ReceiptOrderData;
+  tenantId?: string;
   tenantName?: string;
   tenantAddress?: string;
   tenantPhone?: string;
@@ -42,6 +44,7 @@ export interface ReceiptPrintTemplateProps {
 
 export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
   order,
+  tenantId,
   tenantName,
   tenantAddress,
   tenantPhone,
@@ -52,12 +55,15 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
   printKitchenTicket,
 }) => {
   const activeTenant = getActiveTenant();
+  // Strict tenant detection — never guess from display names (English/Persian casing traps).
+  const effectiveTenantId = tenantId || order.tenantId || activeTenant.id;
   const isModendo =
-    activeTenant.id === 'modendo' ||
-    (tenantName ? !tenantName.includes('۱۰۰') && !tenantName.includes('Hich') : false);
+    effectiveTenantId === 'modendo' ||
+    effectiveTenantId === 'tenant-modendo-01' ||
+    effectiveTenantId.includes('modendo');
 
   const displayTenantName = tenantName || activeTenant.brandNameFa;
-  const displayLogo = logoPath || activeTenant.receipt.logoPath;
+  const displayLogo = logoPath || '/karwand-logo.png';
   const displayHeaderNote = headerNoteFa || activeTenant.receipt.headerNoteFa;
   const shouldPrintKitchen =
     printKitchenTicket !== undefined ? printKitchenTicket : activeTenant.receipt.printKitchenTicket;
@@ -102,8 +108,8 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
             <div className="flex justify-center mb-1">
               <img
                 src={displayLogo}
-                alt={displayTenantName}
-                className="max-h-12 max-w-[140px] object-contain mx-auto block"
+                alt="KarWand"
+                className="h-12 w-12 rounded-xl object-cover border border-[#C5A880]/60 shadow-sm mx-auto block"
                 onError={(e) => {
                   const img = e.currentTarget;
                   if (!img.src.endsWith('.svg')) {
@@ -250,9 +256,8 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
           )}
         </div>
 
-        {/* Barcode & Customer Footer */}
+        {/* Footer: Tagline & Thanks */}
         <div className="text-center mt-3 space-y-1 pt-2" style={{ borderTop: "1px solid #ddd" }}>
-          <div className="text-base tracking-[0.25em] font-mono select-none">||| | ||||| |||| || | |||| ||</div>
           <p className="text-[10px] font-bold mt-1 text-black">{displayTagline}</p>
           <p className="text-[9px] text-gray-600">از خرید و همراهی شما سپاسگزاریم • {displayWebsite}</p>
         </div>
@@ -349,7 +354,9 @@ export function renderReceiptTemplateHtml(
 
   const isModendo =
     activeTenant.id === 'modendo' ||
-    (tenantInfo.name ? tenantInfo.name.includes('مودندو') || !tenantInfo.name.includes('۱۰۰') : false);
+    (tenantInfo.name
+      ? tenantInfo.name.includes('مودندو') || tenantInfo.name.toUpperCase().includes('MODENDO')
+      : false);
 
   const brandName = escapeHtml(tenantInfo.name || activeTenant.brandNameFa);
   const logoPath = escapeHtml(tenantInfo.logoPath || activeTenant.receipt.logoPath);

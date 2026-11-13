@@ -135,10 +135,10 @@ export const CatalogCard: React.FC<CatalogCardProps> = ({
         <div
           className="product-card-liquid-glass-overlay absolute inset-0 z-10 pointer-events-none"
           style={{
-            backdropFilter: 'blur(14px) saturate(190%)',
-            WebkitBackdropFilter: 'blur(14px) saturate(190%)',
-            background: 'linear-gradient(180deg, rgba(12, 17, 24, 0.35) 0%, rgba(10, 14, 20, 0.65) 100%)',
-            boxShadow: 'inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35)',
+            backdropFilter: 'blur(2.5px) saturate(160%)',
+            WebkitBackdropFilter: 'blur(2.5px) saturate(160%)',
+            background: 'linear-gradient(180deg, rgba(12, 17, 24, 0.10) 0%, rgba(10, 14, 20, 0.28) 55%, rgba(10, 14, 20, 0.62) 100%)',
+            boxShadow: 'inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.30)',
           }}
         />
 

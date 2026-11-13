@@ -413,7 +413,7 @@ function App() {
       />
 
       {/* Main View Area */}
-      <main className="flex-1 min-h-0 overflow-hidden relative">
+      <main id="app-viewport" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain relative">
         {currentTab === 'zero-g' && (
           <SensoryLabView
             onBackToLauncher={() => setCurrentTab('hub')}

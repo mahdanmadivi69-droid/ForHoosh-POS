@@ -1,0 +1,56 @@
+[1794567588] START - launcher v0.14.0 | exe="C:\\Projects\\KarWand-SmartOrders\\src-tauri\\target\\release\\karwand-launcher.exe" | cwd="C:\\Projects\\KarWand-SmartOrders\\src-tauri"
+[1794567588] RUN - event loop starting
+[1794567589] SETUP - entered
+[1794567589] SETUP - venue tenant=100hich (config file optional, defaults applied)
+[1794567589] SETUP - start_url=index.html?tenant=100hich
+[1794567589] SETUP_ERROR - window/webview build failed: a webview with label `main` already exists
+[1794567589] PANIC - Failed to setup app: error encountered during setup hook: a webview with label `main` already exists @ C:\Users\mahda\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\tauri-2.12.5\src\app.rs:1444
+backtrace:
+   0: std::backtrace_rs::backtrace::win64::trace
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\..\..\backtrace\src\backtrace\win64.rs:85
+   1: std::backtrace_rs::backtrace::trace_unsynchronized
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\..\..\backtrace\src\backtrace\mod.rs:66
+   2: std::backtrace::Backtrace::create
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\backtrace.rs:331
+   3: std::backtrace::Backtrace::force_capture
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\backtrace.rs:312
+   4: tauri::resources::plugin::init::<tauri_runtime_wry::Wry<tauri::EventLoopMessage>>::{closure#0}
+   5: std::panicking::panic_with_hook
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\panicking.rs:823
+   6: std::panicking::panic_handler::closure$0
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\panicking.rs:688
+   7: std::sys::backtrace::__rust_end_short_backtrace<std::panicking::panic_handler::closure_env$0,never$>
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\sys\backtrace.rs:182
+   8: std::panicking::panic_handler
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\panicking.rs:679
+   9: core::panicking::panic_fmt
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\core\src\panicking.rs:80
+  10: <std::sync::once::Once>::call_once_force::<<std::sync::lazy_lock::LazyLock<u32>>::force::{closure#0}>::{closure#0}
+  11: tauri_runtime_wry::handle_event_loop::<tauri::EventLoopMessage>
+  12: <std::sync::once::Once>::call_once_force::<<std::sync::lazy_lock::LazyLock<u32>>::force::{closure#0}>::{closure#0}
+  13: RINvMs0_NtNtNtNtCs9QunWds1Png_3tao13platform_impl8platform10event_loop6runnerINtB6_15EventLoopRunnerINtCs7Gl4q5AXFVO_17tauri_runtime_wry7MessageNtCskmp1TC9JlYl_5tauri16EventLoopMessageEE12catch_unwindTNtNtBa_6window6WindowINtB8_10WindowDataB1A_EENCNvMs3_B3
+  14: <tao::platform_impl::platform::event_loop::runner::EventLoopRunner<tauri_runtime_wry::Message<tauri::EventLoopMessage>>>::send_event
+  15: RINvMs1_NtNtNtCs9QunWds1Png_3tao13platform_impl8platform10event_loopINtB6_9EventLoopINtCs7Gl4q5AXFVO_17tauri_runtime_wry7MessageNtCskmp1TC9JlYl_5tauri16EventLoopMessageEE3runNCINvB1n_18make_event_handlerB22_NCINvMse_NtB24_3appNtB3s_3App28make_run_event_loo
+  16: <tauri_runtime_wry::Wry<tauri::EventLoopMessage> as tauri_runtime::Runtime<tauri::EventLoopMessage>>::run::<<tauri::app::App>::make_run_event_loop_callback<karwand_launcher::main::{closure#2}>::{closure#0}>
+  17: karwand_launcher::main
+  18: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  19: std::rt::lang_start::<()>::{closure#0}
+  20: std::rt::lang_start_internal::closure$0
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\rt.rs:175
+  21: std::panicking::catch_unwind::do_call
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\panicking.rs:576
+  22: std::panicking::catch_unwind
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\panicking.rs:544
+  23: std::panic::catch_unwind
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\panic.rs:359
+  24: std::rt::lang_start_internal
+             at /rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library\std\src\rt.rs:171
+  25: main
+  26: invoke_main
+             at D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:78
+  27: __scrt_common_main_seh
+             at D:\a\_work\1\s\src\vctools\crt\vcstartup\src\startup\exe_common.inl:288
+  28: BaseThreadInitThunk
+  29: RtlUserThreadStart
+
+[1113/142949.506:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412

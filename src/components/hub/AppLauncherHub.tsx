@@ -30,6 +30,10 @@ import {
   ChevronLeft,
   Coffee,
   CheckCircle2,
+  Warehouse,
+  BookOpen,
+  ScrollText,
+  PieChart,
 } from 'lucide-react';
 import { AuthUserRecord, ElevationAction } from '../../types/rbac-settings';
 import { Shift, User } from '../../types/domain';
@@ -39,7 +43,9 @@ import { formatToman } from '../../services/financialMath';
 
 interface AppLauncherHubProps {
   activeUser: AuthUserRecord | User;
-  onSelectApp: (tab: 'pos' | 'reports' | 'zero-g' | 'settings') => void;
+  onSelectApp: (
+    tab: 'pos' | 'reports' | 'zero-g' | 'settings' | 'inventory' | 'menu' | 'audit' | 'executive-pl'
+  ) => void;
   onLock: () => void;
   activeShift: Shift | null;
   venueTitle?: string;
@@ -61,11 +67,19 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
   const [elevationAction, setElevationAction] = useState<ElevationAction | null>(null);
   const [pendingAppTarget, setPendingAppTarget] = useState<'zero-g' | 'settings' | null>(null);
 
-  const handleCardClick = (e: React.MouseEvent, target: 'pos' | 'reports' | 'zero-g' | 'settings') => {
+  const handleCardClick = (
+    e: React.MouseEvent,
+    target: 'pos' | 'reports' | 'zero-g' | 'settings' | 'inventory' | 'menu' | 'audit' | 'executive-pl'
+  ) => {
     e.stopPropagation();
     playPosBeep('click');
 
     if (target === 'pos' || target === 'reports') {
+      onSelectApp(target);
+      return;
+    }
+
+    if (target === 'inventory' || target === 'menu' || target === 'audit' || target === 'executive-pl') {
       onSelectApp(target);
       return;
     }
@@ -315,6 +329,130 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
 
             <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-xs font-bold text-rose-300 group-hover:translate-x-[-4px] transition-transform">
               <span>{isOwnerOrManager ? 'ورود به کنترل دک' : 'نیازمند پین ادمین'}</span>
+              <ChevronLeft className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 5: Inventory & Storage */}
+          <div
+            onClick={(e) => handleCardClick(e, 'inventory')}
+            className="group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border border-[rgba(144,210,237,0.25)] hover:border-[rgba(144,210,237,0.6)] rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5"
+            style={{
+              boxShadow: 'inset 0 1px 1.5px 0 rgba(144,210,237,0.25), 0 20px 50px rgba(0,0,0,0.8)',
+            }}
+          >
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0F4C3A] to-[#0A2E24] border border-emerald-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.4)] mb-4 group-hover:scale-105 transition-transform">
+                <Warehouse className="w-7 h-7 text-emerald-300" />
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-black text-white group-hover:text-emerald-300 transition-colors">
+                  انبار و موجودی
+                </h3>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse" title="دسترسی مجاز" />
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                مواد اولیه، بسته‌بندی، ورود کالا (Stock Inward)، رسپی BOM و هشدار کسری موجودی.
+              </p>
+            </div>
+
+            <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-xs font-bold text-emerald-300 group-hover:translate-x-[-4px] transition-transform">
+              <span>ورود به انبار</span>
+              <ChevronLeft className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 6: Menu & Catalog Management */}
+          <div
+            onClick={(e) => handleCardClick(e, 'menu')}
+            className="group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border border-[rgba(144,210,237,0.25)] hover:border-[rgba(144,210,237,0.6)] rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5"
+            style={{
+              boxShadow: 'inset 0 1px 1.5px 0 rgba(144,210,237,0.25), 0 20px 50px rgba(0,0,0,0.8)',
+            }}
+          >
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#0F223D] to-[#0A1628] border border-[#90D2ED]/40 flex items-center justify-center shadow-[0_0_20px_rgba(144,210,237,0.35)] mb-4 group-hover:scale-105 transition-transform">
+                <BookOpen className="w-7 h-7 text-[#90D2ED]" />
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-black text-white group-hover:text-[#90D2ED] transition-colors">
+                  مدیریت منو و کاتالوگ
+                </h3>
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa] animate-pulse" title="مجاز (مدیر)" />
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                دسته‌بندی‌ها، قیمت‌گذاری، دان‌ها و نوشیدنی‌ها و دسترس‌پذیری آیتم‌های منو.
+              </p>
+            </div>
+
+            <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-xs font-bold text-[#90D2ED] group-hover:translate-x-[-4px] transition-transform">
+              <span>ورود به مدیریت منو</span>
+              <ChevronLeft className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 7: Executive P&L Board */}
+          <div
+            onClick={(e) => handleCardClick(e, 'executive-pl')}
+            className="group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border border-[rgba(158,138,94,0.35)] hover:border-[#C5A880]/70 rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5"
+            style={{
+              boxShadow: 'inset 0 1px 1.5px 0 rgba(201,179,126,0.3), 0 20px 50px rgba(0,0,0,0.8)',
+            }}
+          >
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#9E8A5E]/50 to-[#3d3218] border border-[#C5A880]/50 flex items-center justify-center shadow-[0_0_20px_rgba(158,138,94,0.45)] mb-4 group-hover:scale-105 transition-transform">
+                <PieChart className="w-7 h-7 text-[#F5E8D0]" />
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-black text-white group-hover:text-[#F5E8D0] transition-colors">
+                  سود و زیان مدیریتی
+                </h3>
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa] animate-pulse" title="مجاز (مدیر)" />
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                داشبورد مالی مدیریتی: حاشیه سود، هزینه‌ها و تحلیل عملکرد عملیاتی.
+              </p>
+            </div>
+
+            <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-xs font-bold text-[#F5E8D0] group-hover:translate-x-[-4px] transition-transform">
+              <span>داشبورد مالی</span>
+              <ChevronLeft className="w-4 h-4" />
+            </div>
+          </div>
+
+          {/* Card 8: Audit Log */}
+          <div
+            onClick={(e) => handleCardClick(e, 'audit')}
+            className="group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border border-violet-500/30 hover:border-violet-400/60 rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5"
+            style={{
+              boxShadow: 'inset 0 1px 1.5px 0 rgba(167,139,250,0.25), 0 20px 50px rgba(0,0,0,0.8)',
+            }}
+          >
+            <div>
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#3B1E5C] to-[#1C0F30] border border-violet-500/40 flex items-center justify-center shadow-[0_0_20px_rgba(139,92,246,0.4)] mb-4 group-hover:scale-105 transition-transform">
+                <ScrollText className="w-7 h-7 text-violet-300" />
+              </div>
+
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-black text-white group-hover:text-violet-300 transition-colors">
+                  لاگ حسابرسی
+                </h3>
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa] animate-pulse" title="مجاز (مدیر)" />
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                ردیابی کامل رخدادها، تغییرات تنظیمات، ورودها و ابطال‌ها.
+              </p>
+            </div>
+
+            <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-xs font-bold text-violet-300 group-hover:translate-x-[-4px] transition-transform">
+              <span>ورود به لاگ</span>
               <ChevronLeft className="w-4 h-4" />
             </div>
           </div>

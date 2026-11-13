@@ -27,14 +27,14 @@ DisableProgramGroupPage=yes
 
 OutputDir=..\dist-installer
 OutputBaseFilename=KarWand-100HICH-Setup-v0.16
-SetupIconFile=..\src-tauri\icons\icon.ico
+SetupIconFile=..\public\karwand-logo.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 
 WizardStyle=modern
-UninstallDisplayIcon={app}\icon.ico
+UninstallDisplayIcon={app}\karwand-logo.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -44,14 +44,14 @@ Name: "desktopicon"; Description: "ایجاد آیکون روی دسکتاپ (Cr
 Name: "autostart"; Description: "اجرای خودکار هنگام بالا آمدن ویندوز (Launch on Windows Startup)"; GroupDescription: "اتوماسیون ترمینال:"; Flags: checkedonce
 
 [Files]
-Source: "..\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\public\karwand-logo.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\100hich\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\dist-win\KarWandLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
-Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--autostart --kiosk"; IconFilename: "{app}\icon.ico"; Tasks: autostart
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\karwand-logo.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\karwand-logo.ico"; Tasks: desktopicon
+Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--autostart --kiosk"; IconFilename: "{app}\karwand-logo.ico"; Tasks: autostart
 
 [Run]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""KarWand 100 HICH LAN Print Gateway (Port 9100)"" dir=in action=allow protocol=TCP localport=9100"; Flags: runhidden

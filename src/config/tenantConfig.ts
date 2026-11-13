@@ -43,7 +43,7 @@ export const TENANT_PROFILES: Record<string, TenantProfile> = {
       quickTables: [],
     },
     receipt: {
-      logoPath: '/tenants/100hich/logo.png',
+      logoPath: '/karwand-logo.png',
       headerNoteFa: 'کیفیت و اصالت قهوه تخصصی',
       printKitchenTicket: false,
     },

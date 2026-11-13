@@ -7,6 +7,7 @@ import {
   LogOut,
   Lock,
   LayoutGrid,
+  Warehouse,
 } from 'lucide-react';
 import { Shift, User, Tenant, isManagerOrOwner } from '../types/domain';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -46,8 +47,6 @@ export const Header: React.FC<HeaderProps> = ({
   const { status: syncStatus, triggerFlush } = useOutboxSync(tenant.id);
   const isManager = isManagerOrOwner(activeUser.role);
   const [liveClock, setLiveClock] = useState<string>('');
-  // Brand logo fallback state (UI-only): if /100hich-logo.png fails, the center pill falls back to text
-  const [brandLogoFailed, setBrandLogoFailed] = useState<boolean>(false);
 
   useEffect(() => {
     const update = () => {
@@ -137,25 +136,25 @@ export const Header: React.FC<HeaderProps> = ({
             /* 100 HICH Navy Badge Pill */
             <div
               dir="ltr"
-              className="flex items-center justify-center px-4 py-1.5 rounded-full glass-pill shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+              className="flex items-center justify-center gap-2.5 px-3.5 py-1.5 rounded-full glass-pill shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
             >
-              {!brandLogoFailed ? (
-                <img
-                  src="/100hich-logo.png"
-                  alt="100 HICH COFFEE ROASTERS"
-                  className="h-10 w-auto max-w-[280px] object-contain"
-                  onError={() => setBrandLogoFailed(true)}
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center">
-                  <span className="text-sm font-black tracking-widest text-[#F5F5F7] uppercase font-sans leading-none">
-                    100 HICH
-                  </span>
-                  <span className="text-[9px] font-bold tracking-[0.2em] text-[#90D2ED] uppercase font-mono leading-tight mt-0.5">
-                    COFFEE ROASTERS
-                  </span>
-                </div>
-              )}
+              <img
+                src="/karwand-logo.png"
+                alt="KarWand"
+                className="w-9 h-9 rounded-xl object-cover border border-[#9E8A5E]/40 shadow-[0_0_14px_rgba(201,179,126,0.35)]"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <div className="w-[1px] h-7 bg-white/15" />
+              <div className="flex flex-col items-center justify-center">
+                <span className="text-sm font-black tracking-widest text-[#F5F5F7] uppercase font-sans leading-none">
+                  100 HICH
+                </span>
+                <span className="text-[9px] font-bold tracking-[0.2em] text-[#90D2ED] uppercase font-mono leading-tight mt-0.5">
+                  COFFEE ROASTERS
+                </span>
+              </div>
             </div>
           )}
         </div>
@@ -172,6 +171,18 @@ export const Header: React.FC<HeaderProps> = ({
             title="بازگشت به لانچر برنامه‌ها (Hub)"
           >
             <LayoutGrid className="w-4 h-4" />
+          </button>
+
+          {/* Quick Inventory & Storage shortcut */}
+          <button
+            onClick={() => {
+              playPosBeep('click');
+              onTabChange('inventory');
+            }}
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-[#0F223D]/80 hover:bg-[#162E52] text-emerald-300 hover:text-white border border-white/15 transition cursor-pointer shadow-inner active:scale-95"
+            title="انبار و موجودی (Inventory & Storage)"
+          >
+            <Warehouse className="w-4 h-4" />
           </button>
 
           {/* Live Clock */}

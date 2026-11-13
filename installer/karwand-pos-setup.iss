@@ -16,7 +16,7 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={localappdata}\KarWand POS
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
-SetupIconFile=..\src-tauri\icons\icon.ico
+SetupIconFile=..\public\karwand-logo.ico
 
 OutputDir=..\dist-installer
 OutputBaseFilename=KarWand-Setup-v{#MyAppVersion}
@@ -26,7 +26,7 @@ ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 
 WizardStyle=modern
-UninstallDisplayIcon={app}\{#MyAppExeName}
+UninstallDisplayIcon={app}\karwand-logo.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -36,14 +36,14 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Name: "autostart"; Description: "Launch KarWand POS automatically on Windows login"; GroupDescription: "Terminal Automation:"; Flags: checkedonce
 
 [Files]
-Source: "..\src-tauri\icons\icon.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\public\karwand-logo.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist-win\KarWandLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist-win\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\icon.ico"; Tasks: desktopicon
-Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--autostart --kiosk"; IconFilename: "{app}\icon.ico"; Tasks: autostart
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\karwand-logo.ico"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\karwand-logo.ico"; Tasks: desktopicon
+Name: "{userstartup}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Parameters: "--autostart --kiosk"; IconFilename: "{app}\karwand-logo.ico"; Tasks: autostart
 
 [Run]
 Filename: "{sys}\netsh.exe"; Parameters: "advfirewall firewall add rule name=""KarWand POS LAN Print Gateway (Port 9100)"" dir=in action=allow protocol=TCP localport=9100"; Flags: runhidden

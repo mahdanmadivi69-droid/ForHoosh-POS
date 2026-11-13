@@ -454,6 +454,19 @@ export class RBACService {
   }
 
   /**
+   * HARD-DELETE a non-owner staff account (PIN + record). OWNER accounts are protected.
+   */
+  public static async deleteStaffUser(userId: string): Promise<void> {
+    await this.initDefaultUsers();
+    const target = await db.authUsers.get(userId);
+    if (!target) return;
+    if (target.role === 'OWNER') {
+      throw new Error('حذف حساب کاربری مالک مجاز نیست — فقط غیرفعال‌سازی مجاز است.');
+    }
+    await db.authUsers.delete(userId);
+  }
+
+  /**
    * Toggles active state of a staff user
    */
   public static async toggleUserStatus(userId: string, isActive: boolean): Promise<void> {

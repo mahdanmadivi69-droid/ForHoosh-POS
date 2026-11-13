@@ -140,10 +140,10 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
 
   return (
     <div
-      className={`liquid-glass-panel rounded-3xl transition-all flex flex-col h-full w-full ${className}`}
+      className={`liquid-glass-panel rounded-3xl transition-all flex flex-col h-full max-h-full justify-between overflow-hidden w-full ${className}`}
     >
       {/* ================= CART HEADER ================= */}
-      <div className="p-3 border-b border-white/10 bg-[#0B1524]/80 backdrop-blur-xl flex flex-col gap-2 shrink-0">
+      <div className="p-2.5 py-1.5 border-b border-white/10 bg-[#0B1524]/80 backdrop-blur-xl flex flex-col gap-1.5 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#D71921] animate-ping"></span>
@@ -230,7 +230,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
 
       {/* ================= CUSTOMER DETAIL & TABLE PICKER ================= */}
       {is100Hich ? (
-        <div className="px-3 py-2 bg-[#0B1524]/60 border-b border-white/10 flex flex-col gap-1.5 text-xs shrink-0">
+        <div className="px-3 py-1.5 bg-[#0B1524]/60 border-b border-white/10 flex flex-col gap-1 text-xs shrink-0">
           <div className="flex items-center gap-2">
             <UserIcon className="w-3.5 h-3.5 text-[#F5F5F7]/60 shrink-0" />
             <input
@@ -257,7 +257,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
         </div>
       ) : (
         <>
-          <div className="px-3 py-2 bg-[#0B1524]/60 border-b border-white/10 flex items-center justify-between text-xs gap-2 shrink-0">
+          <div className="px-3 py-1.5 bg-[#0B1524]/60 border-b border-white/10 flex items-center justify-between text-xs gap-2 shrink-0">
             <input
               type="text"
               value={customerName}
@@ -437,7 +437,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
       </div>
 
       {/* ================= DISCOUNT & ACCELERATORS ================= */}
-      <div className="px-3 pt-1.5 pb-1 border-t border-white/10 bg-[#0B1524]/60 shrink-0">
+      <div className="px-3 pt-1 pb-0.5 border-t border-white/10 bg-[#0B1524]/60 shrink-0">
         <div className="flex items-center justify-between text-[11px] text-[#F5F5F7]/70 mb-1">
           <span className="flex items-center gap-1.5">
             <span>تخفیف سریع فاکتور:</span>
@@ -513,7 +513,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
       </div>
 
       {/* ================= FINANCIAL CALCULATIONS & SUMMARY (PERMANENTLY ANCHORED BOTTOM TIER) ================= */}
-      <div className="p-3 bg-[#0B1524]/95 border-t border-white/12 space-y-1.5 rounded-b-3xl shrink-0 pb-2">
+      <div className="p-2.5 bg-[#0B1524]/95 border-t border-white/12 space-y-1 rounded-b-3xl shrink-0 pb-1.5">
         <div className="flex justify-between items-center text-xs text-[#F5F5F7]/70">
           <span>جمع اقلام:</span>
           <span className="font-bold text-[#F5F5F7] num-heavy font-mono">
@@ -543,7 +543,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
         </div>
 
         {/* Action Controls Split: 2-Tier Architecture — pinned to the panel bottom, never clipped */}
-        <div className="shrink-0 space-y-1.5 pt-1">
+        <div className="shrink-0 space-y-1 pt-0.5">
           {/* Top Row: [Clear] + [ثبت به عنوان تب باز] + [مشاهده تب‌ها (${count})] */}
           <div className="flex items-center gap-2">
             <button
@@ -594,7 +594,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
             type="button"
             onClick={handleStartCheckout}
             disabled={cartItems.length === 0 || isSubmittingOrder}
-            className="vision-checkout-cta tactile-press w-full h-11 relative group overflow-hidden text-white font-black px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer text-xs disabled:cursor-not-allowed"
+            className="vision-checkout-cta tactile-press w-full h-10 relative group overflow-hidden text-white font-black px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer text-xs disabled:cursor-not-allowed"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full duration-1000 transition-transform pointer-events-none" />
             <CreditCard className="w-4 h-4 shrink-0" />

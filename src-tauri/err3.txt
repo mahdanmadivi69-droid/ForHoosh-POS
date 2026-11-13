@@ -1,0 +1,6 @@
+[1794567792] START - launcher v0.14.0 | exe="C:\\Projects\\KarWand-SmartOrders\\src-tauri\\target\\release\\karwand-launcher.exe" | cwd="C:\\Projects\\KarWand-SmartOrders\\src-tauri"
+[1794567792] RUN - event loop starting
+[1794567792] SETUP - entered
+[1794567792] SETUP - venue tenant=100hich (config file optional, defaults applied)
+[1794567792] SETUP - start_url=index.html?tenant=100hich
+[1794567793] SETUP - main window + webview created successfully

@@ -49,11 +49,12 @@
   --kw-hairline: rgba(255, 255, 255, 0.10);
   --kw-specular: rgba(255, 255, 255, 0.22);
   --kw-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --glass-base: linear-gradient(165deg, rgba(255, 255, 255, 0.07) 0%, rgba(16, 20, 28, 0.78) 45%, rgba(10, 13, 17, 0.92) 100%);
-  --glass-blur: 24px;
-  --glass-saturate: 160%;
-  --glass-border: 1px solid rgba(255, 255, 255, 0.10);
-  --glass-specular: rgba(255, 255, 255, 0.22);
+  --glass-base: linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 24%, rgba(16, 20, 28, 0.82) 58%, rgba(10, 13, 17, 0.94) 100%);
+  --glass-blur: 22px;
+  --glass-saturate: 180%;
+  --glass-brightness: 1.07;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-specular: rgba(255, 255, 255, 0.30);
   --glow-accent: rgba(215, 25, 33, 0.25);
 }
 
@@ -67,13 +68,14 @@
   --kw-gold: #9E8A5E;
   --kw-platinum: #E5E4E2;
   --kw-hairline: rgba(255, 255, 255, 0.10);
-  --kw-specular: rgba(255, 255, 255, 0.22);
+  --kw-specular: rgba(255, 255, 255, 0.28);
   --kw-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --glass-base: linear-gradient(165deg, rgba(255, 255, 255, 0.07) 0%, rgba(16, 20, 28, 0.78) 45%, rgba(10, 13, 17, 0.92) 100%);
-  --glass-blur: 24px;
-  --glass-saturate: 160%;
-  --glass-border: 1px solid rgba(255, 255, 255, 0.10);
-  --glass-specular: rgba(255, 255, 255, 0.22);
+  --glass-base: linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 24%, rgba(16, 20, 28, 0.82) 58%, rgba(10, 13, 17, 0.94) 100%);
+  --glass-blur: 22px;
+  --glass-saturate: 180%;
+  --glass-brightness: 1.07;
+  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
+  --glass-specular: rgba(255, 255, 255, 0.30);
   --glow-accent: rgba(215, 25, 33, 0.25);
 }
 
@@ -328,7 +330,7 @@ body, button, input, select, textarea {
   background: var(--glass-base, rgba(15, 22, 34, 0.72)) !important;
   backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 160%)) !important;
   -webkit-backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 160%)) !important;
-  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.10)) !important;
+  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.12)) !important;
   box-shadow: 
     inset 0 1px 1px 0 var(--kw-specular),
     0 10px 28px -6px rgba(0, 0, 0, 0.65) !important;
