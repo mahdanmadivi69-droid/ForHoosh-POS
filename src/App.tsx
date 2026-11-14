@@ -295,6 +295,18 @@ function App() {
     }
   };
 
+  const handleResetModendoMenu = () => {
+    try {
+      SmartOrdersStore.resetModendoMenuToSeed();
+      setCategories(SmartOrdersStore.getCategories());
+      setMenuItems(SmartOrdersStore.getMenuItems());
+      refreshState();
+      showToast('منوی اختصاصی مودندو (شامل ۸۱ قلم کالا و ۱۵ دسته‌بندی) با موفقیت بازنشانی شد.');
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   // Order Cancellation Handler (Manager / Owner)
   const handleCancelOrder = (orderId: string, reason: string) => {
     try {
@@ -470,6 +482,7 @@ function App() {
             menuItems={menuItems}
             activeUser={activeUser}
             onSaveItem={handleSaveMenuItem}
+            onResetModendoMenu={handleResetModendoMenu}
           />
         )}
 

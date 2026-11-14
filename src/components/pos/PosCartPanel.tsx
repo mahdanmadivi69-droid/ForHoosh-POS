@@ -570,7 +570,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
               className="flex-1 h-10 px-2.5 rounded-xl bg-[rgba(20,25,36,0.72)] hover:bg-[#162E52] border border-white/15 text-[#F5F5F7] text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Layers className="w-3.5 h-3.5 shrink-0 text-[#90D2ED]" />
-              <span className="truncate">{activeTabId ? 'ذخیره تغییرات تب' : 'ثبت به عنوان تب باز'}</span>
+              <span className="truncate">{activeTabId ? 'ثبت تغییرات روی میز (سفارش باز)' : 'ثبت روی میز (سفارش باز)'}</span>
             </button>
 
             {/* Top Action 2: مشاهده تب‌ها (${count}) (Pill Badge) */}
@@ -589,7 +589,7 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
             </button>
           </div>
 
-          {/* Bottom Row: Full-width Crimson #D71921 [ثبت و پرداخت فوری] */}
+          {/* Bottom Row: Full-width Crimson #D71921 [ثبت و پرداخت فوری / تسویه و بستن میز] */}
           <button
             type="button"
             onClick={handleStartCheckout}
@@ -598,7 +598,9 @@ export const PosCartPanel: React.FC<PosCartPanelProps> = ({
           >
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full duration-1000 transition-transform pointer-events-none" />
             <CreditCard className="w-4 h-4 shrink-0" />
-            <span className="relative z-10 whitespace-nowrap text-sm font-black">ثبت و پرداخت فوری</span>
+            <span className="relative z-10 whitespace-nowrap text-sm font-black">
+              {activeTabId ? 'تسویه و بستن میز' : 'ثبت و پرداخت فوری'}
+            </span>
           </button>
         </div>
       </div>

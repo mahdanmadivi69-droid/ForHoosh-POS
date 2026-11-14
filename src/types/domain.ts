@@ -42,7 +42,7 @@ export interface Category {
   isActive: boolean;
 }
 
-export type PrepStation = 'BAR' | 'KITCHEN';
+export type PrepStation = 'BAR' | 'KITCHEN' | 'NO_PREP';
 
 export interface MenuItem {
   id: string;

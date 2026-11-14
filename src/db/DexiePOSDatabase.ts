@@ -438,7 +438,7 @@ export class DexiePOSDatabase extends Dexie {
     if (existingCount > 0) return;
 
     if (tenantId.includes('modendo')) {
-      // Modendo Layout (Hall + 4 PS5 Stations + VIP)
+      // Modendo Layout (Hall + Terrace + 4 PS5 Stations + Lounge)
       const zones: DecomposedVenueZoneRecord[] = [
         {
           id: `zone-${tenantId}-hall`,
@@ -450,72 +450,123 @@ export class DexiePOSDatabase extends Dexie {
           isActive: true,
         },
         {
+          id: `zone-${tenantId}-terrace`,
+          tenantId,
+          nameFa: 'تراس فضای باز',
+          nameEn: 'Outdoor Terrace',
+          zoneType: 'TERRACE',
+          sortOrder: 2,
+          isActive: true,
+        },
+        {
           id: `zone-${tenantId}-ps5`,
           tenantId,
           nameFa: 'ایستگاه‌های کنسول PS5',
           nameEn: 'PS5 Gaming Pods',
           zoneType: 'GAMING_PS5',
-          sortOrder: 2,
+          sortOrder: 3,
           isActive: true,
         },
         {
-          id: `zone-${tenantId}-vip`,
+          id: `zone-${tenantId}-lounge`,
           tenantId,
-          nameFa: 'اتاق VIP بردگیم',
-          nameEn: 'VIP Boardgame Suite',
+          nameFa: 'سالن لانژ U-Shape',
+          nameEn: 'Lounge Zone',
           zoneType: 'VIP_BOARDGAME',
-          sortOrder: 3,
+          sortOrder: 4,
           isActive: true,
         },
       ];
       await this.venueZones.bulkPut(zones);
 
       const tables: DecomposedVenueTableRecord[] = [
-        ...[1, 2, 3, 4, 5, 6].map((num) => ({
-          id: `tbl-${tenantId}-hall-${num}`,
+        // سالن اصلی: M-01 .. M-04 + M-05
+        ...[1, 2, 3, 4, 5].map((num) => ({
+          id: `tbl-${tenantId}-m-${num}`,
           tenantId,
           zoneId: `zone-${tenantId}-hall`,
-          tableNumber: `T${num}`,
-          label: `میز کافه T${num}`,
-          capacity: num % 2 === 0 ? 6 : 4,
+          tableNumber: `M-0${num}`,
+          label: `M-0${num} (۶ نفره)`,
+          capacity: 6,
           status: 'AVAILABLE' as const,
           updatedAt: new Date().toISOString(),
         })),
+        // تراس: تراس ۱ و ۲ (۶ نفره) + تراس ۳، ۴، ۵ (۲ نفره)
+        {
+          id: `tbl-${tenantId}-t-1`,
+          tenantId,
+          zoneId: `zone-${tenantId}-terrace`,
+          tableNumber: 'T-01',
+          label: 'تراس ۱ (۶ نفره)',
+          capacity: 6,
+          status: 'AVAILABLE' as const,
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-t-2`,
+          tenantId,
+          zoneId: `zone-${tenantId}-terrace`,
+          tableNumber: 'T-02',
+          label: 'تراس ۲ (۶ نفره)',
+          capacity: 6,
+          status: 'AVAILABLE' as const,
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-t-3`,
+          tenantId,
+          zoneId: `zone-${tenantId}-terrace`,
+          tableNumber: 'T-03',
+          label: 'تراس ۳ (۲ نفره)',
+          capacity: 2,
+          status: 'AVAILABLE' as const,
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-t-4`,
+          tenantId,
+          zoneId: `zone-${tenantId}-terrace`,
+          tableNumber: 'T-04',
+          label: 'تراس ۴ (۲ نفره)',
+          capacity: 2,
+          status: 'AVAILABLE' as const,
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: `tbl-${tenantId}-t-5`,
+          tenantId,
+          zoneId: `zone-${tenantId}-terrace`,
+          tableNumber: 'T-05',
+          label: 'تراس ۵ (۲ نفره)',
+          capacity: 2,
+          status: 'AVAILABLE' as const,
+          updatedAt: new Date().toISOString(),
+        },
+        // اتاق PS5: چهار ایستگاه
         ...[1, 2, 3, 4].map((stationNum) => ({
           id: `tbl-${tenantId}-ps5-${stationNum}`,
           tenantId,
           zoneId: `zone-${tenantId}-ps5`,
           tableNumber: `PS5-${stationNum}`,
-          label: `پاد PS5 شماره ${stationNum}`,
-          capacity: stationNum <= 2 ? 2 : 4,
+          label: `PS5-${stationNum}`,
+          capacity: 4,
           isPs5Station: true,
           ps5StationNumber: stationNum,
           hourlyRateToman: 90000,
           status: 'AVAILABLE' as const,
           updatedAt: new Date().toISOString(),
         })),
-        {
-          id: `tbl-${tenantId}-vip-1`,
+        // سالن لانژ: L-01 .. L-04
+        ...[1, 2, 3, 4].map((num) => ({
+          id: `tbl-${tenantId}-l-${num}`,
           tenantId,
-          zoneId: `zone-${tenantId}-vip`,
-          tableNumber: 'VIP-1',
-          label: 'غرفه VIP گیمینگ ۱',
-          capacity: 8,
-          hourlyRateToman: 150000,
+          zoneId: `zone-${tenantId}-lounge`,
+          tableNumber: `L-0${num}`,
+          label: `L-0${num} (لانژ)`,
+          capacity: 4,
           status: 'AVAILABLE' as const,
           updatedAt: new Date().toISOString(),
-        },
-        {
-          id: `tbl-${tenantId}-vip-2`,
-          tenantId,
-          zoneId: `zone-${tenantId}-vip`,
-          tableNumber: 'VIP-2',
-          label: 'غرفه VIP گیمینگ ۲',
-          capacity: 8,
-          hourlyRateToman: 150000,
-          status: 'AVAILABLE' as const,
-          updatedAt: new Date().toISOString(),
-        },
+        })),
       ];
       await this.venueTables.bulkPut(tables);
     } else {

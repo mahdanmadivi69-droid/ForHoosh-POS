@@ -27,7 +27,7 @@ class FloorPlanServiceClass {
     const tenantId = SmartOrdersStore.getActiveTenantId();
     return tenantId === 'tenant-100hich-01'
       ? '100hich_floor_plan_v1.0'
-      : 'modendo_floor_plan_v6.3';
+      : 'modendo_floor_plan_v6.4';
   }
 
   private getDefaultPlan(): ModendoFloorPlanSchema {
@@ -41,11 +41,12 @@ class FloorPlanServiceClass {
     const defaultPlan = this.getDefaultPlan();
     if (typeof window === 'undefined') return defaultPlan;
     try {
+      const tenantId = SmartOrdersStore.getActiveTenantId();
       const storageKey = this.getStorageKey();
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.modendo_schema_version === '6.3') {
+        if (parsed.modendo_schema_version === '6.4' || (parsed.modendo_schema_version === '1.0' && tenantId === 'tenant-100hich-01')) {
           return parsed;
         }
       }

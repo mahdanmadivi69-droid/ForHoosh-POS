@@ -224,6 +224,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         selectedTableId={selectedTable?.id || null}
         onSelectTable={(tbl) => setSelectedTable(tbl)}
         onOpenSessionModal={handleOpenSession}
+        onConfirmTableOrder={(tbl) => onSelectTableForOrder(tbl.display_name)}
       />
 
       {/* Table Session / Gaming Timer Modal */}
