@@ -493,7 +493,7 @@ export function renderReceiptTemplateHtml(
         </div>` : ""}
         <div style="display: flex; justify-content: space-between; color: #444;">
           <span>صندوقدار / باریستا:</span>
-          <span>${cashier}</span>
+          <span>${escapeHtml(cashier)}</span>
         </div>
       </div>
 

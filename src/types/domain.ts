@@ -1,3 +1,4 @@
+import { SecureCredential } from '../services/credentials';
 /**
  * Domain entities and types for SmartOrders
  * All monetary amounts are in Toman as exact integers (BigInt or number without fractional decimals)

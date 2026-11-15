@@ -87,6 +87,9 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
       total: order.netTotalToman,
       createdAt: new Date(order.createdAt).getTime(),
       targetSlaSeconds: 180, // Default 3 min target SLA
+      // P0-1: keep the link to the durable order across reloads, so the
+      // settlement guard can verify/record a payment for a persisted ticket.
+      persistedOrderId: order.id,
     };
   }, []);
 
@@ -164,6 +167,14 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
       }));
   }, []);
 
+  // Returns the persisted successful payment for a ticket, if any.
+  const findPersistedPayment = useCallback((persistedOrderId?: string) => {
+    if (!persistedOrderId) return undefined;
+    return SmartOrdersStore.getPayments().find(
+      (p) => p.orderId === persistedOrderId && p.status === 'SUCCESSFUL'
+    );
+  }, []);
+
   // 3. Optimistic Advance Pipeline with Rollback Engine
   const handleAdvanceStatus = useCallback(
     async (ticketId: string) => {
@@ -173,6 +184,17 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
       playPosBeep('click');
       const previousStatus = ticket.status;
       const nextStatus = getNextStatus(previousStatus);
+
+      // P0-1: "Dispatched" means the ticket is finished. Never let the advance
+      // chain fake a settlement: require a persisted, successful payment.
+      if (nextStatus === 'Dispatched' && !findPersistedPayment(ticket.persistedOrderId)) {
+        playPosBeep('delete');
+        showToast(
+          'بستن نهایی تیکت فقط پس از ثبت تسویه (سفارش + پرداخت ماندگار) مجاز است. ابتدا دکمه تسویه را بزنید.',
+          'error'
+        );
+        return;
+      }
 
       // Instant Optimistic UI mutation (<1ms response)
       setTickets((prev) =>
@@ -202,7 +224,7 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
         showToast('خطا در بروزرسانی وضعیت سفارش. وضعیت بازگردانی شد.', 'error');
       }
     },
-    [tickets, simulateNetworkFailure, showToast]
+    [tickets, simulateNetworkFailure, showToast, findPersistedPayment]
   );
 
   // 4. Inject Item into Active Draft Order
@@ -278,6 +300,60 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
       playPosBeep('delete');
       return;
     }
+    if (activeTicket.persistedOrderId) {
+      showToast('این تیکت قبلاً به صف اجرا ارسال شده است.', 'error');
+      playPosBeep('delete');
+      return;
+    }
+
+    // P0-1: persist BEFORE advancing the ticket or claiming success. A storage
+    // failure must leave the ticket in Draft and surface loudly.
+    const activeShift = SmartOrdersStore.getActiveShift();
+    const activeUser = SmartOrdersStore.getActiveUser();
+    if (!activeShift) {
+      showToast('شیفت فعالی وجود ندارد؛ ابتدا شیفت را باز کنید. سفارش ثبت نشد.', 'error');
+      playPosBeep('delete');
+      return;
+    }
+
+    let createdOrder: KarWandOrder;
+    try {
+      createdOrder = SmartOrdersStore.createOrder({
+        tenantId: activeShift.tenantId,
+        shiftId: activeShift.id,
+        createdByUserId: activeUser.id,
+        createdByUserName: activeUser.fullName,
+        orderType: 'DINE_IN',
+        tableLabel: activeTicket.tableLabel || 'میز ۱',
+        customerName: activeTicket.customerName,
+        status: 'PREPARING',
+        items: activeTicket.items.map((it) => ({
+          id: it.id,
+          menuItemId: it.menuItemId,
+          itemNameSnapshot: it.title,
+          unitPriceSnapshotToman: it.unitPrice,
+          quantity: it.quantity,
+          modifiers: it.modifiers?.map((m) => ({
+            id: m.id,
+            nameFa: m.nameFa,
+            priceDeltaToman: m.priceDelta,
+          })),
+          subtotalToman: it.subtotal,
+          notes: it.notes,
+        })),
+        grossAmountToman: activeTicket.subtotal,
+        discountAmountToman: activeTicket.discount,
+        netTotalToman: activeTicket.total,
+      });
+    } catch (err: any) {
+      console.error('[Zero-G] createOrder failed', err);
+      playPosBeep('delete');
+      showToast(
+        `سفارش در حافظه پایدار ثبت نشد و به صف ارسال نشد: ${err?.message || 'خطای ذخیره‌سازی'}`,
+        'error'
+      );
+      return;
+    }
 
     // Run StationRouter for automatic BAR / KITCHEN partition & Delta suppression
     const previousDispatchedIds = activeTicket.dispatchedItemIds || [];
@@ -326,57 +402,25 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
       )
     );
 
-    // Dispatch to Barista Bar
+    // Broadcast to (in-process) websocket listeners
     try {
-      const activeShift = SmartOrdersStore.getActiveShift();
-      const activeUser = SmartOrdersStore.getActiveUser();
-      if (activeShift) {
-        SmartOrdersStore.createOrder({
-          tenantId: activeShift.tenantId,
-          shiftId: activeShift.id,
-          createdByUserId: activeUser.id,
-          createdByUserName: activeUser.fullName,
-          orderType: 'DINE_IN',
-          tableLabel: activeTicket.tableLabel || 'میز ۱',
-          customerName: activeTicket.customerName,
-          status: 'PREPARING',
-          items: activeTicket.items.map((it) => ({
-            id: it.id,
-            menuItemId: it.menuItemId,
-            itemNameSnapshot: it.title,
-            unitPriceSnapshotToman: it.unitPrice,
-            quantity: it.quantity,
-            modifiers: it.modifiers?.map((m) => ({
-              id: m.id,
-              nameFa: m.nameFa,
-              priceDeltaToman: m.priceDelta,
-            })),
-            subtotalToman: it.subtotal,
-            notes: it.notes,
-          })),
-          grossAmountToman: activeTicket.subtotal,
-          discountAmountToman: activeTicket.discount,
-          netTotalToman: activeTicket.total,
-        });
-
-        // Broadcast to websocket listeners
-        websocketServer.broadcastToTenant(
-          activeShift.tenantId,
-          'ORDER_SYNC_COMPLETED',
-          {
-            orderId: activeTicket.id,
-            timestamp: new Date().toISOString(),
-          }
-        );
-      }
-    } catch (e) {
-      console.warn('Storage sync log:', e);
+      websocketServer.broadcastToTenant(
+        activeShift.tenantId,
+        'ORDER_SYNC_COMPLETED',
+        {
+          orderId: createdOrder.id,
+          timestamp: new Date().toISOString(),
+        }
+      );
+    } catch (err) {
+      // Broadcast is cosmetic in this build (in-process EventEmitter).
+      console.warn('[Zero-G] broadcast failed', err);
     }
 
-    showToast(`سفارش ${activeTicket.ticketCode} با موفقیت به صف اجرا ارسال شد.`, 'success');
+    showToast(`سفارش #${createdOrder.orderNumber} ثبت و به صف اجرا ارسال شد.`, 'success');
 
     // Prepare fresh draft for cashier
-    const nextOrderNumber = activeTicket.orderNumber + 1;
+    const nextOrderNumber = createdOrder.orderNumber + 1;
     const nextDraft: SmartTicket = {
       id: `draft-${Date.now()}`,
       orderNumber: nextOrderNumber,
@@ -458,8 +502,80 @@ export const SmartOrdersContainer: React.FC<SmartOrdersContainerProps> = ({
       console.error(
         `[P0-1 LEAK GUARD] Blocked unrecorded settlement attempt for ticket ${ticketId} via ${method}. Zero-G lacks ledger/storage persistence.`
       );
+      if (!persistedOrder) {
+        playPosBeep('delete');
+        showToast('سفارش ماندگار این تیکت پیدا نشد؛ تسویه ثبت نشد و وجهی دریافت نکنید.', 'error');
+        return;
+      }
+      if (persistedOrder.status === 'CANCELLED') {
+        playPosBeep('delete');
+        showToast('این سفارش ابطال شده است و قابل تسویه نیست.', 'error');
+        return;
+      }
+      if (findPersistedPayment(persistedOrder.id)) {
+        playPosBeep('delete');
+        showToast('این سفارش قبلاً تسویه شده است؛ پرداخت مجدد ثبت نشد.', 'error');
+        return;
+      }
+      if (persistedOrder.netTotalToman !== ticket.total) {
+        playPosBeep('delete');
+        showToast(
+          'مبلغ تیکت با مبلغ سفارش ثبت‌شده مطابقت ندارد (احتمالاً پس از ارسال، اقلام یا تخفیف تغییر کرده). تسویه ثبت نشد؛ ابتدا سفارش را دوباره ثبت کنید.',
+          'error'
+        );
+        return;
+      }
+
+      try {
+        const payment = SmartOrdersStore.recordPayment({
+          tenantId: persistedOrder.tenantId,
+          orderId: persistedOrder.id,
+          shiftId: persistedOrder.shiftId,
+          receivedByUserId: persistedOrder.createdByUserId,
+          amountToman: persistedOrder.netTotalToman,
+          paymentMethod: method === 'CASH' ? 'CASH' : 'CARD_MANUAL',
+          terminalName: method === 'CASH' ? 'کش دراور نقدی' : 'کارتخوان بانکی',
+          status: 'SUCCESSFUL',
+        });
+
+        // Defence in depth: only report success if the payment can be read back
+        // from persistent storage (localStorage + Dexie mirror path).
+        const persistedPayment = SmartOrdersStore.getPayments().find(
+          (p) => p.id === payment.id && p.status === 'SUCCESSFUL'
+        );
+        if (!persistedPayment) {
+          throw new Error('پرداخت در حافظه پایدار قابل بازیابی نیست.');
+        }
+
+        setTickets((prev) =>
+          prev.map((t) =>
+            t.id === ticketId
+              ? {
+                  ...t,
+                  status: 'Dispatched',
+                  paymentMethod: method,
+                  persistedPaymentId: persistedPayment.id,
+                }
+              : t
+          )
+        );
+        playPosBeep('success');
+        showToast(
+          `فاکتور #${persistedOrder.orderNumber} با مبلغ ${persistedOrder.netTotalToman.toLocaleString(
+            'fa-IR'
+          )} تومان از طریق ${method === 'CARD' ? 'کارتخوان بانکی' : 'وجه نقد'} تسویه و در حافظه پایدار ثبت شد.`,
+          'success'
+        );
+      } catch (err: any) {
+        console.error('[Zero-G] settlement failed', err);
+        playPosBeep('delete');
+        showToast(
+          `تسویه ثبت نشد و وجهی نباید دریافت شود: ${err?.message || 'خطای ذخیره‌سازی پرداخت'}`,
+          'error'
+        );
+      }
     },
-    [showToast]
+    [tickets, showToast, findPersistedPayment]
   );
 
   // 8. Split Order into 2 tickets

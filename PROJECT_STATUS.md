@@ -148,55 +148,7 @@
 
 ---
 
-## ۱. وضعیت نیازمندی‌های فاز ۵ و آزمون‌ها (Verification & Test Evidence)
-- **پایگاه‌داده آفلاین کلاینت با Dexie (IndexedDB Native Database):** [VERIFIED]
-  - پیاده‌سازی کامل دیتابیس لوکال `CafeOS_LocalDB` در `src/db/cafeDb.ts` بر پایه کتابخانه قدرتمند Dexie.
-  - تعاریف جامع انواع داده و جداول `inventoryItems`, `menuItems`, `orders`, `auditLogs` در `src/types/db.ts`.
-- **موتور تراکنشی مدیریت سفارش و کسر رسپی انبار (BOM Recipe Engine):** [VERIFIED]
-  - پیاده‌سازی سرویس `src/services/orderService.ts` با کسر اتمیک مواد اولیه در تراکنش‌های `db.transaction('rw', ...)`.
-  - کسر آنی متریال هنگام انتقال سفارش به `sent_to_bar` یا `settled`.
-  - بازگشت خودکار مواد اولیه مصرفی به موجودی انبار در صورت ابطال سفارش (`voided`).
-  - ثبت جزئیات دقیق تمامی ویرایش‌ها و علل تغییرات در جدول `auditLogs`.
-- **مودال تایید پین‌کد مدیر و ابطال ایمن فاکتور (`OrderActionModal`):** [VERIFIED]
-  - پیاده‌سازی کامپوننت `src/components/OrderActionModal.tsx` مجهز به کنترل پین‌کد مدیر (پیش‌فرض: `1234`).
-  - الزام ورود فیلد «علت ابطال/ویرایش» برای ثبت در زنجیره حسابرسی امنیتی و انبارداری.
-  - بازخورد صوتی و پیام‌های استاندارد خطا و موفقیت.
-- **ایزولاسیون کامل چاپ حرارتی ۸۰ میلی‌متری (Zero Viewport Leakage):** [VERIFIED]
-  - ایجاد کامپوننت اتمیک `src/components/ReceiptPrintTemplate.tsx` منطبق با ابعاد رول حرارتی ۸۰mm و فاکتور رسمی ۱۰۰هیچ.
-  - بازنویسی سرویس `src/services/receiptPrinter.ts` بر پایه سندباکس IFrame ایزوله بدون کوچک‌ترین نشت المان‌های UI (کاتالوگ ۷۵ آیتمی، وضعیت بویلرها و نمودارها).
-  - حذف قطعی متد پیش‌فرض `window.print()` و اعمال استایل‌های محکم `@media print` در `src/index.css`.
-- **کانفیگ PWA و کش استاتیک و پایپ‌لاین گیت‌هاب Actions:** [VERIFIED]
-  - پیکربندی مانیفست اختصاصی کافه ۱۰۰هیچ با تم رنگی `#0F223D` و بک‌گراند `#121417` در `vite.config.ts`.
-  - تنظیم کش کامل `workbox.globPatterns` برای کلیه فایل‌های استاتیک، فونت‌ها و اسکریپت‌ها.
-  - ایجاد پایپ‌لاین CI/CD در مسیر `.github/workflows/deploy.yml` جهت اعتبارسنجی کیفیت و دپلوی خودکار PWA روی GitHub Pages.
-- **سرویس پایگاه‌داده اتمیک PostgreSQL با Row-Level Security (Multi-Tenant RLS):** [VERIFIED]
-  - پیاده‌سازی `src/services/dbOrderService.ts` با سیاست‌های امنیتی RLS بر پایه `SET LOCAL app.current_tenant_id = $1`.
-  - جلوگیری قطعی از تکرار فاکتور با بررسی و ثبت کلیدهای Idempotency در جدول `idempotency_keys` بر اساس `clientGeneratedId` (UUIDv4).
-  - الزام قطعی مقادیر صحیح تومانی (`Number.isInteger() === true`) و منع مطلق اعداد اعشاری (Float).
-- **موتور کش آفلاین کلاینت با IndexedDB (Offline-First Queue):** [VERIFIED]
-  - پیاده‌سازی کامل کلاس `OfflineSyncQueue` در دیتابیس `CafeOS_OfflineDB` و مخزن `order_queue`.
-  - وضعیت‌های صف `PENDING` ،`SYNCING` و `FAILED` با استراتژی تلاش مجدد تصاعدی و ارسال با هدرهای استاندارد `X-Tenant-Id` و `Idempotency-Key`.
-  - اشتراک واکنشی (Reactive Subscription) وضعیت صف در هدر و بنر اعلان صندوق فروش.
-- **کنترلر همگام‌سازی و برودکست وب‌سوکت بلادرنگ (Sync Controller & WebSocket Server):** [VERIFIED]
-  - پیاده‌سازی `src/services/sync-controller.ts` مجهز به `handleOrderSync` برای هندل درخواست‌های همگام‌سازی فرانت‌اند و تطبیق ساختار پی‌لودها.
-  - پیاده‌سازی سرور وب‌سوکت چندمستأجره `src/services/websocket-server.ts` با متدهای تفکیک‌شده `broadcastToTenant` و `broadcastToRole` و هماهنگی بین‌تبی از طریق `BroadcastChannel`.
-  - ارسال بلادرنگ رویداد `INVENTORY_STOCKOUT_ALERT` به کلاینت‌های مستأجر (صفحه باریستا جهت ۸۶ کردن سریع اقلام کسری).
-  - ارسال بلادرنگ رویداد `AUDIT_DISCREPANCY_CREATED` به نقش مدیریت (MANAGER جهت ایجاد کارت‌های مغایرت در گزارش حسابرسی روزانه).
-- **نمایشگر بار باریستا و اعلان ۸۶ شدن اقلام (Barista Bar KDS & 86 Alerts):** [VERIFIED]
-  - ماژول `src/services/baristaDispatcher.ts` برای تفکیک مودیفایرها و ارسال وضعیت فاکتورهای تسویه‌شده (`PAID`).
-  - پخش صدای زنگ دوصدائه اختصاصی کافه با Web Audio API بدون فایل صوتی خارجی.
-  - بنر اخطار اتمام موجودی روی KDS با دکمه ۱-لمسی «۸۶ کردن آیتم در منو» و برچسب‌گذاری زنده روی اقلام تیکت‌ها.
-- **سامانه ردپای حسابرسی و کارت‌های مغایرت کسری انبار (Shift Manager Discrepancy Audit):** [VERIFIED]
-  - پنل `AuditLogView` مجهز به اشتراک وب‌سوکت `AUDIT_DISCREPANCY_CREATED` و نمایش کارت‌های اختصاصی کسری همگام‌سازی آفلاین.
-  - تفکیک وضعیت مغایرت، مقدار کسری فیزیکی، زمان رخ‌داد، و دکمه تایید و تسویه سند اصلاحیه انبار.
-- **یکپارچه‌سازی سخت‌افزاری چاپگر حرارتی ۸۰ میلی‌متری (ESC/POS Raster):** [VERIFIED]
-  - پیاده‌سازی درایور بدون واسط `src/services/escposThermalPrinter.ts` سازگار با WebUSB و Web Bluetooth.
-  - رندر فاکتور روی Canvas با عرض استاندارد ۵۷۶ نقطه و تبدیل پیکسل‌ها به بایت‌های خام بیت‌مپ ESC/POS با فرمان `GS v 0` و برش خودکار کاغذ.
-- **بک‌اند فول‌استک Express روی پورت ۳۰۰۰:** [VERIFIED]
-  - فایل `server.ts` مجهز به روت‌های `/api/v1/orders/sync`، `/api/v1/sync/orders`، `/api/v1/barista/incoming` و `/api/v1/barista/tickets`.
-- **هندلر همگام‌سازی و حل تضاد موجودی (Inventory Overdraft & Audit Logging):** [VERIFIED]
-  - پیاده‌سازی `src/services/sync-order-handler.ts` جهت پردازش تراکنشی `processOfflineOrderSync`.
-  - عدم توقف ثبت مالی فیش‌های آفلاین، اجازه منفی شدن موجودی (`allowNegative: true`) جهت تطابق با واقعیت فیزیکی بار، و ثبت رخداد `STOCKOUT_OVERDRAFT` در لاگ حسابرسی انباردار همراه با میزان کسری (`deficit`).
+## ۱. وضعیت واقعی قابلیت‌ها
 
 - **خروجی استاندارد فایل اکسل و CSV برای حسابداری و امور مالی (Orders & Expenses CSV Export):** [VERIFIED]
   - پیاده‌سازی متدهای `generateOrdersCSV` ،`downloadOrdersCSV` ،`generateExpensesCSV` و `downloadExpensesCSV` با رعایت استاندارد RFC 4180.
@@ -259,3 +211,56 @@
 - **کامپایل نهایی بیلد Vite PWA (`npm run build`):**  
   `Build succeeded` در ۱.۵۴ ثانیه همراه با فایل‌های Service Worker و PWA Manifest بدون خطا.
 
+1. **P0-1 — قفل Zero-G:**
+   - فلگ `FEATURES.ENABLE_ZERO_G_SMART_ORDERS` به‌صورت **پیش‌فرض خاموش** و فقط با
+     `VITE_ENABLE_ZERO_G_SMART_ORDERS=true` فعال می‌شود؛ تب Zero-G در هدر پنهان است.
+   - `handlePushToExecution` پیش از اعلام موفقیت، سفارش را ماندگار می‌کند و در صورت خطا
+     تیکت را در Draft نگه می‌دارد.
+   - `handleSettleOrder` بدون `recordPayment` واقعی و خواندن مجدد پرداخت، موفقیت اعلام نمی‌کند؛
+     مغایرت مبلغ/تیکت بدون سفارش ماندگار را رد می‌کند.
+   - ارتقای وضعیت به `Dispatched` بدون پرداخت موفق ماندگار مسدود شده است.
+
+2. **P0-2 — شکست پرصدا + مسیر Dexie:**
+   - `save()` دیگر `QuotaExceededError` را نمی‌بلعد؛ `StorageWriteError` پرتاب می‌کند.
+   - `PosView` خطا را می‌گیرد، دکمه‌های پرداخت را غیرفعال می‌کند، خطای شفاف نشان می‌دهد و
+     هیچ فیش/موفقیتی تولید نمی‌کند.
+   - `saveOrders` هر سفارش را پس از ذخیرهٔ موفق در `CafeOS_LocalDB` (جدول `posOrders`) آینه می‌کند؛
+     `hydrateOrdersFromDexie` در بوت سفارش‌های گم‌شده را برمی‌گرداند.
+   - شکل داده تغییر نکرده و دادهٔ قدیمی LocalStorage خوانده/ادغام می‌شود.
+
+3. **P0-3 — اصلاح اسناد:** همین سند، `README.md` و `docs/ARCHITECTURE.md` بازنویسی شدند تا
+   ادعاهای RLS/چندمستأجری/وب‌سوکت/BOM را به‌عنوان «نمونهٔ اولیه/برنامهٔ آینده» ثبت کنند.
+
+---
+
+## ۳. آنچه هنوز ساخته نشده است (برنامه/فازهای بعد)
+
+- بک‌اند دائمی با PostgreSQL واقعی، RLS اجراشده و تست ایزولاسیون دو مستأجر.
+- احراز هویت و مجوز سمت سرور (حذف رمز plaintext، حذف ورود یک‌کلیکی، حذف اعتماد به `X-Tenant-Id`).
+- وب‌سوکت/SSE واقعی با کانال‌های per-tenant/per-role.
+- BOM واقعی و متصل به مسیر فروش.
+- مهاجرت کامل دادهٔ مالی (پرداخت/شیفت/هزینه/لاگ) به Dexie به‌همراه تراکنش اتمیک فروش.
+- صف آفلاین مقاوم (ریست `SYNCING`، backoff واقعی، dead-letter و UI آن).
+- اتصال KDS به کانال شبکه و پشتیبانی چند ایستگاه.
+
+---
+
+## ۴. وضعیت اعتبارسنجی (Verification)
+
+- در این نسخه، `npm install`/`npm run build`/`npm test`/`npm run lint` **اجرا نشده‌اند**
+  (بدون `node_modules` و بدون شبکه). بنابراین هیچ ادعای «۲۲۶ تست پاس» یا «Zero TS Errors»
+  معتبر نیست و از این سند حذف شده است.
+- تغییرات فاز ۱ به‌صورت استاتیک و با حفظ سازگاری TypeScript اعمال شده‌اند؛ اجرای واقعی
+  بیلد/تست باید در محیط توسعه انجام شود.
+- تست `tests/financialMath.test.ts` رفتار «گرد کردن اعشار» را تأیید می‌کند که با ادعای
+  «منع مطلق اعشار» در اسناد قبلی در تضاد بود؛ ادعا اصلاح شد.
+
+---
+
+## Branch state (2026-11-07) � read this first
+
+This repository has divergent lines. main carries the P0/P1 hardening but the
+2026-11-01 feature set. \eature/shared-core-preparation\ is the most advanced
+line and has none of the hardening.
+
+**Authoritative map and decision: docs/audit/BRANCH_MAP.md**

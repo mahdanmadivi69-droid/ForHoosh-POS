@@ -108,7 +108,8 @@ function App() {
     return () => unsub();
   }, []);
 
-  // Initialize seed data on startup
+  // Initialize seed data on startup, then recover the order ledger from the
+  // P0-2 Dexie mirror (IndexedDB) so orders survive a localStorage loss/refresh.
   useEffect(() => {
     SmartOrdersStore.initSeedData();
     SmartOrdersStore.migrateLegacyUserPasswords().catch(() => {});
@@ -116,6 +117,18 @@ function App() {
     SettingsService.initDefaults();
     dailyBackupScheduler.init();
     refreshState();
+
+    SmartOrdersStore.hydrateOrdersFromDexie()
+      .then((recoveredOrders) => {
+        if (!cancelled) setOrders(recoveredOrders);
+      })
+      .catch((err) => {
+        console.error('[App] Dexie order recovery failed', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Sync active tenant from tenantConfig runtime
@@ -163,6 +176,14 @@ function App() {
     }
   }, [currentTab, activeTenant.id]);
 
+
+  // P0-1: hard lockdown — if the Zero-G flag is off, force the real POS view
+  // even for a stale tab value in memory/storage.
+  useEffect(() => {
+    if (!FEATURES.ENABLE_ZERO_G_SMART_ORDERS && currentTab === 'zero-g') {
+      setCurrentTab('pos');
+    }
+  }, [currentTab]);
 
   // User Authentication Handlers
   const handleLockTerminal = () => {

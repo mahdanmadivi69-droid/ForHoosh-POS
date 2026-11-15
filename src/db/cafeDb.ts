@@ -14,8 +14,15 @@ import {
 export class CafeDatabase extends Dexie {
   inventoryItems!: Table<InventoryItem, string>;
   menuItems!: Table<MenuItem, string>;
+  /** Legacy `types/db` order shape used only by the orphaned `orderService.ts`. */
   orders!: Table<Order, string>;
   auditLogs!: Table<AuditLog, string>;
+  /**
+   * P0-2 order ledger mirror. Stores the *domain* order shape used by
+   * `src/services/storage.ts` (ISO `createdAt`, `netTotalToman`, ...) without
+   * touching the legacy `orders` table or the localStorage data shape.
+   */
+  posOrders!: Table<DomainOrder, string>;
 
   // CafeOS RBAC, Settings & Hardware Hub (v2.4.0)
   authUsers!: Table<AuthUserRecord, string>;
@@ -83,6 +90,12 @@ export class CafeDatabase extends Dexie {
       stockInwardTransactions: 'id, raw_item_id, batch_number, timestamp, supplier_name',
       customers: 'id, phone, name, tenantId, createdAt',
       syncQueue: 'id, clientGeneratedId, tenantId, syncStatus, createdAt',
+    });
+
+    // P0-2: additive upgrade — only adds `posOrders`; all v1 tables and their
+    // existing rows are preserved by Dexie.
+    this.version(2).stores({
+      posOrders: 'id, orderNumber, shiftId, status, createdAt'
     });
   }
 }

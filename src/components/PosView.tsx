@@ -52,7 +52,8 @@ import {
 } from '../services/financialMath';
 import { ReceiptPreview } from './ReceiptPreview';
 import { ModifierModal } from './ModifierModal';
-import { ModifierOption, OrderAggregate, OrderItemAggregate } from '../types/order-domain';
+import { ModifierOption } from '../types/order-domain';
+import { toOrderAggregate } from '../types/order-adapter';
 import { globalOfflineSyncQueue, QueueStats } from '../services/offlineSyncQueue';
 import { baristaDispatcher } from '../services/baristaDispatcher';
 import {
@@ -319,6 +320,10 @@ export const PosView: React.FC<PosViewProps> = ({
   const [completedCashTendered, setCompletedCashTendered] = useState<number | undefined>(undefined);
   const [completedChange, setCompletedChange] = useState<number | undefined>(undefined);
   const [hardwarePrintStatus, setHardwarePrintStatus] = useState<string | null>(null);
+  // P0-2: settling + persistence failure state. While `paymentError` is set the
+  // payment buttons stay disabled — the receipt modal is never reached.
+  const [isSettling, setIsSettling] = useState<boolean>(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Financial totals calculation
   const { grossAmountToman, discountAmountToman, netTotalToman } = calculateOrderTotals(
@@ -1168,60 +1173,9 @@ export const PosView: React.FC<PosViewProps> = ({
     setHardwarePrintStatus('در حال اتصال به چاپگر حرارتی...');
 
     try {
-      const orderAggregate: OrderAggregate = {
-        clientGeneratedId: completedReceiptOrder.id,
-        id: completedReceiptOrder.id,
-        tenantId: completedReceiptOrder.tenantId,
-        shiftId: completedReceiptOrder.shiftId,
-        orderNumber: completedReceiptOrder.orderNumber,
-        orderType: completedReceiptOrder.orderType,
-        state: 'PAID',
-        tableLabel: completedReceiptOrder.tableLabel,
-        customerName: completedReceiptOrder.customerName,
-        items: completedReceiptOrder.items.map((i) => ({
-          id: i.id,
-          menuItemId: i.menuItemId,
-          itemNameSnapshot: i.itemNameSnapshot,
-          unitPriceSnapshotToman: i.unitPriceSnapshotToman,
-          quantity: i.quantity,
-          modifiers: i.modifiers || [],
-          modifiersDeltaToman: 0,
-          subtotalToman: i.subtotalToman,
-          notes: i.notes,
-        })),
-        grossAmountToman: completedReceiptOrder.grossAmountToman,
-        grossAmount: completedReceiptOrder.grossAmountToman,
-        discountAmountToman: completedReceiptOrder.discountAmountToman,
-        discountAmount: completedReceiptOrder.discountAmountToman,
-        netTotalToman: completedReceiptOrder.netTotalToman,
-        totalNet: completedReceiptOrder.netTotalToman,
-        payments: completedReceiptPayment
-          ? [
-              {
-                id: completedReceiptPayment.id,
-                tenantId: completedReceiptPayment.tenantId,
-                orderId: completedReceiptPayment.orderId,
-                clientGeneratedId: completedReceiptOrder.id,
-                shiftId: completedReceiptPayment.shiftId,
-                receivedByUserId: completedReceiptPayment.receivedByUserId,
-                amountToman: completedReceiptPayment.amountToman,
-                paymentMethod: completedReceiptPayment.paymentMethod,
-                referenceCode: completedReceiptPayment.referenceCode,
-                terminalName: completedReceiptPayment.terminalName,
-                status: 'SUCCESSFUL',
-                createdAt: completedReceiptPayment.createdAt,
-              },
-            ]
-          : [],
-        paidAmountToman: completedReceiptOrder.netTotalToman,
-        paidAmount: completedReceiptOrder.netTotalToman,
-        createdAt: completedReceiptOrder.createdAt,
-        updatedAt: completedReceiptOrder.updatedAt,
-        createdByUserId: completedReceiptOrder.createdByUserId,
-        createdByUserName: completedReceiptOrder.createdByUserName,
-      };
+      const printPayload = toOrderAggregate(completedReceiptOrder, completedReceiptPayment ? [completedReceiptPayment] : []);
 
-      const canvas = renderReceiptToCanvas(orderAggregate, tenant);
+      const canvas = renderReceiptToCanvas(printPayload, tenant);
 
       const rasterBytes = convertCanvasToEscPosRaster(canvas);
 

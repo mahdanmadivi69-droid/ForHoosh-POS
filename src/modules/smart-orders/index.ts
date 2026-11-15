@@ -7,6 +7,16 @@ import React from 'react';
 import { SmartOrdersContainer, SmartOrdersContainerProps } from './SmartOrdersContainer';
 import { FeaturesConfig } from './types';
 
+/**
+ * P0-1 (review R5): HARD OFF by default.
+ *
+ * Zero-G is a prototype working copy of the order flow, not the money path.
+ * It must not be reachable in the 100 Hich pilot unless a developer explicitly
+ * opts in at build time (`.env`: `VITE_ENABLE_ZERO_G_SMART_ORDERS=true`).
+ * The tab is hidden and `App.tsx` falls back to the real `PosView` when off.
+ */
+const zeroGEnvFlag = (import.meta as any).env?.VITE_ENABLE_ZERO_G_SMART_ORDERS;
+
 export const FEATURES: FeaturesConfig = {
   // P0-1: Zero-G module disabled by default for 100 Hich single-cashier pilot to prevent unrecorded financial leaks
   ENABLE_ZERO_G_SMART_ORDERS: false,
