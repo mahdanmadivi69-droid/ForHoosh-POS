@@ -1,0 +1,8 @@
+﻿{
+  "app": "karwand-sync-api",
+  "port": 3000,
+  "platform": "node",
+  "node": {
+    "version": "22"
+  }
+}

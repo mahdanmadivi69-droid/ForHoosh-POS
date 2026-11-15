@@ -24,3 +24,5 @@ dist-win/
 vitest.cmd
 vitest.ps1
 .kw-owner-code.txt
+
+.env.production
