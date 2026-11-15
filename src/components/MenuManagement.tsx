@@ -12,8 +12,11 @@ import {
   Sliders,
   CheckCircle2,
   Package,
+  RotateCcw,
+  RefreshCw,
 } from 'lucide-react';
 import { Category, MenuItem, User } from '../types/domain';
+import { SmartOrdersStore } from '../services/storage';
 import {
   formatToman,
   safeInt,
@@ -27,6 +30,7 @@ interface MenuManagementProps {
   menuItems: MenuItem[];
   activeUser: User;
   onSaveItem: (item: MenuItem) => void;
+  onResetModendoMenu?: () => void;
 }
 
 export const MenuManagement: React.FC<MenuManagementProps> = ({
@@ -34,6 +38,7 @@ export const MenuManagement: React.FC<MenuManagementProps> = ({
   menuItems,
   activeUser,
   onSaveItem,
+  onResetModendoMenu,
 }) => {
   const [selectedCatId, setSelectedCatId] = useState<string>('all');
   const [stockFilter, setStockFilter] = useState<'ALL' | 'LOW_ONLY' | 'OUT_OF_STOCK_ONLY' | 'OK_ONLY'>('ALL');
@@ -237,13 +242,34 @@ export const MenuManagement: React.FC<MenuManagementProps> = ({
           </div>
 
           {canEdit && (
-            <button
-              onClick={handleOpenNew}
-              className="bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5 shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>افزودن آیتم جدید به منو</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('آیا مطمئن هستید که می‌خواهید منوی پیش‌فرض مودندو (۸۱ قلم کالا در ۱۵ دسته‌بندی با قیمت‌های تومان) را بارگذاری و بازنشانی کنید؟')) {
+                    SmartOrdersStore.resetModendoMenuToSeed();
+                    if (onResetModendoMenu) {
+                      onResetModendoMenu();
+                    } else {
+                      window.location.reload();
+                    }
+                  }
+                }}
+                className="bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white border border-stone-700 px-3 py-2 rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                title="بازنشانی منوی پیش‌فرض مودندو به ۸۱ قلم کالا"
+              >
+                <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                <span>همگام‌سازی منوی مودندو (۸۱ قلم)</span>
+              </button>
+
+              <button
+                onClick={handleOpenNew}
+                className="bg-amber-600 hover:bg-amber-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold shadow transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>افزودن آیتم جدید به منو</span>
+              </button>
+            </div>
           )}
         </div>
       </div>

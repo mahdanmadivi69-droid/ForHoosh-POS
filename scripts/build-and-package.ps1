@@ -1,6 +1,6 @@
 [CmdletBinding()]
 param(
-    [string]$Version = "0.15.0",
+    [string]$Version = "0.16.0",
     [string]$OutputDir = ".\dist-installer",
     [string]$StagingDir = ".\dist-win",
     [switch]$SkipTests = $false,

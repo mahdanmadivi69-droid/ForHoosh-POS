@@ -111,6 +111,7 @@
   /* Modendo Cafe & Gaming Lounge (Secondary Tenant) */
   [data-tenant="tenant-modendo-01"],
   [data-tenant="modendo"],
+  [data-theme='modendo'],
   .theme-modendo {
     --brand-tenant-id: 'tenant-modendo-01';
     --brand-name: 'Modendo Boardgame & Gaming Cafe';
@@ -124,7 +125,7 @@
     --app-border: rgba(248, 238, 217, 0.15);
 
     /* Apple VisionOS Materiality Tokens (Liquid Glass Surfaces - SPEC 2.0) */
-    --glass-base: rgba(8, 25, 20, 0.76);
+    --glass-base: rgba(8, 24, 19, 0.72);
     --glass-card: rgba(10, 32, 25, 0.65);
     --glass-blur: 34px;
     --glass-saturate: 200%;
@@ -139,12 +140,14 @@
     --glass-specular-edge: inset 0 1px 1.5px 0 var(--glass-specular);
     --glass-shadow-floating: 0 24px 60px -15px rgba(0, 0, 0, 0.90), 0 0 25px rgba(0, 255, 157, 0.10);
 
-    /* Brand Primary & Secondary Colors */
-    --color-brand-primary: #059669;
-    --color-brand-primary-rgb: 5, 150, 105;
-    --color-brand-primary-hover: #047857;
-    --color-brand-primary-light: rgba(5, 150, 105, 0.12);
-    --color-brand-primary-border: rgba(5, 150, 105, 0.35);
+    /* Brand Primary & Secondary Colors (Mission Palette v0.16: Emerald #005A3E / Hover #007A54 / Mint #68A691) */
+    --color-brand-primary: #005A3E;
+    --color-brand-primary-rgb: 0, 90, 62;
+    --color-brand-primary-hover: #007A54;
+    --color-brand-primary-light: rgba(0, 122, 84, 0.16);
+    --color-brand-primary-border: rgba(104, 166, 145, 0.4);
+    --color-brand-mint: #68A691;
+    --color-brand-mint-light: rgba(104, 166, 145, 0.18);
 
     --color-brand-secondary: #0B0D11;
     --color-brand-secondary-rgb: 11, 13, 17;
@@ -171,14 +174,14 @@
 
     /* Header & Navigation Shell */
     --color-header-bg: #0B0D11;
-    --color-header-border: #059669;
-    --color-tab-active-bg: rgba(5, 150, 105, 0.15);
-    --color-tab-active-border: #10B981;
+    --color-header-border: #68A691;
+    --color-tab-active-bg: rgba(0, 90, 62, 0.4);
+    --color-tab-active-border: #68A691;
 
     /* Badges & Indicators */
-    --color-badge-bg: rgba(5, 150, 105, 0.15);
-    --color-badge-text: #34D399;
-    --color-badge-border: rgba(5, 150, 105, 0.3);
+    --color-badge-bg: rgba(0, 90, 62, 0.35);
+    --color-badge-text: #A8E6CF;
+    --color-badge-border: rgba(104, 166, 145, 0.4);
 
     /* Thermal Printing Configuration */
     --printer-dpi: 203;

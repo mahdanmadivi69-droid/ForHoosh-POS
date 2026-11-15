@@ -981,6 +981,21 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     <Upload className="w-4 h-4 text-amber-400" />
                     <span>بازیابی فایل پشتیبان (Restore JSON)</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('آیا مطمئن هستید که می‌خواهید منوی پیش‌فرض مودندو (۸۱ قلم کالا در ۱۵ دسته‌بندی با قیمت‌های تومان) را بازنشانی و همگام‌سازی کنید؟')) {
+                        SmartOrdersStore.resetModendoMenuToSeed();
+                        alert('منوی پیش‌فرض مودندو (۸۱ قلم کالا در ۱۵ دسته‌بندی) با موفقیت همگام‌سازی و بارگذاری شد.');
+                      }
+                    }}
+                    className="py-2.5 px-4 rounded-xl bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-800/40 text-cyan-300 text-xs font-bold flex items-center gap-2 transition active:scale-95 cursor-pointer"
+                    title="همگام‌سازی و بازنشانی منوی پیش‌فرض مودندو (۸۱ قلم کالا)"
+                  >
+                    <RotateCcw className="w-4 h-4 text-cyan-400" />
+                    <span>همگام‌سازی و بازنشانی منوی مودندو (۸۱ قلم)</span>
+                  </button>
                 </div>
               </div>
             </div>

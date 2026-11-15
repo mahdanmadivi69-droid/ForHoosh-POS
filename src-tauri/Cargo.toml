@@ -1,6 +1,6 @@
-﻿[package]
+[package]
 name = "karwand-launcher"
-version = "0.14.0"
+version = "0.16.0"
 description = "KarWand POS Native Local-First Terminal Harness"
 edition = "2021"
 

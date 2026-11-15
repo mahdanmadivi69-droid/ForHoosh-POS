@@ -79,6 +79,32 @@
   --glow-accent: rgba(215, 25, 33, 0.25);
 }
 
+/* Modendo Gaming Lounge — Emerald Liquid Glass (Official Mission Palette v0.16) */
+[data-theme='modendo'] {
+  --kw-canvas-core: #081813;
+  --kw-canvas-halo: #0A241C;
+  --kw-carmine: #005A3E;
+  --kw-carmine-deep: #00402C;
+  --kw-maroon: #03110C;
+  --kw-gold: #68A691;
+  --kw-platinum: #F8EED9;
+  --kw-hairline: rgba(248, 238, 217, 0.12);
+  --kw-specular: rgba(168, 230, 205, 0.30);
+  --kw-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --glass-base: linear-gradient(165deg, rgba(104, 166, 145, 0.10) 0%, rgba(104, 166, 145, 0.03) 24%, rgba(8, 24, 19, 0.72) 58%, rgba(4, 12, 9, 0.94) 100%);
+  --glass-blur: 22px;
+  --glass-saturate: 180%;
+  --glass-brightness: 1.07;
+  --glass-border: 1px solid rgba(104, 166, 145, 0.28);
+  --glass-specular: rgba(168, 230, 205, 0.32);
+  --glow-accent: rgba(0, 122, 84, 0.28);
+}
+
+/* Deep Emerald Obsidian Canvas: #081813 → #040C09 (Modendo only) */
+body.theme-modendo {
+  background: linear-gradient(180deg, #081813 0%, #040C09 100%);
+}
+
 /* Strict Viewport Freeze: Zero page-level bounce, elasticity, or scroll */
 html, body, #root {
   height: 100%;

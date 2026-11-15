@@ -1,8 +1,8 @@
 {
   "name": "smartorders-pos",
   "private": true,
-  "version": "0.15.0",
-  "description": "سامانه مدیریت صندوق و سفارشات کافه ۱۰۰هیچ (100 Hich Coffee Roasters)",
+  "version": "0.16.0",
+  "description": "صندوق کاروند — نسخه کافه گیمینگ مودندو (Modendo Gaming Lounge Edition)",
   "homepage": "https://mahdanmadivi69-droid.github.io/ForHoosh-POS",
   "type": "module",
   "scripts": {
@@ -12,7 +12,7 @@
     "dev:concurrent": "node -e \"import('child_process').then(({ spawn }) => { spawn('npm', ['run', 'dev:100hich'], { stdio: 'inherit', shell: true }); spawn('npm', ['run', 'dev:modendo'], { stdio: 'inherit', shell: true }); })\"",
     "dev:all": "npm run dev:concurrent",
     "start": "node server.ts",
-    "build": "vite build",
+    "build": "vite build --mode modendo",
     "build:modendo": "vite build --mode modendo",
     "build:100hich": "vite build --mode 100hich",
     "build:all": "npm run build:100hich && npm run build:modendo",
@@ -30,7 +30,7 @@
     "test:routing": "tsx tests/stationPrinterRouting.test.ts",
     "test:p3": "tsx tests/posOfflineSync.test.ts && tsx tests/shiftCloseoutAccounting.test.ts && tsx tests/stockProcurement.test.ts",
     "test:p4": "tsx tests/e2eOperationalSmoke.test.ts && tsx tests/centralOfficeAgents.test.ts",
-    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/invoiceSequence.test.ts && tsx tests/credentials.test.ts && tsx tests/auth.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoIsolationAndGateway.test.ts && tsx tests/dualCafeIsolation.test.ts && tsx tests/cloudBackupSync.test.ts && npm run test:phase1 && npm run test:p2 && npm run test:p3 && npm run test:p4",
+    "test": "tsx tests/financialMath.test.ts && tsx tests/smartOrders.test.ts && tsx tests/invoiceSequence.test.ts && tsx tests/credentials.test.ts && tsx tests/auth.test.ts && tsx tests/inventoryTabSpec.test.ts && tsx tests/kdsThermalDispatch.test.ts && tsx tests/rbacSettings.test.ts && tsx tests/zreportInward.test.ts && tsx tests/floorPlanSpec.test.ts && tsx tests/modendoGamingLounge.test.ts && tsx tests/modendoIsolationAndGateway.test.ts && tsx tests/dualCafeIsolation.test.ts && tsx tests/cloudBackupSync.test.ts && npm run test:phase1 && npm run test:p2 && npm run test:p3 && npm run test:p4",
     "test:silent": "node -e \"import('child_process').then(({ execSync }) => { try { execSync('npm test', { stdio: 'pipe' }); console.log('All regression test suites passed silently (0 failures).'); } catch (e) { console.error(e.stdout ? e.stdout.toString() : e); process.exit(1); } })\"",
     "test:regression": "npm run test:silent",
     "test:office": "tsx tests/centralOfficeAgents.test.ts",

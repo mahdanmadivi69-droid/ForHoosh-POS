@@ -72,10 +72,10 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
     brandTagline ||
     displayHeaderNote ||
     (isModendo
-      ? "«کافه مودندو؛ دنیای بردگیم و هیجان کنسول PS5»"
+      ? "«کافه گیمینگ مودندو؛ دنیای بردگیم و هیجان کنسول PS5»"
       : "«صد هیچ؛ تمرکز محض روی اصالت قهوه»");
   const displayWebsite = website || (isModendo ? "MODENDO.CAFE" : "100HICH.IR");
-  const subBrand = isModendo ? "MODENDO BOARDGAME & GAMING CAFE" : "COFFEE ROASTERS";
+  const subBrand = isModendo ? "MODENDO GAMING LOUNGE" : "COFFEE ROASTERS";
   const displayAddress =
     tenantAddress ||
     (isModendo

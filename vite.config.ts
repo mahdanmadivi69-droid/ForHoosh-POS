@@ -14,7 +14,9 @@ export default defineConfig(({ mode }) => {
 
   // Determine active tenant branding
   const tenantId = process.env.VITE_TENANT_ID || (mode === 'modendo' ? 'tenant-modendo-01' : 'tenant-100hich-01');
-  const isModendo = tenantId === 'tenant-modendo-01';
+  // Determine active tenant branding (accepts 'modendo', 'tenant-modendo-01', '100hich', 'tenant-100hich-01')
+  const isModendoTenant = /modendo/i.test(tenantId);
+  const isModendo = isModendoTenant;
 
   const appName = isModendo
     ? 'Modendo POS — سامانه کافه بردگیم و گیمینگ مودندو'
@@ -23,14 +25,14 @@ export default defineConfig(({ mode }) => {
   const description = isModendo
     ? 'سامانه مدیریت سفارشات، میزهای بازی، اتاق کنسول PS5 و حسابداری کافه مودندو'
     : 'سامانه ابری و هوشمند مدیریت صندوق، شیفت، رسپی و گزارشات مالی کافه ۱۰۰هیچ';
-  const themeColor = isModendo ? '#0B0D11' : '#0F223D';
-  const bgColor = isModendo ? '#0B0D11' : '#121417';
+  const themeColor = isModendo ? '#081813' : '#0A0D11';
+  const bgColor = isModendo ? '#040C09' : '#121417';
 
   return {
     base: basePath,
     define: {
       'import.meta.env.VITE_TENANT_ID': JSON.stringify(tenantId),
-      'import.meta.env.VITE_TARGET_VENUE': JSON.stringify('100hich'),
+      'import.meta.env.VITE_TARGET_VENUE': JSON.stringify(isModendo ? 'modendo' : '100hich'),
       'import.meta.env.IS_VENUE_MUTABLE': JSON.stringify(false),
     },
     build: {

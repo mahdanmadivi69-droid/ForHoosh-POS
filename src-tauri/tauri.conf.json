@@ -1,10 +1,10 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "KarWandLauncher",
-  "version": "0.14.0",
+  "version": "0.16.0",
   "identifier": "io.smartorders.karwand.pos",
   "build": {
-    "frontendDist": "../dist/100hich"
+    "frontendDist": "../dist/modendo"
   },
   "app": {
     "windows": [],

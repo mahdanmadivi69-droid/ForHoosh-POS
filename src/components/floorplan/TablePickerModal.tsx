@@ -135,6 +135,11 @@ export const TablePickerModal: React.FC<TablePickerModalProps> = ({
                 if (tbl) playPosBeep('click');
                 setSelectedTable(tbl);
               }}
+              onConfirmTableOrder={(tbl) => {
+                playPosBeep('success');
+                onSelectTable(tbl.display_name);
+                onClose();
+              }}
             />
           </div>
 

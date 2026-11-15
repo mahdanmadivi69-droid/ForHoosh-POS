@@ -254,10 +254,32 @@ export const PosView: React.FC<PosViewProps> = ({
   );
   const [isTablePickerOpen, setIsTablePickerOpen] = useState<boolean>(false);
 
+  const loadTabForTableIfOpen = (selectedLabel: string) => {
+    if (!selectedLabel) return;
+    setTableLabel(selectedLabel);
+    setOrderType('DINE_IN');
+
+    const tenantId = activeShift?.tenantId || currentTenantId;
+    const openTabs = CatalogService.getOpenTabs(tenantId);
+    const existingTab = openTabs.find((t) => {
+      const label = t.table_or_customer || t.tableOrCustomer || '';
+      return (
+        label === selectedLabel ||
+        (label && selectedLabel && (label.includes(selectedLabel) || selectedLabel.includes(label)))
+      );
+    });
+
+    if (existingTab) {
+      handleRecallTabForEditing(existingTab);
+      showTableToast(`تب باز میز "${selectedLabel}" با موفقیت بارگذاری شد`);
+    } else {
+      setActiveTabId(null);
+    }
+  };
+
   useEffect(() => {
     if (preselectedTableLabel) {
-      setTableLabel(preselectedTableLabel);
-      setOrderType('DINE_IN');
+      loadTabForTableIfOpen(preselectedTableLabel);
     }
   }, [preselectedTableLabel]);
   const [customerName, setCustomerName] = useState<string>('');
@@ -722,29 +744,64 @@ export const PosView: React.FC<PosViewProps> = ({
     }));
 
     const label = (orderType === 'DINE_IN' ? tableLabel : customerName) || 'میز موقت';
+    const effectiveTenantId = activeShift?.tenantId || currentTenantId;
 
+    let savedTabId = activeTabId;
     if (activeTabId) {
       // In-place mutation of existing tab
       try {
-        CatalogService.updateOpenTab(activeTabId, catalogCart, label, activeShift?.tenantId || currentTenantId);
-        showTableToast(`تغییرات تب "${label}" با موفقیت ذخیره شد`);
-        handleClearCart();
-        setActiveTabId(null);
-        setOpenTabsCount(CatalogService.getOpenTabs(activeShift?.tenantId || currentTenantId).length);
+        CatalogService.updateOpenTab(activeTabId, catalogCart, label, effectiveTenantId);
+        showTableToast(`سفارش روی میز "${label}" با موفقیت بروزرسانی شد`);
       } catch (e: any) {
         alert(`خطا در بروزرسانی تب: ${e?.message || e}`);
       }
     } else {
       // Creation of new tab
       try {
-        CatalogService.holdCurrentCartAsTab(catalogCart, label, activeShift?.tenantId || currentTenantId);
-        showTableToast(`سفارش در تب جدید "${label}" نگهداری شد`);
-        handleClearCart();
-        setOpenTabsCount(CatalogService.getOpenTabs(activeShift?.tenantId || currentTenantId).length);
+        const createdTab = CatalogService.holdCurrentCartAsTab(catalogCart, label, effectiveTenantId);
+        savedTabId = createdTab.tab_id;
+        showTableToast(`سفارش روی میز "${label}" به عنوان سفارش باز ثبت شد`);
       } catch (e: any) {
-        alert(`خطا در نگهداری تب: ${e?.message || e}`);
+        alert(`خطا در ثبت تب: ${e?.message || e}`);
       }
     }
+
+    // Update floor plan table status to OCCUPIED / GAMING_ACTIVE
+    try {
+      const allTables = floorPlanService.getTables();
+      const matchedTable = allTables.find(
+        (t) =>
+          t.display_name === label ||
+          t.id === label ||
+          (label && (label.includes(t.display_name) || t.display_name.includes(label)))
+      );
+      if (matchedTable) {
+        floorPlanService.setTableState(matchedTable.id, {
+          status: matchedTable.billing_mode === 'hourly_timer' ? 'GAMING_ACTIVE' : 'OCCUPIED',
+          currentBillAmount: netTotalToman,
+          currentOrderId: savedTabId || undefined,
+          sessionStartTime: matchedTable.sessionStartTime || new Date().toISOString(),
+        });
+      }
+
+      // Also mirror into DexiePOSDatabase tableTabs table
+      const posDb = getDexiePOSDatabase();
+      posDb.tableTabs.put({
+        id: savedTabId || `tab-${Date.now()}`,
+        tenantId: effectiveTenantId,
+        tableId: matchedTable?.id || label,
+        tableLabel: label,
+        status: 'OPEN',
+        openedAt: new Date().toISOString(),
+        totalDueToman: netTotalToman,
+      }).catch(() => {});
+    } catch (tblErr) {
+      console.warn('[PosView] Floor plan table state update error:', tblErr);
+    }
+
+    handleClearCart();
+    setActiveTabId(null);
+    setOpenTabsCount(CatalogService.getOpenTabs(effectiveTenantId).length);
   };
 
   const handleCancelTabEditing = () => {
@@ -921,12 +978,30 @@ export const PosView: React.FC<PosViewProps> = ({
           console.warn('[PosView] Atomic checkout write failed — legacy mirror kept:', atomicErr);
         }
 
+        // Release table back to AVAILABLE (آماده پذیرش) upon final checkout
+        try {
+          const allTables = floorPlanService.getTables();
+          const targetTable = allTables.find(
+            (t) =>
+              t.display_name === tableLabel ||
+              t.id === tableLabel ||
+              (tableLabel && (tableLabel.includes(t.display_name) || t.display_name.includes(tableLabel)))
+          );
+          if (targetTable) {
+            floorPlanService.clearSession(targetTable.id);
+          }
+        } catch (clearErr) {
+          console.warn('[PosView] Floor plan table release error:', clearErr);
+        }
+
         // Automatically deduct raw BOM materials upon order settlement
         // If completing a recalled open tab, settle and close it in place!
         if (activeTabId) {
           try {
             CatalogService.settleAndCloseTab(activeTabId, result.order.id, activeShift.tenantId);
             setOpenTabsCount(CatalogService.getOpenTabs(activeShift.tenantId).length);
+            const posDb = getDexiePOSDatabase();
+            posDb.tableTabs.update(activeTabId, { status: 'CLOSED' }).catch(() => {});
           } catch (e) {
             console.warn('[PosView] Failed to settle tab:', e);
           }
@@ -1719,8 +1794,7 @@ export const PosView: React.FC<PosViewProps> = ({
         isOpen={isTablePickerOpen}
         onClose={() => setIsTablePickerOpen(false)}
         onSelectTable={(selectedTbl) => {
-          setTableLabel(selectedTbl);
-          setOrderType('DINE_IN');
+          loadTabForTableIfOpen(selectedTbl);
         }}
       />
     </>
