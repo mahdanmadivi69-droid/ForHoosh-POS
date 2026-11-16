@@ -1,4 +1,3 @@
-import { SecureCredential, hashPassword, verifyPassword } from './credentials';
 /**
  * Storage and State Management Service for SmartOrders
  * Implements Multi-Tenant Data Isolation, Local Persistence, and Initial Realistic Seed Data.
@@ -2509,53 +2508,6 @@ export class SmartOrdersStore {
   }
 
   // Users & Authentication
-
-  static saveUsers(users: User[]): void {
-    const clean = users.map((u) => {
-      const copy = { ...u };
-      delete (copy as any).password;
-      return copy;
-    });
-    save(STORAGE_KEYS.USERS, clean);
-  }
-
-  static updateUser(updated: User): void {
-    const users = this.getUsers().map((u) => (u.id === updated.id ? updated : u));
-    this.saveUsers(users);
-  }
-
-  static async migrateLegacyUserPasswords(): Promise<void> {
-    try {
-      const users = this.getUsers();
-      let modified = false;
-      const cleanUsers: User[] = [];
-
-      for (const u of users) {
-        const legacyPass = (u as any).password;
-        if (legacyPass && typeof legacyPass === 'string') {
-          modified = true;
-          const cred = await hashPassword(legacyPass);
-          const copy = { ...u };
-          delete (copy as any).password;
-          copy.credential = cred;
-          copy.mustChangePassword = true;
-          cleanUsers.push(copy);
-        } else {
-          const copy = { ...u };
-          delete (copy as any).password;
-          cleanUsers.push(copy);
-        }
-      }
-
-      if (modified) {
-        this.saveUsers(cleanUsers);
-        console.log('[Security] Legacy plaintext passwords migrated to PBKDF2-SHA256 credentials.');
-      }
-    } catch (err) {
-      console.error('[Security] Legacy password migration failed:', err);
-    }
-  }
-
   static getUsers(): User[] {
     const activeTenantId = this.getActiveTenantId();
     if (activeTenantId === 'tenant-100hich-01') {
@@ -2810,11 +2762,7 @@ export class SmartOrdersStore {
     try {
       window.sessionStorage?.removeItem('smartorders_session_active_v1');
     } catch {}
-    try {
-      save(STORAGE_KEYS.IS_LOGGED_IN, false);
-    } catch (err) {
-      console.error('[storage] logout flag could not be persisted', err);
-    }
+    save(STORAGE_KEYS.IS_LOGGED_IN, false);
     this.addAuditLog('USER_LOGOUT', 'User', user.id, `خروج کاربر ${user.fullName}`);
   }
 
@@ -2918,12 +2866,7 @@ export class SmartOrdersStore {
     });
 
     if (modified) {
-      try {
-        save(STORAGE_KEYS.MENU_ITEMS, items);
-      } catch (err) {
-        // Self-healing defaults only; never block the cashier UI for this.
-        console.error('[storage] could not persist self-healed menu defaults', err);
-      }
+      save(STORAGE_KEYS.MENU_ITEMS, items);
     }
     return items;
   }
@@ -3251,14 +3194,7 @@ export class SmartOrdersStore {
       }
     }
     if (stockChanged) {
-      try {
-        this.saveMenuItems(menuItems);
-      } catch (err) {
-        // The order itself is the ledger record and is already persisted.
-        // Stock drift is flagged in the console instead of pretending the
-        // whole sale failed (which would invite a duplicate order).
-        console.error('[storage] order persisted but stock deduction could not be saved', err);
-      }
+      this.saveMenuItems(menuItems);
     }
 
     this.addAuditLog(
@@ -3383,13 +3319,8 @@ export class SmartOrdersStore {
     payments.unshift(newPayment);
     this.savePayments(payments);
 
-    // Also mark order as COMPLETED. A failure here must not fail the payment
-    // that is already committed (that would invite a duplicate charge).
-    try {
-      this.updateOrderStatus(payment.orderId, 'COMPLETED');
-    } catch (err) {
-      console.error('[storage] payment persisted but order status could not be marked COMPLETED', err);
-    }
+    // Also mark order as COMPLETED
+    this.updateOrderStatus(payment.orderId, 'COMPLETED');
 
     this.addAuditLog(
       'ORDER_PAID',
@@ -3533,8 +3464,6 @@ export class SmartOrdersStore {
     const shifts = this.getShifts();
     if (shifts.length === 0) {
       const initialShift = this.openShift(500000, 'شیفت صبح آزمایشی');
-
-      InvoiceSequenceService.reconcile(this.getTenant().id, this.getOrders());
 
       // Create two sample completed orders
       const user = this.getActiveUser();
@@ -3722,8 +3651,5 @@ export class SmartOrdersStore {
   static resetDatabaseToSeed(): void {
     Object.values(STORAGE_KEYS).forEach((k) => localStorage.removeItem(k));
     this.initSeedData();
-    // P0-2: make the Dexie mirror reflect the reset ledger (clear+bulkPut), so
-    // old orders cannot be resurrected by the boot merge.
-    mirrorOrdersToDexie(this.getOrders());
   }
 }

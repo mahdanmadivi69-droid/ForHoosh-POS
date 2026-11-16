@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CAFE OS — Offline Synchronization Queue Engine
  * Module: src/services/offlineSyncQueue.ts
  * Owner: A08-PULSE (POS and Offline Synchronization Engineer)
@@ -580,7 +580,7 @@ export function getOfflineSyncQueueForTenant(
     tenantQueueRegistry.set(
       tenantId,
       new OfflineSyncQueue({
-        apiBaseUrl: typeof window !== 'undefined' ? window.location.origin : '',
+        apiBaseUrl: ((import.meta as any).env?.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, ''),
         maxRetries: 5,
         syncIntervalMs: 12000,
         ...options,
@@ -593,7 +593,7 @@ export function getOfflineSyncQueueForTenant(
 
 // Singleton instance for client app
 export const globalOfflineSyncQueue = new OfflineSyncQueue({
-  apiBaseUrl: typeof window !== 'undefined' ? window.location.origin : '',
+  apiBaseUrl: ((import.meta as any).env?.VITE_API_BASE_URL || (typeof window !== 'undefined' ? window.location.origin : '')).replace(/\/$/, ''),
   maxRetries: 5,
   syncIntervalMs: 12000,
 });

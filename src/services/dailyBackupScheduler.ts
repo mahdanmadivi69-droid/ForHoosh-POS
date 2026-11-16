@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CAFE OS — Client Daily Backup & Cloud Queue Scheduler
  * Automatically orchestrates periodic sync of OfflineSyncQueue,
  * compiles daily financial snapshots, and persists to Cloud PostgreSQL.
@@ -76,7 +76,7 @@ class DailyBackupSchedulerClass {
 
     try {
       const activeTenantId = SmartOrdersStore.getActiveTenantId();
-      const res = await fetch(`${window.location.origin}/api/v1/cloud-backup/status`, {
+      const res = await fetch(`${((import.meta as any).env?.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, "")}/api/v1/cloud-backup/status`, {
         headers: { 'X-Tenant-Id': activeTenantId },
       });
       if (res.ok) {
@@ -194,7 +194,7 @@ class DailyBackupSchedulerClass {
         },
       };
 
-      const res = await fetch(`${window.location.origin}/api/v1/cloud-backup/daily`, {
+      const res = await fetch(`${((import.meta as any).env?.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, "")}/api/v1/cloud-backup/daily`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -245,7 +245,7 @@ class DailyBackupSchedulerClass {
     if (typeof window === 'undefined') return [];
     try {
       const activeTenantId = SmartOrdersStore.getActiveTenantId();
-      const res = await fetch(`${window.location.origin}/api/v1/cloud-backup/history`, {
+      const res = await fetch(`${((import.meta as any).env?.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, "")}/api/v1/cloud-backup/history`, {
         headers: { 'X-Tenant-Id': activeTenantId },
       });
       if (res.ok) {
