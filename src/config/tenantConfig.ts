@@ -28,7 +28,7 @@ export interface TenantProfile {
 export const TENANT_PROFILES: Record<string, TenantProfile> = {
   '100hich': {
     id: '100hich',
-    brandNameFa: 'قهوه‌فروشی ۱۰۰هیچ',
+    brandNameFa: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_VENUE_NAME) || 'قهوهفروشی ۱۰۰هیچ',
     brandNameEn: '100 Hich Coffee Roasters',
     palette: {
       primaryBg: '#0A0D11',
@@ -90,6 +90,19 @@ export function getActiveTenant(): TenantProfile {
       return TENANT_PROFILES[urlTenant];
     }
   }
+
+  // Build-time environment variable wins over stale localStorage
+  const envTenant =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT) ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ACTIVE_TENANT) ||
+    '';
+  if (envTenant) {
+    if (/modendo/i.test(envTenant)) return TENANT_PROFILES['modendo'];
+    if (/100hich/i.test(envTenant)) return TENANT_PROFILES['100hich'];
+    if (TENANT_PROFILES[envTenant]) return TENANT_PROFILES[envTenant];
+  }
+
   if (typeof localStorage !== 'undefined' && localStorage) {
     try {
       const stored = localStorage.getItem('cafeos_active_tenant_id');
@@ -103,14 +116,7 @@ export function getActiveTenant(): TenantProfile {
       // ignore
     }
   }
-  // Modendo Edition: VITE_TENANT_ID is the primary build-time tenant switch
-  // (mission: default tenant 'modendo'); VITE_ACTIVE_TENANT kept as legacy fallback.
-  const envTenant =
-    (import.meta as any).env?.VITE_TENANT_ID ||
-    (import.meta as any).env?.VITE_ACTIVE_TENANT;
-  if (envTenant && TENANT_PROFILES[envTenant]) {
-    return TENANT_PROFILES[envTenant];
-  }
-  // Default tenant for the Modendo Gaming Lounge Edition build
-  return TENANT_PROFILES['modendo'] || TENANT_PROFILES['100hich'];
+
+  // Clean default fallback for 100 HICH
+  return TENANT_PROFILES['100hich'];
 }

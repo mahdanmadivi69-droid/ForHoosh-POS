@@ -570,6 +570,19 @@ export class OfflineSyncQueue {
   }
 }
 
+function getDefaultApiBaseUrl(): string {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) {
+    return (import.meta as any).env.VITE_API_URL.replace(/\/+$/, '');
+  }
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_BASE_URL) {
+    return (import.meta as any).env.VITE_API_BASE_URL.replace(/\/+$/, '');
+  }
+  if (typeof window !== 'undefined' && window.location?.origin && !window.location.origin.startsWith('file:') && window.location.origin !== 'null') {
+    return window.location.origin;
+  }
+  return 'https://api.karwand.ir';
+}
+
 const tenantQueueRegistry = new Map<string, OfflineSyncQueue>();
 
 export function getOfflineSyncQueueForTenant(
@@ -580,7 +593,7 @@ export function getOfflineSyncQueueForTenant(
     tenantQueueRegistry.set(
       tenantId,
       new OfflineSyncQueue({
-        apiBaseUrl: typeof window !== 'undefined' ? window.location.origin : '',
+        apiBaseUrl: getDefaultApiBaseUrl(),
         maxRetries: 5,
         syncIntervalMs: 12000,
         ...options,
@@ -593,7 +606,7 @@ export function getOfflineSyncQueueForTenant(
 
 // Singleton instance for client app
 export const globalOfflineSyncQueue = new OfflineSyncQueue({
-  apiBaseUrl: typeof window !== 'undefined' ? window.location.origin : '',
+  apiBaseUrl: getDefaultApiBaseUrl(),
   maxRetries: 5,
   syncIntervalMs: 12000,
 });

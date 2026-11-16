@@ -73,7 +73,9 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [pendingSwitchUserId, setPendingSwitchUserId] = useState<string | null>(null);
-  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>('hub');
+  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>(
+    activeTenant.id === 'modendo' ? 'hub' : 'pos'
+  );
   const [isTenantConfigOpen, setIsTenantConfigOpen] = useState(false);
   const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -345,7 +347,7 @@ function App() {
           setIsAuthenticated(true);
           setIsLocked(false);
           setPendingSwitchUserId(null);
-          setCurrentTab('hub');
+          setCurrentTab(activeTenant.id === 'modendo' ? 'hub' : 'pos');
           refreshState();
           showToast(`ترمینال بازگشایی شد: خوش آمدید ${unlockedUser.fullName}`);
         }}

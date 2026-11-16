@@ -25,7 +25,7 @@ export interface TenantThemeContextType {
 const DEFAULT_100HICH_MANIFEST: TenantManifest = {
   tenantId: 'tenant-100hich-01',
   brandNameEn: '100 HICH Coffee Roasters',
-  brandNameFa: 'قهوه‌فروشی ۱۰۰هیچ',
+  brandNameFa: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_VENUE_NAME) || 'قهوهفروشی ۱۰۰هیچ',
   taglineFa: 'لذت طعم اصیل قهوه تخصصی و برشته‌کاری موج سوم',
   currency: 'IRR',
   taxInclusive: true,
@@ -200,6 +200,7 @@ export const TenantThemeProvider: React.FC<TenantThemeProviderProps> = ({
     // Mission v0.16: build-time tenant switch wins over stale localStorage
     // (dedicated Modendo edition installs must never boot as 100 HICH).
     const envTenantId =
+      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT) ||
       (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) ||
       (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ACTIVE_TENANT) ||
       '';

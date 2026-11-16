@@ -107,7 +107,7 @@ export interface TenantOperationalConfig {
  */
 export const TENANT_CONFIG_100HICH: TenantOperationalConfig = {
   tenantId: 'tenant-100hich-01',
-  tenantName: 'قهوه‌فروشی ۱۰۰هیچ',
+  tenantName: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_VENUE_NAME) || 'قهوهفروشی ۱۰۰هیچ',
   tenantNameEn: '100 HICH Coffee Roasters',
   primaryMode: 'COUNTER_QUICK_PAY',
   supportedModes: ['COUNTER_QUICK_PAY', 'DINE_IN_PAY_BY_ORDER'],

@@ -1,12 +1,12 @@
 ; =====================================================================
 ; KarWand POS — 100 HICH Coffee Roasters Dedicated Installer Script
-; Output: KarWand-100HICH-Setup-v0.16.exe
+; Output: KarWand-100HICH-Setup-v0.16.1.exe
 ; Tenant: tenant-100hich-01 (Takeaway & Open-Tabs, Zero Floor Map)
 ; =====================================================================
 
 #define MyAppName "صندوق کاروند (۱۰۰ هیچ)"
 #define MyAppEnglishName "KarWand POS - 100 HICH"
-#define MyAppVersion "0.16.0"
+#define MyAppVersion "0.16.1"
 #define MyAppPublisher "KarWand Software Technologies"
 #define MyAppURL "https://smartorders.io"
 #define MyAppExeName "KarWandLauncher.exe"
@@ -26,7 +26,7 @@ DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 
 OutputDir=..\dist-installer
-OutputBaseFilename=KarWand-100HICH-Setup-v0.16
+OutputBaseFilename=KarWand-100HICH-Setup-v0.16.1
 SetupIconFile=..\public\karwand-logo.ico
 Compression=lzma2/ultra64
 SolidCompression=yes
