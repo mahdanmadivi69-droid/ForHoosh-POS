@@ -31,6 +31,7 @@ import { Order, User, isManagerOrOwner } from '../types/domain';
 import { SmartOrdersStore } from '../services/storage';
 import { RBACService } from '../services/RBACService';
 import { printThermalReceipt } from '../services/receiptPrinter';
+import { ReceiptOrderData } from './ReceiptPrintTemplate';
 import { formatToman } from '../services/financialMath';
 import { playPosBeep } from '../services/soundEffects';
 
@@ -67,7 +68,11 @@ export const ModendoReceiptHistoryModal: React.FC<ModendoReceiptHistoryModalProp
   // Load orders from tenant-scoped SmartOrdersStore
   const reloadOrders = () => {
     try {
-      const all = SmartOrdersStore.getOrders();
+      const all = SmartOrdersStore.getOrders().filter(
+        (o) =>
+          o.tenantId === 'tenant-modendo-01' ||
+          (!o.tenantId?.includes('100hich') && !o.customerName?.includes('۱۰۰هیچ'))
+      );
       // Sort newest first
       setOrders([...all].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
     } catch (err) {
@@ -119,7 +124,32 @@ export const ModendoReceiptHistoryModal: React.FC<ModendoReceiptHistoryModalProp
   const handleReprintReceipt = async (order: Order) => {
     playPosBeep('click');
     try {
-      await printThermalReceipt(order, { documentTitle: `فیش مجدد #${order.orderNumber}` });
+      const receiptData: ReceiptOrderData = {
+        invoiceNo: order.orderNumber,
+        tenantId: 'tenant-modendo-01',
+        dateTime: order.createdAt,
+        orderType: order.orderType,
+        cashier: order.createdByUserName,
+        customerName: order.customerName,
+        tableLabel: order.tableLabel,
+        items: order.items.map((i) => ({
+          name: i.itemNameSnapshot,
+          qty: i.quantity,
+          price: i.unitPriceSnapshotToman,
+          notes: i.notes,
+        })),
+        subtotalAmount: order.grossAmountToman,
+        discountAmount: order.discountAmountToman,
+        totalAmount: order.netTotalToman,
+        paymentMethod: 'CASH',
+      };
+      await printThermalReceipt(receiptData, {
+        documentTitle: `فیش مجدد #${order.orderNumber}`,
+        tenantName: 'کافه گیمینگ مودندو',
+        tenantAddress: 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱',
+        tenantPhone: '021-88994455',
+        headerNoteFa: 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو',
+      });
       playPosBeep('success');
       setReprintFeedback((prev) => ({
         ...prev,
@@ -172,16 +202,14 @@ export const ModendoReceiptHistoryModal: React.FC<ModendoReceiptHistoryModalProp
         }
 
         // Verify PIN against RBAC service
-        const allUsers = await RBACService.getAllUsers();
-        const validManager = allUsers.find(
-          (u) =>
-            (u.role === 'OWNER' || u.role === 'MANAGER') &&
-            u.isActive &&
-            u.pin === managerPin
+        const authRes = await RBACService.verifyElevationPin(
+          managerPin,
+          'VOID_DISPATCHED_ORDER',
+          activeUser.fullName
         );
 
-        if (!validManager) {
-          setPinError('پین‌کد مدیریت نامعتبر است.');
+        if (!authRes.success) {
+          setPinError(authRes.error || 'پین‌کد مدیریت نامعتبر است.');
           playPosBeep('delete');
           setIsVerifyingPin(false);
           return;

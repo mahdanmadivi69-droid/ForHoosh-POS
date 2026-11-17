@@ -81,15 +81,15 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   const isManagerOrOwner =
     activeUser.role === 'OWNER' ||
     activeUser.role === 'MANAGER' ||
-    activeUser.role === 'owner' ||
-    activeUser.role === 'manager';
+    (activeUser.role as string).toLowerCase() === 'owner' ||
+    (activeUser.role as string).toLowerCase() === 'manager';
 
   // Live tables and PS5 console monitoring
   useEffect(() => {
     const updateStats = () => {
       try {
-        const activeTabs = openTabService.getAllActiveTabs();
-        const catalogTabs = CatalogService.getOpenTabs();
+        const activeTabs = openTabService.getAllActiveTabs('tenant-modendo-01');
+        const catalogTabs = CatalogService.getOpenTabs('tenant-modendo-01');
         const allTabs = [...activeTabs, ...catalogTabs];
 
         let occupiedTables = 0;
@@ -189,9 +189,9 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   };
 
   const roleTitleFa =
-    activeUser.role === 'OWNER' || activeUser.role === 'owner'
+    activeUser.role === 'OWNER' || (activeUser.role as string).toLowerCase() === 'owner'
       ? 'مالک سیستم'
-      : activeUser.role === 'MANAGER' || activeUser.role === 'manager'
+      : activeUser.role === 'MANAGER' || (activeUser.role as string).toLowerCase() === 'manager'
       ? 'مدیر شیفت'
       : activeUser.role === 'ACCOUNTANT'
       ? 'حسابدار'
@@ -651,10 +651,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
         isOpen={Boolean(elevationTarget)}
         action={
           elevationTarget === 'reports'
-            ? 'VIEW_FINANCIAL_REPORTS'
+            ? 'ACCESS_SETTINGS_PANEL'
             : elevationTarget === 'menu'
-            ? 'EDIT_MENU_PRICES'
-            : 'SYSTEM_SETTINGS_ACCESS'
+            ? 'EDIT_RECIPE_BOM'
+            : 'ACCESS_SETTINGS_PANEL'
         }
         requestedByUser={activeUser.fullName}
         onSuccess={handleElevationSuccess}

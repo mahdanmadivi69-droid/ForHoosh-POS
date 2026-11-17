@@ -1,6 +1,7 @@
 import { PinLockScreen } from './components/auth/PinLockScreen';
 import { AppLauncherHub } from './components/hub/AppLauncherHub';
 import { ModendoOperationalHub } from './components/ModendoOperationalHub';
+import { ModendoSettingsDeck } from './components/ModendoSettingsDeck';
 import { ModendoReceiptHistoryModal } from './components/ModendoReceiptHistoryModal';
 import { SensoryLabView } from './components/SensoryLabView';
 import { HichSettingsControlDeck } from './views/settings/HichSettingsControlDeck';
@@ -183,13 +184,18 @@ function App() {
   }, [currentTab, activeTenant.id]);
 
 
-  // P0-1: hard lockdown — if the Zero-G flag is off, force the real POS view
-  // even for a stale tab value in memory/storage.
+  // P0-1: hard lockdown — if the Zero-G flag is off or running under Modendo,
+  // force redirection away from Sensory Lab.
   useEffect(() => {
-    if (!FEATURES.ENABLE_ZERO_G_SMART_ORDERS && currentTab === 'zero-g') {
+    if (isModendoTenant) {
+      FEATURES.ENABLE_ZERO_G_SMART_ORDERS = false;
+      if (currentTab === 'zero-g') {
+        setCurrentTab('hub');
+      }
+    } else if (!FEATURES.ENABLE_ZERO_G_SMART_ORDERS && currentTab === 'zero-g') {
       setCurrentTab('pos');
     }
-  }, [currentTab]);
+  }, [currentTab, isModendoTenant]);
 
   // User Authentication Handlers
   const handleLockTerminal = () => {
@@ -384,7 +390,7 @@ function App() {
 
   // 2. Operational Module Hub Launcher
   if (currentTab === 'hub') {
-    if (activeTenant.id === 'modendo') {
+    if (isModendoTenant) {
       return (
         <>
           <ModendoOperationalHub
@@ -491,12 +497,15 @@ function App() {
       {/* Main Header */}
       <Header
         tenant={tenant}
-        activeTenantKey={activeTenant.id as 'modendo' | '100hich'}
+        activeTenantKey={isModendoTenant ? 'modendo' : '100hich'}
         activeShift={activeShift}
         activeUser={activeUser}
         allUsers={allUsers}
         currentTab={currentTab}
-        onTabChange={setCurrentTab}
+        onTabChange={(tab) => {
+          if (isModendoTenant && tab === 'zero-g') return;
+          setCurrentTab(tab);
+        }}
         onOpenShiftModal={() => setIsShiftModalOpen(true)}
         onOpenZReportModal={() => setIsZReportModalOpen(true)}
         onOpenExpenseModal={() => setIsExpenseModalOpen(true)}
@@ -512,7 +521,7 @@ function App() {
 
       {/* Main View Area */}
       <main id="app-viewport" className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain relative">
-        {currentTab === 'zero-g' && (
+        {currentTab === 'zero-g' && !isModendoTenant && (
           <SensoryLabView
             onBackToLauncher={() => setCurrentTab('hub')}
             baristaName={activeUser.fullName}
@@ -584,19 +593,27 @@ function App() {
 
 
         {currentTab === 'settings' && (
-          <SettingsView
-            currentUserRole={activeUser.role as any}
-            currentUserName={activeUser.fullName}
-            onBackToPos={() => setCurrentTab('pos')}
-            onRoleSwitch={(newRole) => {
-              const matched = allUsers.find((u) => u.role === newRole);
-              if (matched) {
-                handleUserSwitchRequest(matched.id);
-              } else {
-                showToast(`کاربری با نقش ${newRole} برای ورود امن یافت نشد.`);
-              }
-            }}
-          />
+          isModendoTenant ? (
+            <ModendoSettingsDeck
+              isOpen={true}
+              onClose={() => setCurrentTab('hub')}
+              currentUserName={activeUser.fullName}
+            />
+          ) : (
+            <SettingsView
+              currentUserRole={activeUser.role as any}
+              currentUserName={activeUser.fullName}
+              onBackToPos={() => setCurrentTab('pos')}
+              onRoleSwitch={(newRole) => {
+                const matched = allUsers.find((u) => u.role === newRole);
+                if (matched) {
+                  handleUserSwitchRequest(matched.id);
+                } else {
+                  showToast(`کاربری با نقش ${newRole} برای ورود امن یافت نشد.`);
+                }
+              }}
+            />
+          )
         )}
       </main>
 

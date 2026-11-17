@@ -47,6 +47,14 @@ interface ModendoSettingsDeckProps {
 
 type SettingsSection = 'venue' | 'printers' | 'visual' | 'staff' | 'backup';
 
+export const PURE_MODENDO_STORE_PROFILE: StoreProfileConfig = {
+  name_fa: 'کافه گیمینگ مودندو',
+  name_en: 'Modendo Gaming Lounge',
+  address: 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱',
+  phone: '021-88994455',
+  tax_registration_no: '14009876543',
+};
+
 export const ModendoSettingsDeck: React.FC<ModendoSettingsDeckProps> = ({
   isOpen,
   onClose,
@@ -58,26 +66,35 @@ export const ModendoSettingsDeck: React.FC<ModendoSettingsDeckProps> = ({
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
 
   // Store Profile State
-  const [storeProfile, setStoreProfile] = useState<StoreProfileConfig>(() => {
-    try {
-      const stored = SettingsService.getStoreProfile();
-      return stored && !stored.name_fa.includes('۱۰۰ هیچ') ? stored : MODENDO_STORE_PROFILE;
-    } catch {
-      return MODENDO_STORE_PROFILE;
-    }
-  });
+  const [storeProfile, setStoreProfile] = useState<StoreProfileConfig>(PURE_MODENDO_STORE_PROFILE);
 
   // Receipt Template State
-  const [receiptTemplate, setReceiptTemplate] = useState<ReceiptTemplateConfig>(() => {
-    try {
-      const stored = SettingsService.getReceiptTemplate();
-      return stored && !stored.header_lines.some((l) => l.includes('۱۰۰ هیچ'))
-        ? stored
-        : MODENDO_RECEIPT_TEMPLATE;
-    } catch {
-      return MODENDO_RECEIPT_TEMPLATE;
-    }
-  });
+  const [receiptTemplate, setReceiptTemplate] = useState<ReceiptTemplateConfig>(MODENDO_RECEIPT_TEMPLATE);
+
+  // Load persisted settings on mount
+  useEffect(() => {
+    SettingsService.loadSettings('tenant-modendo-01')
+      .then((settings) => {
+        if (
+          settings?.store_profile &&
+          !settings.store_profile.name_fa?.includes('۱۰۰') &&
+          !settings.store_profile.name_fa?.includes('100')
+        ) {
+          setStoreProfile(settings.store_profile);
+        }
+        if (
+          settings?.receipt_template &&
+          !settings.receipt_template.header_lines?.some(
+            (l: string) => l.includes('۱۰۰') || l.includes('100')
+          )
+        ) {
+          setReceiptTemplate(settings.receipt_template);
+        }
+      })
+      .catch((err) => {
+        console.warn('[ModendoSettings] Failed loading settings:', err);
+      });
+  }, []);
 
   // Visual & Interface Tuning State (Modendo Namespace)
   const [backdropBlur, setBackdropBlur] = useState<number>(() => {
@@ -120,14 +137,19 @@ export const ModendoSettingsDeck: React.FC<ModendoSettingsDeckProps> = ({
 
   const handleSaveVenueSettings = async () => {
     try {
-      await SettingsService.saveStoreProfile(storeProfile);
-      await SettingsService.saveReceiptTemplate(receiptTemplate);
+      await SettingsService.saveSettings(
+        {
+          store_profile: storeProfile,
+          receipt_template: receiptTemplate,
+        },
+        'tenant-modendo-01'
+      );
       playPosBeep('success');
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (e) {
       console.error('[ModendoSettings] Failed to save settings:', e);
-      playPosBeep('error');
+      playPosBeep('delete');
     }
   };
 
@@ -518,7 +540,7 @@ export const ModendoSettingsDeck: React.FC<ModendoSettingsDeckProps> = ({
                           deviceId: 'MODENDO-TERM-01',
                           token: 'MOD-PAIR-2026',
                         }),
-                        { size: 140, margin: 1 }
+                        { size: 140 }
                       ),
                     }}
                   />

@@ -1,5 +1,6 @@
 import Dexie, { Table } from 'dexie';
 import { InventoryItem, MenuItem, Order, AuditLog } from '../types/db';
+import type { Order as DomainOrder } from '../types/domain';
 import {
   AuthUserRecord,
   AppSettingRecord,
@@ -90,42 +91,223 @@ export class CafeDatabase extends Dexie {
       stockInwardTransactions: 'id, raw_item_id, batch_number, timestamp, supplier_name',
       customers: 'id, phone, name, tenantId, createdAt',
       syncQueue: 'id, clientGeneratedId, tenantId, syncStatus, createdAt',
+      posOrders: 'id, orderNumber, shiftId, status, createdAt',
     });
 
-    // P0-2: additive upgrade — only adds `posOrders`; all v1 tables and their
-    // existing rows are preserved by Dexie.
-    this.version(2).stores({
-      posOrders: 'id, orderNumber, shiftId, status, createdAt'
+    this.version(4).stores({
+      posOrders: 'id, orderNumber, shiftId, status, createdAt',
     });
   }
 }
 
 // -----------------------------------------------------------------------------
-// Multi-Tenant Isolated Database Registry & Resolvers (Phase 1 Remediation)
+// Multi-Tenant Isolated Database Registry & Resolvers
 // -----------------------------------------------------------------------------
 
 const dbRegistry = new Map<string, CafeDatabase>();
 
-function resolveActiveTenantId(): string {
+export const MODENDO_STORE_METADATA = {
+  name_fa: 'کافه گیمینگ مودندو',
+  name_en: 'Modendo Gaming Lounge',
+  address: 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱',
+  phone: '021-88994455',
+  tax_registration_no: '14009876543',
+};
+
+export const MODENDO_RECEIPT_METADATA = {
+  header_lines: [
+    '*** کافه گیمینگ مودندو ***',
+    'مرکز بازی‌های رومیزی و اتاق کنسول PS5',
+  ],
+  footer_lines: [
+    'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو',
+    'Wi-Fi: Modendo-Guest / Pass: modendo2026',
+    'اینستاگرام: @modendo.cafe',
+  ],
+  print_qr_invoice_link: true,
+};
+
+export const MODENDO_DEFAULT_INVENTORY: Array<{
+  id: string;
+  name: string;
+  category: string;
+  currentStock: number;
+  unit: string;
+  costPerUnit: number;
+  minThreshold: number;
+}> = [
+  {
+    id: 'mod_ing_espresso_blend',
+    name: 'دانه قهوه دارک رست مودندو',
+    category: 'raw_materials',
+    currentStock: 9500,
+    unit: 'g',
+    costPerUnit: 1400,
+    minThreshold: 2000,
+  },
+  {
+    id: 'mod_ing_milk',
+    name: 'شیر تازه ۳.۰٪ مودندو',
+    category: 'raw_materials',
+    currentStock: 16000,
+    unit: 'ml',
+    costPerUnit: 60,
+    minThreshold: 4000,
+  },
+  {
+    id: 'mod_ing_burger_patty',
+    name: 'پتی برگر گوشت گوساله ۱۵۰ گرمی',
+    category: 'raw_materials',
+    currentStock: 35,
+    unit: 'piece',
+    costPerUnit: 85000,
+    minThreshold: 12,
+  },
+  {
+    id: 'mod_ing_burger_bun',
+    name: 'نان همبرگر بریوش مودندو',
+    category: 'raw_materials',
+    currentStock: 40,
+    unit: 'piece',
+    costPerUnit: 18000,
+    minThreshold: 15,
+  },
+  {
+    id: 'mod_ing_fries',
+    name: 'سیب‌زمینی نیمه‌آماده منجمد مودندو',
+    category: 'raw_materials',
+    currentStock: 25000,
+    unit: 'g',
+    costPerUnit: 110,
+    minThreshold: 5000,
+  },
+  {
+    id: 'mod_ing_cheddar',
+    name: 'پنیر چدار ورقه‌ای مودندو',
+    category: 'raw_materials',
+    currentStock: 60,
+    unit: 'piece',
+    costPerUnit: 9000,
+    minThreshold: 20,
+  },
+];
+
+export function resolveActiveTenantId(): string {
+  // Check build-time or runtime environment variables first
+  const envTenant =
+    (typeof import.meta !== 'undefined' && ((import.meta as any).env?.VITE_TENANT_ID || (import.meta as any).env?.VITE_ACTIVE_TENANT)) ||
+    (typeof process !== 'undefined' && (process.env?.VITE_TENANT_ID || process.env?.VITE_ACTIVE_TENANT)) ||
+    '';
+  const envMode =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE) ||
+    (typeof process !== 'undefined' && (process.env?.NODE_ENV || process.env?.MODE)) ||
+    '';
+
   if (typeof localStorage !== 'undefined' && localStorage) {
     try {
       const stored = localStorage.getItem('cafeos_active_tenant_id');
       if (stored) {
         const parsed = JSON.parse(stored);
         if (parsed && typeof parsed === 'string' && parsed.trim()) {
-          return parsed.trim();
+          const val = parsed.trim();
+          if (val === 'modendo') return 'tenant-modendo-01';
+          if (val === '100hich') return 'tenant-100hich-01';
+          return val;
         }
       }
     } catch {
       // ignore
     }
   }
+
+  if (envTenant) {
+    if (/modendo/i.test(envTenant)) return 'tenant-modendo-01';
+    if (/100hich/i.test(envTenant)) return 'tenant-100hich-01';
+    return envTenant;
+  }
+
+  if (envMode === 'modendo' || /modendo/i.test(envMode)) {
+    return 'tenant-modendo-01';
+  }
+
   return 'tenant-100hich-01';
 }
 
 export function getTenantDatabaseName(tenantId?: string): string {
-  const resolved = tenantId && tenantId.trim() ? tenantId.trim() : resolveActiveTenantId();
+  let resolved = tenantId && tenantId.trim() ? tenantId.trim() : resolveActiveTenantId();
+  if (resolved === 'modendo') resolved = 'tenant-modendo-01';
+  if (resolved === '100hich') resolved = 'tenant-100hich-01';
+  if (resolved.startsWith('CafeOS_LocalDB_')) return resolved;
   return `CafeOS_LocalDB_${resolved}`;
+}
+
+export async function seedTenantDatabaseDefaults(targetDb: CafeDatabase, tenantId: string): Promise<void> {
+  const isModendo =
+    tenantId.includes('modendo') ||
+    (typeof import.meta !== 'undefined' &&
+      ((import.meta as any).env?.VITE_TENANT_ID?.includes('modendo') ||
+        (import.meta as any).env?.MODE === 'modendo')) ||
+    (typeof process !== 'undefined' &&
+      (process.env?.VITE_TENANT_ID?.includes('modendo') || process.env?.MODE === 'modendo'));
+
+  if (isModendo) {
+    // 1. Seed pure Modendo store profile without 100hich strings
+    const existingStore = await targetDb.appSettings.get('store_profile').catch(() => null);
+    const storeHas100Hich =
+      !existingStore ||
+      (existingStore.value?.name_fa &&
+        (existingStore.value.name_fa.includes('۱۰۰') || existingStore.value.name_fa.includes('100')));
+    if (storeHas100Hich) {
+      await targetDb.appSettings.put({
+        key: 'store_profile',
+        value: MODENDO_STORE_METADATA,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // 2. Seed pure Modendo receipt template
+    const existingReceipt = await targetDb.appSettings.get('receipt_template').catch(() => null);
+    const receiptHas100Hich =
+      !existingReceipt ||
+      (existingReceipt.value?.header_lines &&
+        existingReceipt.value.header_lines.some((l: string) => l.includes('۱۰۰') || l.includes('100')));
+    if (receiptHas100Hich) {
+      await targetDb.appSettings.put({
+        key: 'receipt_template',
+        value: MODENDO_RECEIPT_METADATA,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // 3. Clean inventory: purge 100hich-specific items and populate Modendo default inventory
+    const existingInv = await targetDb.inventoryItems.toArray().catch(() => []);
+    const has100Hich = existingInv.some(
+      (item) =>
+        item.name?.includes('۱۰۰') ||
+        item.name?.includes('100') ||
+        item.name?.includes('بلند اختصاصی اسپرسو')
+    );
+    if (has100Hich || existingInv.length === 0) {
+      for (const item of existingInv) {
+        if (
+          item.name?.includes('۱۰۰') ||
+          item.name?.includes('100') ||
+          item.name?.includes('بلند اختصاصی اسپرسو')
+        ) {
+          await targetDb.inventoryItems.delete(item.id);
+        }
+      }
+      for (const inv of MODENDO_DEFAULT_INVENTORY) {
+        const itemExists = await targetDb.inventoryItems.get(inv.id);
+        if (!itemExists) {
+          await targetDb.inventoryItems.put({
+            ...inv,
+            updatedAt: Date.now(),
+          } as any);
+        }
+      }
+    }
+  }
 }
 
 /**
@@ -134,7 +316,9 @@ export function getTenantDatabaseName(tenantId?: string): string {
 export function getCafeDatabase(tenantId?: string): CafeDatabase {
   const dbName = getTenantDatabaseName(tenantId);
   if (!dbRegistry.has(dbName)) {
-    dbRegistry.set(dbName, new CafeDatabase(dbName));
+    const instance = new CafeDatabase(dbName);
+    dbRegistry.set(dbName, instance);
+    seedTenantDatabaseDefaults(instance, dbName).catch(() => {});
   }
   return dbRegistry.get(dbName)!;
 }

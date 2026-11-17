@@ -52,15 +52,15 @@ export const TENANT_PROFILES: Record<string, TenantProfile> = {
   },
   'modendo': {
     id: 'modendo',
-    brandNameFa: 'MODENDO — کافه بردگیم و گیمینگ',
-    brandNameEn: 'Modendo Boardgame & Gaming Cafe',
+    brandNameFa: 'کافه گیمینگ مودندو',
+    brandNameEn: 'Modendo Gaming Lounge',
     palette: {
-      primaryBg: '#0b0e12',
+      primaryBg: '#081813',
       surfaceBg: '#12161D',
-      accentColor: '#10B981',
-      accentHover: '#059669',
-      mintHighlight: '#34D399',
-      accentGlow: 'rgba(16, 185, 129, 0.45)',
+      accentColor: '#005A3E',
+      accentHover: '#007A54',
+      mintHighlight: '#68A691',
+      accentGlow: 'rgba(0, 90, 62, 0.45)',
       textPrimary: '#F8EED9',
       textMuted: '#9BB1A8',
       borderHairline: 'rgba(255, 255, 255, 0.11)',
@@ -72,7 +72,7 @@ export const TENANT_PROFILES: Record<string, TenantProfile> = {
     },
     receipt: {
       logoPath: '/karwand-logo.png',
-      headerNoteFa: 'لحظاتی خوش و ماندگار در کافه بردگیم و گیمینگ مودندو',
+      headerNoteFa: 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو',
       printKitchenTicket: true,
     },
   },
@@ -106,11 +106,19 @@ export function getActiveTenant(): TenantProfile {
   // Modendo Edition: VITE_TENANT_ID is the primary build-time tenant switch
   // (mission: default tenant 'modendo'); VITE_ACTIVE_TENANT kept as legacy fallback.
   const envTenant =
-    (import.meta as any).env?.VITE_TENANT_ID ||
-    (import.meta as any).env?.VITE_ACTIVE_TENANT;
+    (typeof import.meta !== 'undefined' && ((import.meta as any).env?.VITE_TENANT_ID || (import.meta as any).env?.VITE_ACTIVE_TENANT)) ||
+    (typeof process !== 'undefined' && (process.env?.VITE_TENANT_ID || process.env?.VITE_ACTIVE_TENANT)) ||
+    '';
   if (envTenant && TENANT_PROFILES[envTenant]) {
     return TENANT_PROFILES[envTenant];
   }
+  const envMode =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE) ||
+    (typeof process !== 'undefined' && (process.env?.NODE_ENV || process.env?.MODE)) ||
+    '';
+  if (envMode === 'modendo' || (envTenant && /modendo/i.test(envTenant))) {
+    return TENANT_PROFILES['modendo'];
+  }
   // Default tenant for the Modendo Gaming Lounge Edition build
-  return TENANT_PROFILES['modendo'] || TENANT_PROFILES['100hich'];
+  return TENANT_PROFILES['modendo'];
 }

@@ -23,6 +23,7 @@ import {
   MODENDO_FLOOR_NODES,
   getSessionTotalToman,
   resolvePrimaryNodeId,
+  is100HichNode,
 } from './FloorPlanCanvas';
 import { TableSessionModal } from './TableSessionModal';
 import { TableEntity } from '../../types/floor-plan';
@@ -40,7 +41,7 @@ interface FloorPlanViewProps {
   onBackToHub?: () => void;
 }
 
-const STORAGE_KEY_SESSIONS = 'modendo_floor_sessions_v1';
+const STORAGE_KEY_SESSIONS = 'cafeos_modendo_floor_sessions_v1';
 
 export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   onBackToPos,
@@ -61,15 +62,34 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   const [moveMode, setMoveMode] = useState<boolean>(false);
   const [moveSourceId, setMoveSourceId] = useState<string | null>(null);
 
-  // Local table sessions state
+  // Local table sessions state (Strict Modendo tenant isolation)
   const [sessions, setSessions] = useState<Record<string, TableSession>>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_SESSIONS);
-      return stored ? JSON.parse(stored) : {};
+      if (stored) {
+        const parsed: Record<string, TableSession> = JSON.parse(stored);
+        const clean: Record<string, TableSession> = {};
+        for (const [key, val] of Object.entries(parsed)) {
+          if (!is100HichNode(key) && !is100HichNode(val.tableLabel)) {
+            clean[key] = val;
+          }
+        }
+        return clean;
+      }
+      return {};
     } catch {
       return {};
     }
   });
+
+  // Reload floor plan for active Modendo tenant on mount
+  useEffect(() => {
+    try {
+      floorPlanService.reloadForTenant();
+    } catch (e) {
+      console.warn('[FloorPlanView] Failed reloading floor plan:', e);
+    }
+  }, []);
 
   // Save sessions to localStorage whenever changed
   useEffect(() => {
@@ -88,12 +108,12 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Sync open tabs from openTabService / CatalogService
+  // Sync open tabs from openTabService / CatalogService (Scoped to Modendo)
   useEffect(() => {
     const syncOpenTabs = () => {
       try {
-        const activeTabs = openTabService.getAllActiveTabs();
-        const catalogTabs = CatalogService.getOpenTabs();
+        const activeTabs = openTabService.getAllActiveTabs('tenant-modendo-01');
+        const catalogTabs = CatalogService.getOpenTabs('tenant-modendo-01');
         const allTabs = [...activeTabs, ...catalogTabs];
 
         if (allTabs.length === 0) return;
@@ -105,6 +125,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
           for (const node of MODENDO_FLOOR_NODES) {
             const match = allTabs.find((t: any) => {
               const label = t.table_or_customer || t.tableOrCustomer || t.tableId || '';
+              if (is100HichNode(label)) return false;
               return (
                 label === node.label ||
                 label === node.id ||
@@ -430,7 +451,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
       const mockEntity: TableEntity = {
         id: node.id,
         display_name: node.label,
-        zone_id: node.zone.toLowerCase(),
+        zone_id: node.zone.toLowerCase() as TableEntity['zone_id'],
         level: node.zone === 'LOUNGE' || node.zone === 'PS_ROOM' ? 0 : 1,
         billing_mode: node.kind === 'PS5' ? 'hourly_timer' : 'standard_table',
         capacity: { nominal: node.seats, max: node.seats + 2 },

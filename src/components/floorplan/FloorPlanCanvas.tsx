@@ -450,6 +450,20 @@ const MERGE_ACCENTS = [
   { ring: 'ring-violet-400/75', border: 'border-violet-400/65', text: 'text-violet-300', stroke: '#a78bfa' },
 ];
 
+export const is100HichNode = (idOrLabel: string): boolean => {
+  const s = String(idOrLabel || '').toLowerCase();
+  return (
+    s.includes('100') ||
+    s.includes('۱۰۰') ||
+    s.includes('اسپرسو بار') ||
+    s.includes('تراس ۱ و ۲ فضای باز') ||
+    s.includes('تراس فضای باز') ||
+    s.includes('باجه تحویل') ||
+    s.includes('takeaway_pickup') ||
+    s.includes('bar_counter_100')
+  );
+};
+
 export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
   nodes = MODENDO_FLOOR_NODES,
   sessions = {},
@@ -471,7 +485,11 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
   onOpenSessionModal,
   onConfirmTableOrder,
 }) => {
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  // Pure Modendo enforcement: filter out any leaking 100hich nodes
+  const sanitizedNodes = (nodes || MODENDO_FLOOR_NODES).filter(
+    (n) => !is100HichNode(n.id) && !is100HichNode(n.titleFa) && !is100HichNode(n.label)
+  );
+  const nodeMap = new Map(sanitizedNodes.map((n) => [n.id, n]));
   const blueprintRef = useRef<HTMLDivElement | null>(null);
   const [mergeLines, setMergeLines] = useState<MergeLinkLine[]>([]);
   const [dragState, setDragState] = useState<ActiveDragState | null>(null);
@@ -745,9 +763,8 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     playPosBeep('click');
     onSelectNode?.(node);
     onSelectTable?.({
-      id: node.id,
-      display_name: node.label,
       ...node,
+      display_name: node.label,
     });
   };
 
