@@ -456,11 +456,28 @@ export const is100HichNode = (idOrLabel: string): boolean => {
     s.includes('100') ||
     s.includes('۱۰۰') ||
     s.includes('اسپرسو بار') ||
-    s.includes('تراس ۱ و ۲ فضای باز') ||
+    s.includes('میانی سالن') ||
+    s.includes('پنجره') ||
+    s.includes('میز مطالعه') ||
+    s.includes('فضای باز') ||
+    s.includes('تراس ۱ و ۲') ||
     s.includes('تراس فضای باز') ||
     s.includes('باجه تحویل') ||
+    s.includes('باجه تحویل بیرون‌بر') ||
     s.includes('takeaway_pickup') ||
-    s.includes('bar_counter_100')
+    s.includes('bar_counter_100') ||
+    s === 'میز ۱' ||
+    s === 'میز ۲' ||
+    s === 'میز ۳' ||
+    s === 'میز ۴' ||
+    s === '100h-t1' ||
+    s === '100h-t2' ||
+    s === '100h-t3' ||
+    s === '100h-t4' ||
+    s === '100h-t5' ||
+    s === '100h-t6' ||
+    s === '100h-t7' ||
+    s === '100h-bar'
   );
 };
 

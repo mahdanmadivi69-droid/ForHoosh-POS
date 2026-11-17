@@ -4,14 +4,17 @@
  * Modendo POS — Operational Module Hub (Launcher View)
  * Rendered after PIN unlock when activeTenant === 'modendo'.
  * Features:
- *  - Liquid Glass Emerald Visual Tokens (#0b0e12 canvas, #1B222C/70 glass cards, #10B981 emerald accent).
- *  - 6 Interactive Module Cards:
- *      1. نقشه سالن و ایستگاه‌های PS5 (Primary Hero Card -> FLOOR_PLAN, live table & console stats)
- *      2. صندوق و سفارش بیرون‌بر (-> POS in quick takeaway mode)
- *      3. بار باریستا و آشپزخانه (KDS) (-> KDS modal with live active tickets)
- *      4. گزارش‌ها و تراز مالی (Role-Gated -> REPORTS)
- *      5. مدیریت منو و تعرفه بازی (Role-Gated -> MENU_ADMIN)
- *      6. تنظیمات سیستم و چاپگرها (Role-Gated -> ModendoSettingsDeck without 100HICH leakage)
+ *  - Solid Matte Emerald Visual Tokens (#06120F canvas, #0B1F1A cards, #10B981 emerald accent).
+ *  - 9 Interactive Module Cards (3x3 Grid):
+ *      1. نقشه سالن و ایستگاه‌های PS5 (FLOOR_PLAN)
+ *      2. صندوق و سفارش بیرون‌بر (POS takeaway)
+ *      3. بار باریستا و آشپزخانه (KDS)
+ *      4. سابقه فیش‌ها و چاپ مجدد (Receipts & Reprint)
+ *      5. گزارش‌ها و تراز مالی (Role-Gated -> REPORTS)
+ *      6. مدیریت منو و تعرفه بازی (Role-Gated -> MENU_ADMIN)
+ *      7. انبارداری و موجودی کالا (Role-Gated -> INVENTORY)
+ *      8. لاگ حسابرسی و نظارت (Role-Gated -> AUDIT)
+ *      9. تنظیمات سیستم و چاپگرها (Role-Gated -> ModendoSettingsDeck)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -38,6 +41,8 @@ import {
   MapPin,
   UtensilsCrossed,
   Receipt,
+  Warehouse,
+  Shield,
 } from 'lucide-react';
 import { AuthUserRecord } from '../types/rbac-settings';
 import { Shift, User } from '../types/domain';
@@ -200,19 +205,13 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   return (
     <div
       dir="rtl"
-      className="min-h-screen w-full bg-[#0b0e12] text-white flex flex-col justify-between p-4 md:p-8 select-none overflow-y-auto font-sans relative"
+      className="min-h-screen w-full bg-[#06120F] text-white flex flex-col justify-between p-4 md:p-8 select-none overflow-y-auto font-sans relative pb-28"
     >
-      {/* Background Ambient Mesh Orb */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-        <div className="absolute top-[-15%] right-[-10%] w-[550px] h-[550px] bg-[#10B981]/[0.07] rounded-full blur-[140px]" />
-        <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-sky-500/[0.05] rounded-full blur-[160px]" />
-      </div>
-
       {/* Top Operational Header */}
-      <header className="relative z-10 max-w-6xl w-full mx-auto rounded-3xl liquid-glass-shell p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 border border-white/10 shadow-2xl">
+      <header className="relative z-10 max-w-6xl w-full mx-auto rounded-3xl bg-[#0B1F1A] p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 border border-[#16382F] shadow-2xl">
         {/* Brand & Hub Title */}
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-[#10B981]/15 border border-[#10B981]/30 flex items-center justify-center text-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+          <div className="w-12 h-12 rounded-2xl bg-[#10B981]/20 border border-[#10B981]/40 flex items-center justify-center text-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.3)]">
             <Gamepad2 className="w-6 h-6" />
           </div>
           <div>
@@ -242,8 +241,8 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             }}
             className={`rounded-full px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
               activeShift
-                ? 'bg-[#10B981]/15 border border-[#10B981]/40 text-emerald-200 hover:bg-[#10B981]/25 shadow-[0_0_14px_rgba(16,185,129,0.2)]'
-                : 'bg-amber-500/15 border border-amber-400/40 text-amber-200 hover:bg-amber-500/25'
+                ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-200 hover:bg-[#10B981]/30 shadow-[0_0_14px_rgba(16,185,129,0.25)]'
+                : 'bg-amber-500/20 border border-amber-400/50 text-amber-200 hover:bg-amber-500/30'
             }`}
             title="وضعیت شیفت کاری"
           >
@@ -252,7 +251,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
           </button>
 
           {/* Active User Pill */}
-          <div className="rounded-full bg-white/[0.06] border border-white/10 px-3.5 py-1.5 flex items-center gap-2 text-xs">
+          <div className="rounded-full bg-[#0E2922] border border-[#16382F] px-3.5 py-1.5 flex items-center gap-2 text-xs">
             <Users className="w-3.5 h-3.5 text-emerald-400" />
             <span className="font-bold text-white">{activeUser.fullName}</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-[#94A3B8] font-bold">
@@ -260,14 +259,14 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             </span>
           </div>
 
-          {/* Lock Terminal Button */}
+          {/* Lock Terminal Button (Minimal Crimson Trace) */}
           <button
             type="button"
             onClick={() => {
               playPosBeep('click');
               onLock();
             }}
-            className="rounded-full bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-400/50 p-2 text-[#94A3B8] hover:text-rose-200 transition cursor-pointer"
+            className="rounded-full bg-[#881337]/30 hover:bg-[#881337]/70 border border-[#991B1B]/50 hover:border-[#991B1B] p-2 text-rose-300 hover:text-white transition cursor-pointer shadow-sm"
             title="قفل فوری پایانه"
           >
             <Lock className="w-4 h-4" />
@@ -275,11 +274,11 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
         </div>
       </header>
 
-      {/* Main 6-Module Interactive Grid */}
-      <main className="relative z-10 max-w-6xl w-full mx-auto my-auto py-6">
+      {/* Main 9-Module Interactive Grid */}
+      <main className="relative z-10 max-w-6xl w-full mx-auto py-6 pb-24 flex-1">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
           {/* =========================================================================
-              CARD 1: نقشه سالن و ایستگاه‌های PS5 (HERO CARD - Emerald Glow)
+              CARD 1: نقشه سالن و ایستگاه‌های PS5
              ========================================================================= */}
           <motion.div
             role="button"
@@ -288,58 +287,40 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('floor-plan')}
-            className="lg:col-span-2 relative rounded-3xl p-6 bg-gradient-to-br from-[#10B981]/[0.16] via-[#1B222C]/80 to-[#12161D]/90 border border-[#10B981]/40 hover:border-[#10B981] shadow-[0_16px_36px_rgba(0,0,0,0.6),0_0_24px_rgba(16,185,129,0.18)] cursor-pointer backdrop-blur-2xl overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
-            {/* Top Light Accent */}
-            <div
-              aria-hidden="true"
-              className="absolute top-0 inset-x-4 h-px bg-gradient-to-r from-transparent via-[#10B981]/60 to-transparent"
-            />
-
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-[#10B981]/20 border border-[#10B981]/40 flex items-center justify-center text-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.3)] group-hover:scale-105 transition-transform">
-                  <LayoutGrid className="w-7 h-7" />
+                <div className="w-12 h-12 rounded-2xl bg-[#10B981]/20 border border-[#10B981]/40 flex items-center justify-center text-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.3)] group-hover:scale-105 transition-transform">
+                  <LayoutGrid className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-[#10B981]/20 text-emerald-300 border border-[#10B981]/40 inline-block mb-1">
-                    ماژول اصلی عملیات سالن · ۲۳ جایگاه
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#10B981]/20 text-emerald-300 border border-[#10B981]/40 inline-block mb-1">
+                    ۲۳ جایگاه و ۴ کنسول
                   </span>
-                  <h2 className="text-lg md:text-xl font-black text-white group-hover:text-emerald-300 transition-colors">
+                  <h2 className="text-base font-black text-white group-hover:text-emerald-300 transition-colors">
                     نقشه سالن و ایستگاه‌های PS5
                   </h2>
                 </div>
               </div>
 
-              <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 group-hover:text-emerald-300 group-hover:bg-[#10B981]/20 transition-all">
-                <ChevronLeft className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 group-hover:text-emerald-300 group-hover:bg-[#10B981]/20 transition-all">
+                <ChevronLeft className="w-4 h-4" />
               </div>
             </div>
 
-            <p className="text-xs md:text-sm text-[#94A3B8] leading-relaxed my-3">
-              مدیریت بصری ۳ بالِ پلان سالن (لانژ مبل و ژتون، سالن اصلی بردگیم، تراس فضای باز) و مانیتورینگ ۴ کابین اختصاصی کنسول بازی همراه تایمرهای زنده و ثبت سریع فاکتور.
+            <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
+              پلان ۳ بالِ سالن (لانژ مبل و ژتون، سالن اصلی بردگیم، تراس) و مانیتورینگ کابین‌های PS5 با تایمر زنده.
             </p>
 
-            {/* Live Metrics Footprint */}
-            <div className="pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5 font-bold">
-                  <span className="w-2 h-2 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.8)] animate-pulse" />
-                  <span className="text-white font-mono text-sm">{activeTablesCount}</span>
-                  <span className="text-[#94A3B8]">میز فعال در سالن</span>
-                </div>
-
-                <div className="h-3 w-px bg-white/15" />
-
-                <div className="flex items-center gap-1.5 font-bold">
-                  <Gamepad2 className="w-3.5 h-3.5 text-sky-400" />
-                  <span className="text-sky-300 font-mono text-sm">{activePs5Count}</span>
-                  <span className="text-[#94A3B8]">از ۴ کنسول PS5 روشن</span>
-                </div>
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
+              <div className="flex items-center gap-3">
+                <span className="text-white font-mono font-bold">{activeTablesCount} فعال</span>
+                <span className="text-[#16382F]">|</span>
+                <span className="text-sky-300 font-mono font-bold">{activePs5Count} PS5</span>
               </div>
-
-              <span className="text-[11px] text-emerald-400 font-extrabold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
-                <span>ورود به نقشه سالن</span>
+              <span className="text-emerald-400 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
+                <span>ورود به سالن</span>
                 <ChevronLeft className="w-3.5 h-3.5" />
               </span>
             </div>
@@ -355,7 +336,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('takeaway')}
-            className="relative rounded-3xl p-5 bg-[#1B222C]/70 border border-white/10 hover:border-amber-400/40 shadow-xl cursor-pointer backdrop-blur-2xl overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-amber-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -378,10 +359,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             </div>
 
             <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
-              ثبت مستقیم فاکتورهای بیرون‌بر (Takeaway)، انتخاب اقلام از کاتالوگ ۸۱ قلمی، تسویه نقدی و کارت، و چاپ فیش بدون قفل میز.
+              ثبت مستقیم فاکتورهای بیرون‌بر (Takeaway)، انتخاب اقلام از کاتالوگ ۸۱ قلمی و تسویه نقدی/پوز.
             </p>
 
-            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
               <span className="text-[#94A3B8]">بدون نیاز به انتخاب میز</span>
               <span className="text-amber-300 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
                 <span>ثبت فاکتور فوری</span>
@@ -400,7 +381,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('kds')}
-            className="relative rounded-3xl p-5 bg-[#1B222C]/70 border border-white/10 hover:border-emerald-400/40 shadow-xl cursor-pointer backdrop-blur-2xl overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -412,7 +393,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
                     {liveKdsCount > 0 ? (
                       <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 flex items-center gap-1 animate-pulse">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#10B981]" />
-                        <span>{liveKdsCount} فیش در صف آماده‌سازی</span>
+                        <span>{liveKdsCount} فیش در صف</span>
                       </span>
                     ) : (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-[#94A3B8]">
@@ -432,10 +413,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             </div>
 
             <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
-              نمایشگر لمسی آماده‌سازی نوشیدنی‌های گرم، بار سرد و اسنک‌های آشپزخانه همراه با تایمر پخت و اعلام اتمام سفارش.
+              نمایشگر لمسی آماده‌سازی نوشیدنی‌های گرم، بار سرد و اسنک‌های آشپزخانه با تفکیک ایستگاه‌ها.
             </p>
 
-            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
               <span className="text-[#94A3B8]">تفکیک ایستگاه Bar & Kitchen</span>
               <span className="text-emerald-400 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
                 <span>نمایشگر KDS</span>
@@ -454,7 +435,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('receipts')}
-            className="relative rounded-3xl p-5 bg-[#1B222C]/70 border border-white/10 hover:border-emerald-400/40 shadow-xl cursor-pointer backdrop-blur-2xl overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -463,7 +444,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
                 </div>
                 <div>
                   <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#10B981]/15 text-emerald-300 border border-[#10B981]/30 inline-block">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#10B981]/20 text-emerald-300 border border-[#10B981]/30 inline-block">
                       {settledCount > 0 ? `${settledCount} فیش ثبت‌شده` : 'بایگانی فیش‌ها'}
                     </span>
                   </div>
@@ -479,10 +460,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             </div>
 
             <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
-              مشاهده و جستجوی فاکتورهای تسویه‌شده، چاپ مجدد فیش حرارتی ۸۰ میلی‌متری (بار/صندوق)، و ابطال سفارش با کد PIN مدیر.
+              مشاهده فاکتورهای تسویه‌شده، چاپ مجدد فیش حرارتی ۸۰ میلی‌متری و ابطال با پین‌کد مدیر.
             </p>
 
-            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
               <span className="text-[#94A3B8]">چاپ مجدد حرارتی · ابطال PIN</span>
               <span className="text-emerald-400 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
                 <span>بایگانی و چاپ مجدد</span>
@@ -501,7 +482,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('reports')}
-            className="relative rounded-3xl p-5 bg-[#1B222C]/70 border border-white/10 hover:border-sky-400/40 shadow-xl cursor-pointer backdrop-blur-2xl overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-sky-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -524,10 +505,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             </div>
 
             <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
-              تحلیل درآمدهای ناخالص، مغایرت نقدی صندوق، تفکیک درآمد کافه و کنسول‌های بازی، فاکتورهای ابطالی و گزارش‌های دوره‌ای P&L.
+              تحلیل درآمدهای ناخالص، مغایرت نقدی صندوق، تفکیک درآمد کافه و کنسول‌های بازی و گزارش‌های Z-Report.
             </p>
 
-            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
               <span className="text-[#94A3B8]">خلاصه فروش و شیفت</span>
               <span className="text-sky-300 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
                 <span>مشاهده گزارشات</span>
@@ -546,7 +527,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('menu')}
-            className="relative rounded-3xl p-5 bg-[#1B222C]/70 border border-white/10 hover:border-purple-400/40 shadow-xl cursor-pointer backdrop-blur-2xl overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-purple-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -569,10 +550,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             </div>
 
             <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
-              پیکربندی ۸۱ قلم منوی مودندو، نرخ ساعتی بازی کنسول PS5، افزودن آیتم جدید، تنظیم مواد اولیه BOM و غیرفعال‌سازی اقلام ناموجود.
+              پیکربندی ۸۱ قلم منوی مودندو، نرخ ساعتی بازی کنسول PS5، افزودن آیتم جدید و تنظیم مواد اولیه BOM.
             </p>
 
-            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
               <span className="text-[#94A3B8]">قیمت‌ها به تومان صحیح</span>
               <span className="text-purple-300 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
                 <span>ویرایش کاتالوگ</span>
@@ -582,7 +563,97 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
           </motion.div>
 
           {/* =========================================================================
-              CARD 7: تنظیمات سیستم و چاپگرها (Role-Gated & Zero 100HICH Leakage)
+              CARD 7: انبارداری و موجودی کالا (Role-Gated)
+             ========================================================================= */}
+          <motion.div
+            role="button"
+            tabIndex={0}
+            whileHover={{ y: -4, scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+            onClick={() => handleCardClick('inventory')}
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-emerald-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.2)] group-hover:scale-105 transition-transform">
+                  <Warehouse className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 inline-block mb-1">
+                    مواد اولیه و اقلام
+                  </span>
+                  <h2 className="text-base font-black text-white group-hover:text-emerald-300 transition-colors">
+                    انبار و موجودی کالا
+                  </h2>
+                </div>
+              </div>
+
+              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 group-hover:text-emerald-300 group-hover:bg-emerald-500/20 transition-all">
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </div>
+
+            <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
+              کنترل موجودی انبار، بسته‌بندی، مواد اولیه باریستا و آشپزخانه، ثبت ورود کالا و هشدار کسری اقلام.
+            </p>
+
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
+              <span className="text-[#94A3B8]">ورود کالا و هشدار موجودی</span>
+              <span className="text-emerald-400 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
+                <span>کنترل انبار</span>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </motion.div>
+
+          {/* =========================================================================
+              CARD 8: لاگ حسابرسی و نظارت سیستم (Role-Gated)
+             ========================================================================= */}
+          <motion.div
+            role="button"
+            tabIndex={0}
+            whileHover={{ y: -4, scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+            onClick={() => handleCardClick('audit')}
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-violet-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-violet-500/15 border border-violet-400/30 flex items-center justify-center text-violet-300 shadow-[0_0_16px_rgba(139,92,246,0.2)] group-hover:scale-105 transition-transform">
+                  <Shield className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-300 border border-violet-400/30 inline-block mb-1">
+                    امنیت و رهگیری
+                  </span>
+                  <h2 className="text-base font-black text-white group-hover:text-violet-300 transition-colors">
+                    لاگ حسابرسی و نظارت
+                  </h2>
+                </div>
+              </div>
+
+              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 group-hover:text-violet-300 group-hover:bg-violet-500/20 transition-all">
+                <ChevronLeft className="w-4 h-4" />
+              </div>
+            </div>
+
+            <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
+              ردیابی جامع رخدادهای پایانه، تغییرات تنظیمات، ورودها، اعمال تخفیف‌ها و ابطال فاکتورها.
+            </p>
+
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
+              <span className="text-[#94A3B8]">لاگ وقایع امنیتی</span>
+              <span className="text-violet-300 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
+                <span>مشاهده لاگ</span>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </motion.div>
+
+          {/* =========================================================================
+              CARD 9: تنظیمات سیستم و چاپگرها (Role-Gated Modendo Configuration)
              ========================================================================= */}
           <motion.div
             role="button"
@@ -591,7 +662,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('settings')}
-            className="lg:col-span-2 relative rounded-3xl p-5 bg-[#1B222C]/70 border border-white/10 hover:border-indigo-400/40 shadow-xl cursor-pointer backdrop-blur-2xl overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-indigo-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -617,8 +688,8 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
               پیکربندی پورت‌های ۹۱۰۰/۹۱۰۱ چاپگرهای بار و آشپزخانه، مدیریت کدهای PIN پرسنل، سربرگ فیش مودندو و پشتیبان‌گیری محلی دیتابیس.
             </p>
 
-            <div className="pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-              <span className="text-[#94A3B8]">بدون نشت برندینگ ۱۰۰ هیچ</span>
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
+              <span className="text-[#94A3B8]">پیکربندی اختصاصی کافه گیمینگ مودندو</span>
               <span className="text-indigo-300 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
                 <span>پیکربندی پایانه</span>
                 <ChevronLeft className="w-3.5 h-3.5" />

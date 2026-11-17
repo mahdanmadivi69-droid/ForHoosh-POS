@@ -73,8 +73,8 @@ const DEFAULT_100HICH_MANIFEST: TenantManifest = {
 
 const DEFAULT_MODENDO_MANIFEST: TenantManifest = {
   tenantId: 'tenant-modendo-01',
-  brandNameEn: 'Modendo Boardgame & Gaming Cafe',
-  brandNameFa: 'MODENDO — کافه بردگیم و گیمینگ',
+  brandNameEn: 'Modendo Gaming Lounge',
+  brandNameFa: 'کافه گیمینگ مودندو',
   taglineFa: 'دنیای بردگیم و هیجان کنسول PS5 در لانژ زمردی مودندو',
   currency: 'IRR',
   taxInclusive: true,
@@ -98,10 +98,10 @@ const DEFAULT_MODENDO_MANIFEST: TenantManifest = {
   ],
   theme: {
     primaryColor: '#10B981',
-    secondaryColor: '#12161D',
-    accentColor: '#34D399',
-    surfaceBase: '#0b0e12',
-    surfaceCard: 'rgba(16, 185, 129, 0.16)',
+    secondaryColor: '#0B1F1A',
+    accentColor: '#059669',
+    surfaceBase: '#06120F',
+    surfaceCard: '#0B1F1A',
     logoUrl: '/karwand-logo.png',
   },
   hmacSecret: 'modendo-manifest-default-hmac-local-only-v13',

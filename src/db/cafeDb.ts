@@ -307,6 +307,17 @@ export async function seedTenantDatabaseDefaults(targetDb: CafeDatabase, tenantI
         }
       }
     }
+
+    // 4. Sanitize staff accounts: guarantee test username is replaced with production admin
+    const existingUsers = await targetDb.authUsers.toArray().catch(() => []);
+    for (const u of existingUsers) {
+      if (u.fullName && (u.fullName.includes('مهدان') || u.fullName.includes('Mahdan'))) {
+        await targetDb.authUsers.update(u.id, {
+          fullName: 'مدیر سیستم',
+          updatedAt: Date.now(),
+        });
+      }
+    }
   }
 }
 

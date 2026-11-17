@@ -52,7 +52,7 @@ export const MODENDO_USERS: User[] = [
   {
     id: 'user-mod-01',
     tenantId: 'tenant-modendo-01',
-    fullName: 'مهدان مهدوی (مدیر کل و مالک)',
+    fullName: 'مدیر سیستم (مدیر کل و مالک)',
     phoneNumber: '09121110001',
     username: 'admin',
     mustChangePassword: true,

@@ -259,44 +259,46 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
             </div>
           </div>
 
-          {/* Card 3: Sensory Lab & BOM */}
-          <div
-            onClick={(e) => handleCardClick(e, 'zero-g')}
-            className={`group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5 ${
-              isOwnerOrManager
-                ? 'border-[rgba(144,210,237,0.25)] hover:border-[rgba(144,210,237,0.6)]'
-                : 'border-amber-500/30 hover:border-amber-500/60'
-            }`}
-            style={{
-              boxShadow: 'inset 0 1px 1.5px 0 rgba(144,210,237,0.25), 0 20px 50px rgba(0,0,0,0.8)',
-            }}
-          >
-            <div>
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#9E8A5E]/40 to-[#423924] border border-[#9E8A5E]/50 flex items-center justify-center shadow-[0_0_20px_rgba(158,138,94,0.4)] mb-4 group-hover:scale-105 transition-transform">
-                <FlaskConical className="w-7 h-7 text-[#F5E8D0]" />
+          {/* Card 3: Sensory Lab & BOM (Disabled/Hidden in Modendo mode) */}
+          {!isModendo && (
+            <div
+              onClick={(e) => handleCardClick(e, 'zero-g')}
+              className={`group relative bg-[rgba(12,25,48,0.85)] hover:bg-[rgba(16,35,68,0.92)] border rounded-3xl p-6 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur-[34px] flex flex-col justify-between transition-all duration-300 cursor-pointer hover:-translate-y-1.5 ${
+                isOwnerOrManager
+                  ? 'border-[rgba(144,210,237,0.25)] hover:border-[rgba(144,210,237,0.6)]'
+                  : 'border-amber-500/30 hover:border-amber-500/60'
+              }`}
+              style={{
+                boxShadow: 'inset 0 1px 1.5px 0 rgba(144,210,237,0.25), 0 20px 50px rgba(0,0,0,0.8)',
+              }}
+            >
+              <div>
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#9E8A5E]/40 to-[#423924] border border-[#9E8A5E]/50 flex items-center justify-center shadow-[0_0_20px_rgba(158,138,94,0.4)] mb-4 group-hover:scale-105 transition-transform">
+                  <FlaskConical className="w-7 h-7 text-[#F5E8D0]" />
+                </div>
+
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-black text-white group-hover:text-[#F5E8D0] transition-colors">
+                    سنسوری لب و فرمولاسیون
+                  </h3>
+                  {isOwnerOrManager ? (
+                    <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa] animate-pulse" title="مجاز (مدیر)" />
+                  ) : (
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]" title="نیازمند پین مدیر" />
+                  )}
+                </div>
+
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  کاتالوگ تخصصی دان‌های قهوه، فرمولاسیون ترکیبی (Arabica vs Blend)، کسر اتوماتیک BOM از سیلوها.
+                </p>
               </div>
 
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-black text-white group-hover:text-[#F5E8D0] transition-colors">
-                  سنسوری لب و فرمولاسیون
-                </h3>
-                {isOwnerOrManager ? (
-                  <span className="w-2.5 h-2.5 rounded-full bg-blue-400 shadow-[0_0_8px_#60a5fa] animate-pulse" title="مجاز (مدیر)" />
-                ) : (
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24]" title="نیازمند پین مدیر" />
-                )}
+              <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-xs font-bold text-[#F5E8D0] group-hover:translate-x-[-4px] transition-transform">
+                <span>{isOwnerOrManager ? 'ورود به سنسوری لب' : 'نیازمند تایید پین'}</span>
+                <ChevronLeft className="w-4 h-4" />
               </div>
-
-              <p className="text-xs text-slate-300 leading-relaxed">
-                کاتالوگ تخصصی دان‌های قهوه، فرمولاسیون ترکیبی (Arabica vs Blend)، کسر اتوماتیک BOM از سیلوها.
-              </p>
             </div>
-
-            <div className="pt-6 border-t border-white/10 mt-6 flex items-center justify-between text-xs font-bold text-[#F5E8D0] group-hover:translate-x-[-4px] transition-transform">
-              <span>{isOwnerOrManager ? 'ورود به سنسوری لب' : 'نیازمند تایید پین'}</span>
-              <ChevronLeft className="w-4 h-4" />
-            </div>
-          </div>
+          )}
 
           {/* Card 4: Settings Control Deck */}
           <div
@@ -327,7 +329,9 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
               </div>
 
               <p className="text-xs text-slate-300 leading-relaxed">
-                هویت قفل‌شده ۱۰۰ هیچ، تیونینگ بصری، اتودیسکاوری پرینترها، مدیریت پین کارکنان و همگام‌سازی QR مش.
+                {isModendo
+                  ? 'پیکربندی پایانه، تیونینگ بصری، اتودیسکاوری پرینترها، مدیریت پین کارکنان و پشتیبان‌گیری دیتابیس.'
+                  : 'هویت قفل‌شده ۱۰۰ هیچ، تیونینگ بصری، اتودیسکاوری پرینترها، مدیریت پین کارکنان و همگام‌سازی QR مش.'}
               </p>
             </div>
 

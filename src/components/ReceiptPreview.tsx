@@ -29,14 +29,19 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   changeToman,
   onClose,
 }) => {
-  const resolvedTenantName =
-    tenantName || (isModendo ? 'MODENDO — کافه بردگیم و گیمینگ' : '100 HICH COFFEE ROASTERS');
-  const resolvedTenantPhone = tenantPhone || (isModendo ? '۰۲۱-۸۸۹۹۷۷۶۶' : '۰۲۱-۴۴۶۶۸۰۹۰');
-  const resolvedTenantAddress =
-    tenantAddress ||
-    (isModendo
-      ? 'تهران، خیابان شریعتی، مجتمع تجاری مودندو، طبقه منفی ۱ و همکف'
-      : 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس');
+  const effectiveIsModendo =
+    isModendo ||
+    order.tenantId === 'tenant-modendo-01' ||
+    order.tenantId === 'modendo';
+  const resolvedTenantName = effectiveIsModendo
+    ? 'کافه گیمینگ مودندو'
+    : (tenantName || '100 HICH COFFEE ROASTERS');
+  const resolvedTenantPhone = effectiveIsModendo
+    ? '021-88994455'
+    : (tenantPhone || '۰۲۱-۴۴۶۶۸۰۹۰');
+  const resolvedTenantAddress = effectiveIsModendo
+    ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱'
+    : (tenantAddress || 'تهران، اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس');
   const orderDate = new Date(order.createdAt);
   const formattedDate = orderDate.toLocaleDateString('fa-IR');
   const formattedTime = orderDate.toLocaleTimeString('fa-IR', {
@@ -45,9 +50,9 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   });
 
   const cashierDisplay =
-    order.createdByUserName && order.createdByUserName !== 'مدیر سیستم'
+    order.createdByUserName && !order.createdByUserName.includes('مهدان')
       ? order.createdByUserName
-      : 'مهدان مهدوی - مدیر و مالک';
+      : 'مدیر سیستم';
 
   const orderTypeDisplay =
     order.orderType === 'DINE_IN'

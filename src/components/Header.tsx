@@ -138,21 +138,21 @@ export const Header: React.FC<HeaderProps> = ({
    * ============================================================================ */
   if (isModendo) {
     return (
-      <header className="sticky top-0 md:top-2.5 z-40 md:mx-auto md:w-[calc(100%-2rem)] max-w-[1720px] md:rounded-[22px] liquid-glass-shell transition-all duration-200 select-none">
-        <div className="px-4 md:px-5 py-2.5 flex items-center justify-between gap-4">
+      <header className="sticky top-0 md:top-2.5 z-40 md:mx-auto md:w-[calc(100%-2rem)] max-w-[1720px] md:rounded-[22px] bg-[#0B1F1A] border border-[#16382F] shadow-2xl transition-all duration-200 select-none">
+        <div className="px-3 md:px-5 py-2.5 flex items-center justify-between gap-2 md:gap-4 min-w-0">
           {/* Zone 1: Minimal Brand Mark */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2 md:gap-2.5 shrink-0 min-w-0">
             <span className="text-base md:text-[17px] font-black tracking-tight text-white font-display-latin">
               MODENDO
             </span>
             <span className="text-white/40 text-xs hidden sm:inline">—</span>
-            <span className="hidden sm:inline text-xs font-bold text-emerald-100/90 whitespace-nowrap">
-              کافه بردگیم و گیمینگ
+            <span className="hidden sm:inline text-xs font-bold text-emerald-300 whitespace-nowrap">
+              کافه گیمینگ مودندو
             </span>
           </div>
 
           {/* Zone 2: Clean Segmented Nav Rail */}
-          <nav className="hidden lg:flex items-center liquid-glass-rail rounded-full p-1 text-xs font-bold gap-1 shrink-0">
+          <nav className="hidden xl:flex items-center bg-[#06120F] border border-[#16382F] rounded-full p-1 text-xs font-bold gap-1 shrink-0">
             {/* Hub / Operational Modules launcher button */}
             <button
               onClick={() => {
@@ -200,7 +200,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span>صندوق</span>
             </button>
 
-            {FEATURES.ENABLE_ZERO_G_SMART_ORDERS && (
+            {FEATURES.ENABLE_ZERO_G_SMART_ORDERS && !isModendo && (
               <button
                 onClick={() => {
                   playPosBeep('click');
@@ -268,21 +268,21 @@ export const Header: React.FC<HeaderProps> = ({
           </nav>
 
           {/* Zone 3: 3 Clean Operational Actions (KDS · Shift · Account & Tools Popover) */}
-          <div className="flex items-center gap-2 md:gap-2.5 shrink-0">
+          <div className="flex items-center gap-1.5 md:gap-2.5 shrink-0 flex-nowrap">
             {/* Barista KDS */}
             <button
               onClick={() => {
                 playPosBeep('click');
                 onOpenBaristaKds();
               }}
-              className="liquid-glass-pill rounded-full flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 text-xs font-bold text-white cursor-pointer whitespace-nowrap shrink-0 transition"
+              className="rounded-full bg-[#0E2922] border border-[#16382F] hover:border-[#10B981]/50 flex items-center gap-1.5 px-2.5 md:px-3.5 py-1.5 text-xs font-bold text-white cursor-pointer whitespace-nowrap shrink-0 transition"
               title="نمایشگر زنده بار باریستا (KDS)"
             >
               <Coffee className="w-3.5 h-3.5 text-[#10B981]" />
-              <span className="hidden sm:inline">بار باریستا KDS</span>
-              <span className="sm:hidden">KDS</span>
+              <span className="hidden md:inline">بار باریستا KDS</span>
+              <span className="md:hidden">KDS</span>
               {baristaActiveCount > 0 && (
-                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full tabular-nums bg-[#10B981] text-[#07140F]">
+                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full tabular-nums bg-[#10B981] text-[#06120F]">
                   {baristaActiveCount}
                 </span>
               )}
@@ -295,12 +295,12 @@ export const Header: React.FC<HeaderProps> = ({
                   playPosBeep('click');
                   onOpenReceiptHistory();
                 }}
-                className="liquid-glass-pill rounded-full flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 text-xs font-bold text-white cursor-pointer whitespace-nowrap shrink-0 transition hover:border-[#10B981]/40"
+                className="rounded-full bg-[#0E2922] border border-[#16382F] hover:border-[#10B981]/50 flex items-center gap-1.5 px-2.5 md:px-3.5 py-1.5 text-xs font-bold text-white cursor-pointer whitespace-nowrap shrink-0 transition"
                 title="سابقه فیش‌ها، چاپ مجدد و ابطال"
               >
                 <Receipt className="w-3.5 h-3.5 text-[#10B981]" />
-                <span className="hidden sm:inline">سابقه فیش‌ها</span>
-                <span className="sm:hidden">فیش‌ها</span>
+                <span className="hidden md:inline">سابقه فیش‌ها</span>
+                <span className="md:hidden">فیش‌ها</span>
               </button>
             )}
 
@@ -311,7 +311,7 @@ export const Header: React.FC<HeaderProps> = ({
                   playPosBeep('click');
                   onOpenExpenseModal();
                 }}
-                className="hidden xl:flex liquid-glass-pill rounded-full items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#cbd5e1] hover:text-white cursor-pointer whitespace-nowrap shrink-0"
+                className="hidden 2xl:flex rounded-full bg-[#0E2922] border border-[#16382F] items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#cbd5e1] hover:text-white cursor-pointer whitespace-nowrap shrink-0"
                 title="ثبت هزینه تنخواه"
               >
                 <DollarSign className="w-3.5 h-3.5 text-amber-300" />
@@ -325,10 +325,10 @@ export const Header: React.FC<HeaderProps> = ({
                 playPosBeep('click');
                 onOpenShiftModal();
               }}
-              className={`rounded-full flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 text-xs font-extrabold transition cursor-pointer whitespace-nowrap shrink-0 ${
+              className={`rounded-full flex items-center gap-1.5 px-2.5 md:px-3.5 py-1.5 text-xs font-extrabold transition cursor-pointer whitespace-nowrap shrink-0 ${
                 activeShift
-                  ? 'bg-[#10B981]/15 hover:bg-[#10B981]/25 border border-[#10B981]/40 text-emerald-200'
-                  : 'liquid-glass-cta'
+                  ? 'bg-[#10B981]/20 hover:bg-[#10B981]/30 border border-[#10B981]/50 text-emerald-200'
+                  : 'bg-[#10B981] text-[#06120F] hover:bg-[#059669] hover:text-white font-black shadow-lg'
               }`}
               title={activeShift ? 'مشاهده وضعیت یا بستن شیفت' : 'شروع شیفت کاری'}
             >
@@ -344,13 +344,13 @@ export const Header: React.FC<HeaderProps> = ({
                   playPosBeep('click');
                   setIsUtilityMenuOpen((v) => !v);
                 }}
-                className={`liquid-glass-pill rounded-full flex items-center gap-1.5 md:gap-2 px-3 py-1.5 text-xs font-semibold text-white cursor-pointer whitespace-nowrap shrink-0 ${
-                  isUtilityMenuOpen ? 'border-white/30 bg-white/15' : ''
+                className={`rounded-full bg-[#0E2922] border border-[#16382F] hover:border-[#10B981]/50 flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 text-xs font-semibold text-white cursor-pointer whitespace-nowrap shrink-0 ${
+                  isUtilityMenuOpen ? 'border-[#10B981] bg-[#0E2922]' : ''
                 }`}
                 title="حساب کاربری و ابزارها"
               >
                 <UserCheck className="w-3.5 h-3.5 text-[#10B981]" />
-                <span className="hidden sm:inline max-w-[90px] truncate whitespace-nowrap">
+                <span className="hidden sm:inline max-w-[85px] truncate whitespace-nowrap">
                   {activeUser.fullName.split(' ')[0]}
                 </span>
                 <ChevronDown className="w-3.5 h-3.5 text-[#94A3B8]" />

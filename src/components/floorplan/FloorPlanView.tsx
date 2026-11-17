@@ -41,7 +41,7 @@ interface FloorPlanViewProps {
   onBackToHub?: () => void;
 }
 
-const STORAGE_KEY_SESSIONS = 'cafeos_modendo_floor_sessions_v1';
+const STORAGE_KEY_SESSIONS = 'cafeos_modendo_floor_sessions_v2';
 
 export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   onBackToPos,
@@ -82,9 +82,13 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     }
   });
 
-  // Reload floor plan for active Modendo tenant on mount
+  // Reload floor plan for active Modendo tenant on mount & purge legacy cached session keys
   useEffect(() => {
     try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('cafeos_modendo_floor_sessions_v1');
+        localStorage.removeItem('cafeos_floor_sessions');
+      }
       floorPlanService.reloadForTenant();
     } catch (e) {
       console.warn('[FloorPlanView] Failed reloading floor plan:', e);
