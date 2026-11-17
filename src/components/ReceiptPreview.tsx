@@ -34,7 +34,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   const effectiveIsModendo =
     isModendo ||
     activeTenant.id === 'modendo' ||
-    activeTenant.id === 'tenant-modendo-01' ||
+    (activeTenant.id as string) === 'tenant-modendo-01' ||
     order.tenantId === 'tenant-modendo-01' ||
     order.tenantId === 'modendo' ||
     (order.tenantId ? order.tenantId.includes('modendo') : false);

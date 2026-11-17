@@ -11,21 +11,22 @@ export const MODENDO_TENANT: Tenant = {
 const T_ID = MODENDO_TENANT.id;
 
 export const MODENDO_CATEGORIES: Category[] = [
-  { id: 'mod-cat-gaming', tenantId: T_ID, nameFa: 'سشن‌های بازی و کنسول PS5', nameEn: 'PS5 & Boardgames', sortOrder: 1, isActive: true },
-  { id: 'mod-cat-espresso', tenantId: T_ID, nameFa: 'بار گرم و اسپرسوبار', nameEn: 'Hot Espresso Bar', sortOrder: 2, isActive: true },
-  { id: 'mod-cat-mocha', tenantId: T_ID, nameFa: 'موکا و نوشیدنی‌های گرم', nameEn: 'Mocha & Hot Drinks', sortOrder: 3, isActive: true },
-  { id: 'mod-cat-tea', tenantId: T_ID, nameFa: 'چای و دمنوش‌های گیمر', nameEn: 'Tea & Infusions', sortOrder: 4, isActive: true },
-  { id: 'mod-cat-iced', tenantId: T_ID, nameFa: 'آیس کافی بار', nameEn: 'Iced Coffee Bar', sortOrder: 5, isActive: true },
-  { id: 'mod-cat-mocktails', tenantId: T_ID, nameFa: 'بار سرد و ماکتل‌های گیمینگ', nameEn: 'Gaming Mocktails', sortOrder: 6, isActive: true },
-  { id: 'mod-cat-shakes', tenantId: T_ID, nameFa: 'شیک‌ها و اسموتی‌ها', nameEn: 'Shakes & Smoothies', sortOrder: 7, isActive: true },
-  { id: 'mod-cat-bakery', tenantId: T_ID, nameFa: 'بیکری و صبحانه سبک', nameEn: 'Bakery & Croissants', sortOrder: 8, isActive: true },
-  { id: 'mod-cat-burgers', tenantId: T_ID, nameFa: 'برگر، پنینی و اسنک گرم', nameEn: 'Burgers & Panini', sortOrder: 9, isActive: true },
-  { id: 'mod-cat-pasta', tenantId: T_ID, nameFa: 'پاستا و غذاهای بیسترو', nameEn: 'Bistro Pasta', sortOrder: 10, isActive: true },
-  { id: 'mod-cat-pizza', tenantId: T_ID, nameFa: 'پیتزاهای تنوری مودندو', nameEn: 'Stone-Baked Pizza', sortOrder: 11, isActive: true },
-  { id: 'mod-cat-appetizers', tenantId: T_ID, nameFa: 'پیش‌غذا و فینگرفود لانژ', nameEn: 'Lounge Starters', sortOrder: 12, isActive: true },
-  { id: 'mod-cat-salads', tenantId: T_ID, nameFa: 'سالادها و کاسه‌های رژیمی', nameEn: 'Salads & Bowls', sortOrder: 13, isActive: true },
-  { id: 'mod-cat-desserts', tenantId: T_ID, nameFa: 'کیک و دسرهای دست‌ساز', nameEn: 'Cakes & Desserts', sortOrder: 14, isActive: true },
-  { id: 'mod-cat-lounge', tenantId: T_ID, nameFa: 'پکیج ژتون لانژ و تنقلات', nameEn: 'Lounge Tokens & Snacks', sortOrder: 15, isActive: true },
+  { id: 'mod-cat-bakery', tenantId: T_ID, nameFa: 'صبحانه', nameEn: 'Breakfast', sortOrder: 1, isActive: true },
+  { id: 'mod-cat-gaming', tenantId: T_ID, nameFa: 'بازی', nameEn: 'Boardgames & Events', sortOrder: 2, isActive: true },
+  { id: 'mod-cat-mocktails', tenantId: T_ID, nameFa: 'نوشیدنی', nameEn: 'Beverages', sortOrder: 3, isActive: true },
+  { id: 'mod-cat-tea', tenantId: T_ID, nameFa: 'نوشیدنی گرم', nameEn: 'Hot Drinks', sortOrder: 4, isActive: true },
+  { id: 'mod-cat-shakes', tenantId: T_ID, nameFa: 'شیک', nameEn: 'Shakes', sortOrder: 5, isActive: true },
+  { id: 'mod-cat-espresso', tenantId: T_ID, nameFa: 'قهوه', nameEn: 'Coffee', sortOrder: 6, isActive: true },
+  { id: 'mod-cat-mocha', tenantId: T_ID, nameFa: 'نوشیدنی سرد', nameEn: 'Cold Drinks & Mocktails', sortOrder: 7, isActive: true },
+  { id: 'mod-cat-iced', tenantId: T_ID, nameFa: 'قهوه سرد', nameEn: 'Iced Coffee', sortOrder: 8, isActive: true },
+  { id: 'mod-cat-appetizers', tenantId: T_ID, nameFa: 'استارتر', nameEn: 'Starters & Fries', sortOrder: 9, isActive: true },
+  { id: 'mod-cat-desserts', tenantId: T_ID, nameFa: 'دسر', nameEn: 'Desserts & Cakes', sortOrder: 10, isActive: true },
+  { id: 'mod-cat-salads', tenantId: T_ID, nameFa: 'ساندویچ', nameEn: 'Sandwiches', sortOrder: 11, isActive: true },
+  { id: 'mod-cat-pasta', tenantId: T_ID, nameFa: 'بشقاب', nameEn: 'Platters & Pasta', sortOrder: 12, isActive: true },
+  { id: 'mod-cat-pizza', tenantId: T_ID, nameFa: 'پیتزا', nameEn: 'Stone-Baked Pizza', sortOrder: 13, isActive: true },
+  { id: 'mod-cat-burgers', tenantId: T_ID, nameFa: 'برگر', nameEn: 'Burgers', sortOrder: 14, isActive: true },
+  { id: 'mod-cat-packaging', tenantId: T_ID, nameFa: 'ظروف بسته بندی', nameEn: 'Packaging', sortOrder: 15, isActive: true },
+  { id: 'mod-cat-lounge', tenantId: T_ID, nameFa: 'گیم نت', nameEn: 'PS5 Game Net', sortOrder: 16, isActive: true },
 ];
 
 const m = (
@@ -50,114 +51,124 @@ const m = (
 });
 
 export const MODENDO_MENU_ITEMS: MenuItem[] = [
-  // 1. سشن‌های بازی و کنسول PS5 (5)
-  m('mod-01', 'mod-cat-gaming', 'کنسول پلی‌استیشن ۵ (ساعتی)', 'PS5 Standard Session (1h)', 180000, { badge: 'PS5 STANDARD', roastLevelText: 'PS5 PRO' }),
-  m('mod-02', 'mod-cat-gaming', 'کنسول PS5 با ۴ دسته هم‌زمان', 'PS5 4-Player Session (1h)', 260000, { badge: '۴ دسته', roastLevelText: 'PS5 CO-OP' }),
-  m('mod-03', 'mod-cat-gaming', 'ورودی بردگیم (ساعتی / هر نفر)', 'Boardgame Entry (Per Hour)', 50000, { badge: 'بردگیم', roastLevelText: 'BOARDGAME' }),
-  m('mod-04', 'mod-cat-gaming', 'رزرو میز VIP گیمینگ (۲ ساعته)', 'VIP Gaming Booth (2h)', 380000, { badge: 'VIP', roastLevelText: 'VIP BOOTH' }),
-  m('mod-05', 'mod-cat-gaming', 'پکیج ژتون لانژ (سفارش آزاد)', 'Lounge Token Package', 800000, { badge: 'ژتون لانژ', roastLevelText: 'LOUNGE' }),
+  // 1. صبحانه (KITCHEN) — 7 items
+  m('mod-item-001', 'mod-cat-bakery', 'صبحانه انگلیسی', 'English Breakfast', 690000, { station: 'KITCHEN', description: 'صبحانه انگلیسی' }),
+  m('mod-item-002', 'mod-cat-bakery', 'املت گوجه', 'Tomato Omelet', 340000, { station: 'KITCHEN', description: 'املت گوجه' }),
+  m('mod-item-003', 'mod-cat-bakery', 'چوریتسو املت', 'Chorizo Omelet', 550000, { station: 'KITCHEN', description: 'چوریتسو املت' }),
+  m('mod-item-004', 'mod-cat-bakery', 'املت ربی', 'Tomato Paste Omelet', 320000, { station: 'KITCHEN', description: 'املت ربی' }),
+  m('mod-item-005', 'mod-cat-bakery', 'املت قارچ و زیتون', 'Mushroom & Olive Omelet', 340000, { station: 'KITCHEN', description: 'املت قارچ و زیتون' }),
+  m('mod-item-006', 'mod-cat-bakery', 'نیمرو', 'Fried Eggs', 290000, { station: 'KITCHEN', description: 'نیمرو' }),
+  m('mod-item-007', 'mod-cat-bakery', 'کوکو سیب زمینی', 'Potato Kuku', 340000, { station: 'KITCHEN', description: 'کوکو سیب زمینی' }),
 
-  // 2. بار گرم و اسپرسوبار (7)
-  m('mod-06', 'mod-cat-espresso', 'اسپرسو سینگل مودندو', 'Modendo Single Espresso', 110000, { badge: 'اسپرسو', roastLevelText: 'SINGLE' }),
-  m('mod-07', 'mod-cat-espresso', 'اسپرسو دبل مودندو', 'Modendo Double Espresso', 130000, { badge: 'دبل شات', roastLevelText: 'DOUBLE' }),
-  m('mod-08', 'mod-cat-espresso', 'آمریکانو گیمر (بزرگ)', 'Gamer Large Americano', 135000, { badge: 'آمریکانو', roastLevelText: 'LARGE' }),
-  m('mod-09', 'mod-cat-espresso', 'کافه لاته مخملی', 'Velvet Caffe Latte', 150000, { badge: 'لاته', roastLevelText: 'MILK BAR' }),
-  m('mod-10', 'mod-cat-espresso', 'کاپوچینو ایتالیایی', 'Italian Cappuccino', 150000, { badge: 'کاپوچینو', roastLevelText: 'MILK BAR' }),
-  m('mod-11', 'mod-cat-espresso', 'کارامل ماکیاتو ویژه', 'Signature Caramel Macchiato', 165000, { badge: 'کارامل', roastLevelText: 'SIGNATURE' }),
-  m('mod-12', 'mod-cat-espresso', 'فلت وایت کلاسیک', 'Classic Flat White', 145000, { roastLevelText: 'ESPRESSO' }),
+  // 2. بازی (BAR / Counter) — 7 items
+  m('mod-item-008', 'mod-cat-gaming', 'تماشای مسابقات فوتبال', 'Football Match Screening', 100000, { station: 'BAR', description: 'تماشای فوتبال' }),
+  m('mod-item-009', 'mod-cat-gaming', 'بازی بعد از 2 ساعت', 'Game After 2 Hours', 50000, { station: 'BAR', description: 'بازی بعد از دو ساعت' }),
+  m('mod-item-010', 'mod-cat-gaming', 'بازی بردگیم', 'Boardgame Session', 200000, { station: 'BAR', description: 'بازی های سبک تا 2 ساعت' }),
+  m('mod-item-011', 'mod-cat-gaming', 'بازی سنگین', 'Heavy Boardgame Session', 300000, { station: 'BAR', description: 'بازی های سنگین' }),
+  m('mod-item-012', 'mod-cat-gaming', 'مافیا ریگان', 'Mafia Reagan', 150000, { station: 'BAR', description: 'سه شنبه و جمعه' }),
+  m('mod-item-013', 'mod-cat-gaming', 'بازی قبل مافیا', 'Pre-Mafia Game', 60000, { station: 'BAR', description: 'تخته' }),
+  m('mod-item-014', 'mod-cat-gaming', 'مافیا سالواتوره', 'Mafia Salvatore', 100000, { station: 'BAR', description: 'دوشنبه و پنجشنبه' }),
 
-  // 3. موکا و نوشیدنی‌های گرم (5)
-  m('mod-13', 'mod-cat-mocha', 'دارک موکا شکلات بلژیکی', 'Belgian Dark Mocha', 170000, { badge: 'شکلات', roastLevelText: 'DARK COCOA' }),
-  m('mod-14', 'mod-cat-mocha', 'وایت موکا وانیلی', 'White Chocolate Mocha', 170000, { roastLevelText: 'WHITE COCOA' }),
-  m('mod-15', 'mod-cat-mocha', 'هات چاکلت ایتالیایی غلیظ', 'Thick Italian Hot Chocolate', 165000, { badge: 'پرطرفدار' }),
-  m('mod-16', 'mod-cat-mocha', 'ماسالا چای ادویه‌دار', 'Spiced Chai Masala', 140000),
-  m('mod-17', 'mod-cat-mocha', 'کرک تی زعفرانی ویژه', 'Saffron Karak Chai', 145000),
+  // 3. نوشیدنی (BAR) — 7 items
+  m('mod-item-015', 'mod-cat-mocktails', 'انرژی زا', 'Energy Drink', 140000, { station: 'BAR', description: 'انرژی زا' }),
+  m('mod-item-016', 'mod-cat-mocktails', 'دلستر نوستالژی', 'Classic Malt Delster', 160000, { station: 'BAR', description: 'دلستر نوستالژی' }),
+  m('mod-item-017', 'mod-cat-mocktails', 'دوغ', 'Doogh', 120000, { station: 'BAR', description: 'دوغ' }),
+  m('mod-item-018', 'mod-cat-mocktails', 'کوکا لیوانی', 'Glass Coca-Cola', 70000, { station: 'BAR', description: 'کوکا لیوانی' }),
+  m('mod-item-019', 'mod-cat-mocktails', 'نوشابه قوطی زیرو', 'Can Soda Zero', 150000, { station: 'BAR', description: 'نوشابه قوطی زیرو' }),
+  m('mod-item-020', 'mod-cat-mocktails', 'نوشابه قوطی', 'Can Soda', 130000, { station: 'BAR', description: 'نوشابه قوطی' }),
+  m('mod-item-021', 'mod-cat-mocktails', 'آب معدنی', 'Mineral Water', 35000, { station: 'BAR', description: 'آب معدنی' }),
 
-  // 4. چای و دمنوش‌های گیمر (5)
-  m('mod-18', 'mod-cat-tea', 'چای دمی لاهیجان قوری ۲ نفره با نبات و هل', 'Lahijan Brewed Tea Pot (2P)', 85000, { badge: 'تراس' }),
-  m('mod-19', 'mod-cat-tea', 'دمنوش آرامش گیمر (به‌لیمو، بابونه و اسطوخودوس)', 'Gamer Calm Infusion', 95000, { badge: 'دمنوش' }),
-  m('mod-20', 'mod-cat-tea', 'دمنوش انرژی‌زا (بهارنارنج، زنجبیل و دارچین)', 'Focus & Energy Herbal Tea', 95000),
-  m('mod-21', 'mod-cat-tea', 'چای سبز نعنا مراکشی', 'Moroccan Mint Green Tea', 90000),
-  m('mod-22', 'mod-cat-tea', 'دمنوش گل‌گاوزبان و لیموعمانی', 'Borage & Dried Lime Tea', 105000),
+  // 4. نوشیدنی گرم (BAR) — 3 items
+  m('mod-item-022', 'mod-cat-tea', 'چای', 'Brewed Tea', 135000, { station: 'BAR', description: 'چای سیاه دمی، نبات' }),
+  m('mod-item-023', 'mod-cat-tea', 'هات چاکلت', 'Hot Chocolate', 280000, { station: 'BAR', description: 'شیر، پودر هات چاکلت' }),
+  m('mod-item-024', 'mod-cat-tea', 'ماسالا', 'Chai Masala', 290000, { station: 'BAR', description: 'شیر، پودر چای ماسالا' }),
 
-  // 5. آیس کافی بار (6)
-  m('mod-23', 'mod-cat-iced', 'آیس آمریکانو گیمر', 'Iced Gamer Americano', 140000, { badge: 'آیس' }),
-  m('mod-24', 'mod-cat-iced', 'آیس لاته کارامل نمکی', 'Salted Caramel Iced Latte', 165000, { badge: 'ویژه' }),
-  m('mod-25', 'mod-cat-iced', 'آیس موکا شکلات تلخ', 'Iced Dark Mocha', 175000),
-  m('mod-26', 'mod-cat-iced', 'اسپرسو تونیک پرتقالی', 'Orange Espresso Tonic', 170000),
-  m('mod-27', 'mod-cat-iced', 'کلد برو ۲۴ ساعته مودندو', '24h Cold Brew Bottle', 165000),
-  m('mod-28', 'mod-cat-iced', 'آفوگاتو وانیل با شات دبل', 'Double Shot Affogato', 175000),
+  // 5. شیک (BAR) — 5 items
+  m('mod-item-025', 'mod-cat-shakes', 'شیک وانیل', 'Vanilla Shake', 370000, { station: 'BAR', description: 'بستنی وانیل، شیر، تاپینگ خامه' }),
+  m('mod-item-026', 'mod-cat-shakes', 'شیک شکلات', 'Chocolate Shake', 390000, { station: 'BAR', description: 'بستنی شکلات، سس شکلات، شیر، تاپینگ خامه' }),
+  m('mod-item-027', 'mod-cat-shakes', 'شیک لوتوس', 'Lotus Shake', 460000, { station: 'BAR', description: 'بستنی وانیل، کرم بیسکوییت لوتوس، شیر، تاپینگ خامه' }),
+  m('mod-item-028', 'mod-cat-shakes', 'شیک کرنبری', 'Cranberry Shake', 410000, { station: 'BAR', description: 'بستنی وانیل، سیروپ کرنبری، آب آلبالو، شیر، تاپینگ خامه' }),
+  m('mod-item-029', 'mod-cat-shakes', 'شیک بلوبری', 'Blueberry Shake', 390000, { station: 'BAR', description: 'شیک بلوبری' }),
 
-  // 6. بار سرد و ماکتل‌های گیمینگ (6)
-  m('mod-29', 'mod-cat-mocktails', 'ماکتل الکتریک گیمر (بلوبری و سودا)', 'Electric Gamer Mocktail', 165000, { badge: 'ویژه گیمینگ' }),
-  m('mod-30', 'mod-cat-mocktails', 'موهیتو کراش نعنا لیمو تازه', 'Fresh Mint Crush Mojito', 145000, { badge: 'موهیتو' }),
-  m('mod-31', 'mod-cat-mocktails', 'لیموناد رزماری و خیار خنک', 'Cucumber Rosemary Lemonade', 140000),
-  m('mod-32', 'mod-cat-mocktails', 'ردبری اسپارکلینگ', 'Red Berry Sparkling', 160000),
-  m('mod-33', 'mod-cat-mocktails', 'پاشن‌فروت کولر گیمینگ', 'Passionfruit Cooler', 170000),
-  m('mod-34', 'mod-cat-mocktails', 'سان‌رایز انبه و پرتقال تازه', 'Mango Orange Sunrise', 165000),
+  // 6. قهوه (BAR) — 6 items
+  m('mod-item-030', 'mod-cat-espresso', 'اسپرسو', 'Espresso', 230000, { station: 'BAR', description: 'دبل شات 70/30 عربیکا' }),
+  m('mod-item-031', 'mod-cat-espresso', 'آمریکانو', 'Americano', 230000, { station: 'BAR', description: 'آمریکانو' }),
+  m('mod-item-032', 'mod-cat-espresso', 'کاپوچینو', 'Cappuccino', 300000, { station: 'BAR', description: 'اسپرسو، شیر' }),
+  m('mod-item-033', 'mod-cat-espresso', 'لته', 'Caffe Latte', 320000, { station: 'BAR', description: 'اسپرسو، شیر' }),
+  m('mod-item-034', 'mod-cat-espresso', 'کارامل ماکیاتو', 'Caramel Macchiato', 380000, { station: 'BAR', description: 'اسپرسو، شیر، سیروپ کارامل' }),
+  m('mod-item-035', 'mod-cat-espresso', 'موکا', 'Caffe Mocha', 390000, { station: 'BAR', description: 'اسپرسو، شیر، سس شکلات' }),
 
-  // 7. شیک‌ها و اسموتی‌ها (6)
-  m('mod-35', 'mod-cat-shakes', 'شیک نوتلا و فندق برشته', 'Nutella Hazelnut Shake', 210000, { badge: 'پرطرفدار' }),
-  m('mod-36', 'mod-cat-shakes', 'شیک لوتوس بیسکوف کاراملی', 'Lotus Biscoff Shake', 215000),
-  m('mod-37', 'mod-cat-shakes', 'شیک اورئو کرانچ', 'Oreo Crunch Milkshake', 195000),
-  m('mod-38', 'mod-cat-shakes', 'شیک کره بادام‌زمینی و موز', 'Peanut Butter Banana Shake', 205000),
-  m('mod-39', 'mod-cat-shakes', 'اسموتی توت‌فرنگی و انبه', 'Strawberry Mango Smoothie', 185000),
-  m('mod-40', 'mod-cat-shakes', 'اسموتی بری مکس سرد', 'Mixed Berry Smoothie', 190000),
+  // 7. نوشیدنی سرد (BAR) — 9 items
+  m('mod-item-036', 'mod-cat-mocha', 'سولاریس', 'Solaris', 360000, { station: 'BAR', description: 'سیروپ کرنبری، آب هلو، آب پرتقال، لیمو، سودا' }),
+  m('mod-item-037', 'mod-cat-mocha', 'جانگل وایب', 'Jungle Vibe', 330000, { station: 'BAR', description: 'سیروپ پشن فروت، سیروپ نعنا، آب لیمو و سودا' }),
+  m('mod-item-038', 'mod-cat-mocha', 'موهیتو 22', 'Mojito 22', 330000, { station: 'BAR', description: 'لیمو، نعنا، سیروپ لیمو، سودا' }),
+  m('mod-item-039', 'mod-cat-mocha', 'لاکی لمون', 'Lucky Lemon', 310000, { station: 'BAR', description: 'لیموناد' }),
+  m('mod-item-040', 'mod-cat-mocha', 'رد فلگ', 'Red Flag', 340000, { station: 'BAR', description: 'سیروپ کرنبری، توت فرنگی، آب آلبالو، لیمو، نمک، سودا' }),
+  m('mod-item-041', 'mod-cat-mocha', 'اکسترا لایف', 'Extra Life', 350000, { station: 'BAR', description: 'سیروپ بلوکاراسائو، سیروپ نارگیل، آب آناناس، آب پرتقال، لیمو، سودا' }),
+  m('mod-item-042', 'mod-cat-mocha', 'ویولت', 'Violet', 330000, { station: 'BAR', description: 'سیروپ توت فرنگی، سیروپ بلوکاراسائو، لیمو، سودا' }),
+  m('mod-item-043', 'mod-cat-mocha', 'آب زرشک آلبالو', 'Barberry Sour Cherry Juice', 285000, { station: 'BAR', description: 'آب زرشک آلبالو' }),
+  m('mod-item-044', 'mod-cat-mocha', 'سوییت ویکتوری', 'Sweet Victory', 350000, { station: 'BAR', description: 'سیروپ پشن فروت، سیروپ توت فرنگی، آب انبه، آب پرتقال، لیمو، سودا' }),
 
-  // 8. بیکری و صبحانه سبک (5)
-  m('mod-41', 'mod-cat-bakery', 'کروسان برشته ژامبون و پنیر', 'Toasted Ham & Cheese Croissant', 160000, { badge: 'بیکری' }),
-  m('mod-42', 'mod-cat-bakery', 'کروسان ساده کره فرانسوی', 'French Butter Croissant', 115000),
-  m('mod-43', 'mod-cat-bakery', 'کروسان شکلاتی نوتلا و فندق', 'Nutella Chocolate Croissant', 145000),
-  m('mod-44', 'mod-cat-bakery', 'سیمیت بوقلمون و پنیر خامه‌ای', 'Smoked Turkey Simit', 165000),
-  m('mod-45', 'mod-cat-bakery', 'تست آووکادو و تخم‌مرغ پخته', 'Avocado Egg Toast', 195000),
+  // 8. قهوه سرد (BAR) — 6 items
+  m('mod-item-045', 'mod-cat-iced', 'آیس آمریکانو', 'Iced Americano', 230000, { station: 'BAR', description: 'اسپرسو، آب، یخ' }),
+  m('mod-item-046', 'mod-cat-iced', 'آیس لته', 'Iced Latte', 340000, { station: 'BAR', description: 'اسپرسو، شیر، یخ' }),
+  m('mod-item-047', 'mod-cat-iced', 'آیس کارامل ماکیاتو', 'Iced Caramel Macchiato', 390000, { station: 'BAR', description: 'اسپرسو، شیر، سیروپ کارامل، یخ' }),
+  m('mod-item-048', 'mod-cat-iced', 'آیس موکا', 'Iced Mocha', 410000, { station: 'BAR', description: 'اسپرسو، شیر، سس شکلات، یخ' }),
+  m('mod-item-049', 'mod-cat-iced', 'اورنج اسپرسو', 'Orange Espresso', 350000, { station: 'BAR', description: 'اسپرسو، آب پرتقال، یخ' }),
+  m('mod-item-050', 'mod-cat-iced', 'آفوگاتو', 'Affogato', 350000, { station: 'BAR', description: 'اسپرسو، بستنی وانیل' }),
 
-  // 9. برگر، پنینی و اسنک گرم (6)
-  m('mod-46', 'mod-cat-burgers', 'برگر پنیر و استیک گرم مودندو', 'Modendo Cheese & Steak Burger', 345000, { badge: 'سرآشپز' }),
-  m('mod-47', 'mod-cat-burgers', 'اسمش برگر دوبل گیمینگ', 'Double Smash Gamer Burger', 365000, { badge: 'دوبل' }),
-  m('mod-48', 'mod-cat-burgers', 'چیکن کریسپی برگر با سس مخصوص', 'Crispy Chicken Burger', 295000),
-  m('mod-49', 'mod-cat-burgers', 'کلاب ساندویچ ویژه گیمر', 'Gamer Special Club Sandwich', 265000),
-  m('mod-50', 'mod-cat-burgers', 'پنینی رست بیف و قارچ', 'Roast Beef & Mushroom Panini', 310000),
-  m('mod-51', 'mod-cat-burgers', 'پنینی مرغ پستو و موزارلا', 'Chicken Pesto Panini', 275000),
+  // 9. استارتر (KITCHEN) — 6 items
+  m('mod-item-051', 'mod-cat-appetizers', 'سالاد سزار استیک', 'Steak Caesar Salad', 970000, { station: 'KITCHEN', description: 'سالاد سزار استیک' }),
+  m('mod-item-052', 'mod-cat-appetizers', 'سالاد سزار با مرغ گریل', 'Grilled Chicken Caesar Salad', 750000, { station: 'KITCHEN', description: 'سالاد سزار با مرغ گریل' }),
+  m('mod-item-053', 'mod-cat-appetizers', 'فرنچ فرایز با دیپ آلفردو', 'French Fries with Alfredo Dip', 420000, { station: 'KITCHEN', description: 'فرنچ فرایز با دیپ آلفردو' }),
+  m('mod-item-054', 'mod-cat-appetizers', 'فرنچ فرایز با دیپ سالسا', 'French Fries with Salsa Dip', 390000, { station: 'KITCHEN', description: 'فرنچ فرایز با دیپ سالسا' }),
+  m('mod-item-055', 'mod-cat-appetizers', 'فرنچ فرایز با دیپ گودا', 'French Fries with Gouda Dip', 420000, { station: 'KITCHEN', description: 'فرنچ فرایز با دیپ گودا' }),
+  m('mod-item-056', 'mod-cat-appetizers', 'فرنچ فرایز ساده', 'Classic French Fries', 320000, { station: 'KITCHEN', description: 'فرنچ فرایز ساده' }),
 
-  // 10. پاستا و غذاهای بیسترو (5)
-  m('mod-52', 'mod-cat-pasta', 'پاستا آلفردو مرغ و قارچ', 'Chicken Alfredo Pasta', 325000, { badge: 'پاستا' }),
-  m('mod-53', 'mod-cat-pasta', 'پاستا پنه پستو ریحان', 'Basil Pesto Penne', 295000),
-  m('mod-54', 'mod-cat-pasta', 'پاستا بیف استراگانف ویژه', 'Beef Stroganoff Pasta', 375000),
-  m('mod-55', 'mod-cat-pasta', 'فتوچینی بلونز گوشت تازه', 'Beef Bolognese Fettuccine', 340000),
-  m('mod-56', 'mod-cat-pasta', 'لازانیا تنوری کلاسیک مودندو', 'Classic Baked Lasagna', 350000),
+  // 10. دسر (BAR) — 3 items
+  m('mod-item-057', 'mod-cat-desserts', 'کیک روز', 'Cake of the Day', 240000, { station: 'BAR', description: 'کیک روز' }),
+  m('mod-item-058', 'mod-cat-desserts', 'رد ولوت', 'Red Velvet Cake', 290000, { station: 'BAR', description: 'کیک رد ولوت' }),
+  m('mod-item-059', 'mod-cat-desserts', 'چیز کیک سن سباستین', 'San Sebastian Cheesecake', 290000, { station: 'BAR', description: 'چیز کیک' }),
 
-  // 11. پیتزاهای تنوری مودندو (5)
-  m('mod-57', 'mod-cat-pizza', 'پیتزا پپرونی کلاسیک تنوری', 'Classic Pepperoni Pizza', 360000, { badge: 'تنوری' }),
-  m('mod-58', 'mod-cat-pizza', 'پیتزا چیکن آلفردو و قارچ', 'Chicken Alfredo Pizza', 355000),
-  m('mod-59', 'mod-cat-pizza', 'پیتزا مارگاریتا ناپولی', 'Napoli Margherita Pizza', 295000),
-  m('mod-60', 'mod-cat-pizza', 'پیتزا بوقلمون و پیاز کاراملی', 'Smoked Turkey Caramelized Onion Pizza', 345000),
-  m('mod-61', 'mod-cat-pizza', 'پیتزا مخصوص سرآشپز مودندو', 'Modendo Chef Special Pizza', 415000, { badge: 'ویژه' }),
+  // 11. ساندویچ (KITCHEN) — 4 items
+  m('mod-item-060', 'mod-cat-salads', 'ژامبون تنوری', 'Baked Ham Sandwich', 690000, { station: 'KITCHEN', description: 'ژامبون تنوری' }),
+  m('mod-item-061', 'mod-cat-salads', 'ساندویچ چیکن باربیکیو', 'BBQ Chicken Sandwich', 680000, { station: 'KITCHEN', description: 'ساندویچ چیکن باربیکیو' }),
+  m('mod-item-062', 'mod-cat-salads', 'ساندویچ رست بیف', 'Roast Beef Sandwich', 895000, { station: 'KITCHEN', description: 'رست بیف' }),
+  m('mod-item-063', 'mod-cat-salads', 'پاسترامی', 'Pastrami Sandwich', 975000, { station: 'KITCHEN', description: 'پاسترامی' }),
 
-  // 12. پیش‌غذا و فینگرفود لانژ (6)
-  m('mod-62', 'mod-cat-appetizers', 'سیب‌زمینی سرخ‌کرده با سس چدار و بیکن', 'Loaded Cheddar Bacon Fries', 215000, { badge: 'گروهی' }),
-  m('mod-63', 'mod-cat-appetizers', 'سیب‌زمینی ساده با ادویه کیجن', 'Cajun Spiced Fries', 145000),
-  m('mod-64', 'mod-cat-appetizers', 'نان سیر تنوری با موزارلا', 'Cheesy Garlic Bread', 165000),
-  m('mod-65', 'mod-cat-appetizers', 'فیله استریپس سوخاری (۵ تکه)', 'Crispy Chicken Strips (5pcs)', 265000),
-  m('mod-66', 'mod-cat-appetizers', 'قارچ سوخاری با سس تارتار', 'Crispy Mushrooms & Tartar', 175000),
-  m('mod-67', 'mod-cat-appetizers', 'بال و کتف اسپایسی بوفالو', 'Buffalo Spicy Chicken Wings', 255000),
+  // 12. بشقاب (KITCHEN) — 5 items
+  m('mod-item-064', 'mod-cat-pasta', 'ساسج لاورز', 'Sausage Lovers Platter', 885000, { station: 'KITCHEN', description: 'ساسج لاورز' }),
+  m('mod-item-065', 'mod-cat-pasta', 'پاستا مارگاریتا', 'Pasta Margherita', 750000, { station: 'KITCHEN', description: 'پاستا مارگاریتا' }),
+  m('mod-item-066', 'mod-cat-pasta', 'پاستا آلفردو', 'Pasta Alfredo', 790000, { station: 'KITCHEN', description: 'پاستا آلفردو' }),
+  m('mod-item-067', 'mod-cat-pasta', 'سبزیجات گرم', 'Warm Veggies Platter', 590000, { station: 'KITCHEN', description: 'سبزیجات گرم' }),
+  m('mod-item-068', 'mod-cat-pasta', 'چیکن استیک', 'Chicken Steak Platter', 890000, { station: 'KITCHEN', description: 'چیکن استیک' }),
 
-  // 13. سالادها و کاسه‌های رژیمی (4)
-  m('mod-68', 'mod-cat-salads', 'سالاد سزار با فیله گریل', 'Grilled Chicken Caesar Salad', 285000),
-  m('mod-69', 'mod-cat-salads', 'سالاد سبز آووکادو و انار', 'Avocado Pomegranate Green Salad', 245000),
-  m('mod-70', 'mod-cat-salads', 'سالاد یونانی کلاسیک', 'Classic Greek Salad', 215000),
-  m('mod-71', 'mod-cat-salads', 'پاور بول مرغ و کینوا', 'Chicken Quinoa Power Bowl', 295000),
+  // 13. پیتزا (KITCHEN) — 7 items
+  m('mod-item-069', 'mod-cat-pizza', 'پپرونی', 'Pepperoni Pizza', 730000, { station: 'KITCHEN', description: 'پپرونی' }),
+  m('mod-item-070', 'mod-cat-pizza', 'چیکن', 'Chicken Pizza', 850000, { station: 'KITCHEN', description: 'چیکن' }),
+  m('mod-item-071', 'mod-cat-pizza', 'پیتزا کلاسیک', 'Classic Pizza', 940000, { station: 'KITCHEN', description: 'پیتزا کلاسیک' }),
+  m('mod-item-072', 'mod-cat-pizza', 'میت بال', 'Meatball Pizza', 1035000, { station: 'KITCHEN', description: 'میت بال' }),
+  m('mod-item-073', 'mod-cat-pizza', 'بیکن', 'Bacon Pizza', 1050000, { station: 'KITCHEN', description: 'بیکن' }),
+  m('mod-item-074', 'mod-cat-pizza', 'رست بیف', 'Roast Beef Pizza', 1130000, { station: 'KITCHEN', description: 'رست بیف' }),
+  m('mod-item-075', 'mod-cat-pizza', 'سیر و استیک', 'Garlic & Steak Pizza', 1320000, { station: 'KITCHEN', description: 'سیر و استیک' }),
 
-  // 14. کیک و دسرهای دست‌ساز (5)
-  m('mod-72', 'mod-cat-desserts', 'چیزکیک سن سباستین با سس شکلات', 'San Sebastian Cheesecake', 155000, { badge: 'دسر' }),
-  m('mod-73', 'mod-cat-desserts', 'تیرامیسو کلاسیک ایتالیایی', 'Classic Italian Tiramisu', 160000),
-  m('mod-74', 'mod-cat-desserts', 'کیک شکلاتی دبل فاج', 'Double Fudge Chocolate Cake', 150000),
-  m('mod-75', 'mod-cat-desserts', 'پای سیب گرم با بستنی وانیل', 'Warm Apple Pie & Ice Cream', 165000),
-  m('mod-76', 'mod-cat-desserts', 'براونی فندقی مودندو', 'Modendo Hazelnut Brownie', 140000),
+  // 14. برگر (KITCHEN) — 5 items
+  m('mod-item-076', 'mod-cat-burgers', 'بیکن برگر', 'Bacon Burger', 1170000, { station: 'KITCHEN', description: 'Bacon Burger' }),
+  m('mod-item-077', 'mod-cat-burgers', 'چوریتسو برگر', 'Chorizo Burger', 1190000, { station: 'KITCHEN', description: 'چوریتسو برگر' }),
+  m('mod-item-078', 'mod-cat-burgers', 'مایتی برگر', 'Mighty Burger', 1470000, { station: 'KITCHEN', description: 'Mighty Burger' }),
+  m('mod-item-079', 'mod-cat-burgers', 'چیز برگر', 'Cheese Burger', 870000, { station: 'KITCHEN', description: 'چیز برگر' }),
+  m('mod-item-080', 'mod-cat-burgers', 'کلاسیک برگر', 'Classic Burger', 790000, { station: 'KITCHEN', description: 'کلاسیک برگر' }),
 
-  // 15. پکیج ژتون لانژ و تنقلات (5)
-  m('mod-77', 'mod-cat-lounge', 'پکیج چیپس و دیپ مکزیکی سالسا', 'Nachos & Salsa Dip', 155000),
-  m('mod-78', 'mod-cat-lounge', 'بشقاب آجیل و اسنک گیمینگ', 'Gamer Mixed Nuts & Snacks', 220000),
-  m('mod-79', 'mod-cat-lounge', 'سرویس چای و باقلوا لانژ', 'Lounge Tea & Baklava Tray', 175000),
-  m('mod-80', 'mod-cat-lounge', 'نوشابه قوطی / نوشیدنی انرژی‌زا', 'Can Soda / Energy Drink', 55000),
-  m('mod-81', 'mod-cat-lounge', 'آب معدنی کوچک', 'Mineral Water (500ml)', 20000),
+  // 15. ظروف بسته بندی (KITCHEN / Packaging) — 2 items
+  m('mod-item-081', 'mod-cat-packaging', 'ظرف بسته بندی 2', 'Takeaway Packaging 2', 30000, { station: 'KITCHEN', description: 'ظرف بیرون بر' }),
+  m('mod-item-082', 'mod-cat-packaging', 'ظرف بسته بندی 1', 'Takeaway Packaging 1', 40000, { station: 'KITCHEN', description: 'ظرف بیرون بر' }),
+
+  // 16. گیم نت (BAR / Counter) — 7 items
+  m('mod-item-083', 'mod-cat-lounge', 'پی اس 5 3 دسته 12 شب', 'PS5 3-Controller (Midnight)', 400000, { station: 'BAR', description: 'پی اس 5 3 دسته 12 شب' }),
+  m('mod-item-084', 'mod-cat-lounge', 'پی اس 5 4 دسته 12 شب', 'PS5 4-Controller (Midnight)', 470000, { station: 'BAR', description: 'پی اس 5 4 دسته 12 شب' }),
+  m('mod-item-085', 'mod-cat-lounge', 'پی اس 5 2 دسته 12 شب', 'PS5 2-Controller (Midnight)', 340000, { station: 'BAR', description: 'پی اس 5 2 دسته 12 شب' }),
+  m('mod-item-086', 'mod-cat-lounge', 'پی اس 5 سه دسته', 'PS5 3-Controller Standard', 350000, { station: 'BAR', description: 'پی اس 5 سه دسته' }),
+  m('mod-item-087', 'mod-cat-lounge', 'پی اس 5 چهار دسته', 'PS5 4-Controller Standard', 420000, { station: 'BAR', description: 'پی اس 5 چهار دسته' }),
+  m('mod-item-088', 'mod-cat-lounge', 'پی اس 5 یک و دو دسته', 'PS5 1-2 Controller Standard', 290000, { station: 'BAR', description: 'پی اس 5 یک و دو دسته' }),
+  m('mod-item-089', 'mod-cat-lounge', 'پی اس نیم ساعت', 'PS5 Half Hour Session', 145000, { station: 'BAR', description: 'نیم ساعت' }),
 ];

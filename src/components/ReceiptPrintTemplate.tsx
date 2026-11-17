@@ -351,7 +351,7 @@ export function renderReceiptTemplateHtml(
 
   const isModendo =
     activeTenant.id === 'modendo' ||
-    activeTenant.id === 'tenant-modendo-01' ||
+    (activeTenant.id as string) === 'tenant-modendo-01' ||
     activeTenant.id.includes('modendo') ||
     order.tenantId === 'tenant-modendo-01' ||
     order.tenantId === 'modendo' ||

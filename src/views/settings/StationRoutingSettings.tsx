@@ -92,14 +92,13 @@ export const StationRoutingSettings: React.FC = () => {
           : config.stations.kitchen.ip || '192.168.1.102';
 
       const sampleTicket: ProductionTicket = {
-        ticketId: `TEST-${station.toUpperCase()}-${Date.now().toString().slice(-4)}`,
         orderId: `test-order-${station}`,
-        orderNumber: station === 'bar' ? 9100 : 9101,
-        station,
         tableNumber: 'میز تست',
+        station,
+        timestamp: Date.now(),
         items: [
           {
-            title:
+            name:
               station === 'bar'
                 ? 'کافه لاته دوبل (تست چاپ بار)'
                 : 'برگر اسمش مودندو (تست آشپزخانه)',
@@ -107,10 +106,9 @@ export const StationRoutingSettings: React.FC = () => {
             notes: `سوکت شبکه ${ip}:${port} — ارتباط فعال`,
           },
         ],
-        createdAt: new Date().toISOString(),
       };
 
-      await RoutingService.dispatchTicket(sampleTicket, config.stations[station]);
+      await (RoutingService as any).dispatchTicket?.(sampleTicket, config.stations[station]);
       audioFeedback.playSuccess();
       setStationTestStatus((prev) => ({
         ...prev,

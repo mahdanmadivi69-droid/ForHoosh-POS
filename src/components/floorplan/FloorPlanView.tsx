@@ -14,6 +14,9 @@ import {
   Check,
   LayoutGrid,
   ArrowLeftRight,
+  Store,
+  CreditCard,
+  Search,
 } from 'lucide-react';
 import {
   FloorPlanCanvas,
@@ -53,6 +56,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   const [nowMs, setNowMs] = useState<number>(Date.now());
   const [modalNode, setModalNode] = useState<FloorNode | null>(null);
   const [modalTableEntity, setModalTableEntity] = useState<TableEntity | null>(null);
+  const [selectedTableNodeId, setSelectedTableNodeId] = useState<string>(selectedNodeId || 'M-01');
 
   // Table Merge Mode state
   const [mergeMode, setMergeMode] = useState<boolean>(false);
@@ -412,6 +416,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   );
 
   const handleNodeClick = (node: FloorNode) => {
+    setSelectedTableNodeId(node.id);
     if (moveMode) {
       const isOccupied = Boolean(sessions[node.id]);
       if (!moveSourceId) {
@@ -442,7 +447,10 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
       return;
     }
 
-    onSelectTableForOrder(node.label);
+    // On smaller screens where sidebar is hidden, route directly to POS
+    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+      onSelectTableForOrder(node.label);
+    }
   };
 
   const handleOpenTableModal = (node: FloorNode) => {
@@ -472,6 +480,13 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     }
   };
 
+  const selectedNode = useMemo(() => {
+    return MODENDO_FLOOR_NODES.find((n) => n.id === selectedTableNodeId) || MODENDO_FLOOR_NODES[0];
+  }, [selectedTableNodeId]);
+
+  const activeTableSession = sessions[selectedTableNodeId];
+  const sessionTotal = getSessionTotalToman(activeTableSession, nowMs);
+
   const zoneTabs: Array<{ id: FloorZone | 'ALL'; label: string; icon: React.ReactNode }> = [
     { id: 'ALL', label: 'همه سالن', icon: <MapIcon className="w-3.5 h-3.5" /> },
     { id: 'MAIN_HALL', label: 'سالن اصلی', icon: <Coffee className="w-3.5 h-3.5" /> },
@@ -483,43 +498,231 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     <MotionConfig reducedMotion="user">
       <div
         dir="rtl"
-        className="flex-1 flex flex-col gap-3 p-3 md:p-5 max-w-[1720px] mx-auto w-full select-none"
+        className="flex-1 flex flex-col xl:grid xl:grid-cols-[400px_1fr] gap-4 p-3 md:p-4 max-w-[1780px] mx-auto w-full select-none"
       >
-        {/* =========================================================================
-            Single Streamlined Liquid Glass Top Toolbar
-            - Zone Filters (ALL, MAIN_HALL, LOUNGE, TERRACE)
-            - Inline Summary (Free, Occupied, Consoles)
-            - Merge Tables Button (ادغام میزها)
-            - Takeaway Button (سفارش بیرون‌بر)
-            - Back to POS Button (بازگشت به صندوق)
-           ========================================================================= */}
-        <div className="rounded-[22px] liquid-glass-shell p-3 px-4 flex flex-wrap items-center justify-between gap-3 shadow-lg border border-white/10">
-          {/* Zone Filters */}
-          <div className="liquid-glass-rail rounded-full p-1 flex items-center gap-1 overflow-x-auto scrollbar-none max-w-full">
-            {zoneTabs.map((tab) => {
-              const isActive = activeZone === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    playPosBeep('click');
-                    setActiveZone(tab.id);
-                  }}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
-                    isActive
-                      ? 'bg-white/[0.16] text-white font-black border border-white/[0.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]'
-                      : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.06] border border-transparent'
-                  }`}
-                >
-                  <span className={isActive ? 'text-[#10B981]' : ''}>{tab.icon}</span>
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+        {/* Left Column: Side-by-side Order Cart Panel (Matching Reference Image 2) */}
+        <aside className="hidden xl:flex flex-col modendo-cart-shell rounded-[28px] overflow-hidden max-h-[calc(100vh-6rem)] h-[calc(100vh-6rem)] sticky top-3">
+          {/* Cart Header */}
+          <div className="p-4 border-b border-white/[0.08] bg-black/20 flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="font-mono tabular-nums text-xs font-bold text-white/80">
+                #10BM-1488
+              </span>
+              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-[11px] font-bold text-cyan-300 shadow-sm">
+                <span>🪑 تب‌ها: {occupiedCount}</span>
+              </div>
+            </div>
+
+            {/* Dine-in vs Takeaway Toggle */}
+            <div className="grid grid-cols-2 gap-2 text-xs font-bold p-1 rounded-full bg-black/40 border border-white/[0.08]">
+              <button
+                type="button"
+                onClick={() => {
+                  playPosBeep('click');
+                  onSelectTableForOrder('بیرون‌بر');
+                }}
+                className="py-2 rounded-full flex items-center justify-center gap-1.5 transition-all cursor-pointer bg-[#381116] border border-red-900/50 text-[#FCA5A5] hover:text-white"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Takeout</span>
+              </button>
+
+              <button
+                type="button"
+                className="py-2 rounded-full flex items-center justify-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
+              >
+                <Store className="w-3.5 h-3.5" />
+                <span>Table 🪑</span>
+              </button>
+            </div>
           </div>
 
-          {/* Inline Live Operational Summary */}
+          {/* Customer Detail Inputs */}
+          <div className="px-4 py-2.5 border-b border-white/[0.08] bg-black/15 space-y-2 text-xs">
+            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
+              <span className="text-white/40">👤</span>
+              <input
+                type="text"
+                readOnly
+                value={activeTableSession?.customerName || ''}
+                placeholder="نام مشتری..."
+                className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
+              />
+              <span className="text-[11px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5">
+                {selectedNode.label}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
+              <span className="text-white/40">📞</span>
+              <input
+                type="text"
+                readOnly
+                placeholder="شماره تماس..."
+                className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
+              <span className="text-white/40">📝</span>
+              <input
+                type="text"
+                readOnly
+                value={activeTableSession?.notes || ''}
+                placeholder="یادداشت فاکتور (توضیحات کل سفارش)..."
+                className="bg-transparent text-white placeholder:text-[#94A3B8]/50 text-xs w-full focus:outline-none"
+              />
+            </div>
+          </div>
+
+          {/* Cart / Table Items List */}
+          <div className="flex-1 overflow-y-auto min-h-0 p-3.5 space-y-2.5">
+            {activeTableSession?.cartItems && activeTableSession.cartItems.length > 0 ? (
+              activeTableSession.cartItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3 rounded-2xl bg-black/35 border border-red-500/15 flex flex-col gap-2 shadow-inner"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-bold text-white truncate">{item.itemNameSnapshot}</h4>
+                      <div className="mt-1 text-xs font-black text-emerald-300 num-heavy tabular-nums">
+                        {formatToman(item.subtotalToman)} تومان
+                      </div>
+                    </div>
+                    <div className="flex items-center rounded-full bg-[#3B1218] border border-red-900/60 p-0.5">
+                      <span className="w-6 text-center font-bold text-xs text-white num-heavy tabular-nums">
+                        {item.quantity}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="p-4 rounded-2xl bg-black/35 border border-red-500/15 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="font-extrabold text-white text-xs">
+                    میز {selectedNode.label} ({selectedNode.titleFa})
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    activeTableSession ? 'bg-rose-500/30 text-rose-300 border border-rose-400/40' : 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/40'
+                  }`}>
+                    {activeTableSession ? 'اشغال' : 'آماده پذیرش'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-[#94A3B8]">
+                  ظرفیت: {selectedNode.seats} نفر · زون: {selectedNode.zone}
+                </div>
+                {selectedNode.kind === 'PS5' && (
+                  <div className="text-xs font-mono font-bold text-sky-300">
+                    نرخ ساعتی: {formatToman(selectedNode.hourlyRateToman || 180000)} تومان
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Quick discount pills */}
+          <div className="px-4 pt-2.5 pb-2 border-t border-white/[0.08] bg-black/15">
+            <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
+              <span className="py-1.5 text-[11px] rounded-full text-center bg-[#991B1B] text-white border border-[#DC2626]">
+                ۰٪
+              </span>
+              <span className="py-1.5 text-[11px] rounded-full text-center bg-[#1B222C] text-[#94A3B8]">
+                ۵٪ ویژه
+              </span>
+              <span className="py-1.5 text-[11px] rounded-full text-center bg-[#1B222C] text-[#94A3B8]">
+                ۱۰٪ باریستا
+              </span>
+              <span className="py-1.5 text-[11px] rounded-full text-center bg-[#1B222C] text-[#94A3B8]">
+                ۱۵٪ همکار
+              </span>
+            </div>
+          </div>
+
+          {/* Price & Checkout CTA */}
+          <div className="p-4 border-t border-white/[0.08] bg-black/25 space-y-3">
+            <div className="flex justify-between items-baseline">
+              <span className="text-sm font-extrabold text-white">مبلغ نهایی:</span>
+              <div className="text-right">
+                <span className="text-xl font-black text-emerald-300 num-heavy tabular-nums">
+                  {formatToman(sessionTotal || 0)}
+                </span>
+                <span className="text-xs text-[#94A3B8] mr-1">تومان</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => onSelectTableForOrder(selectedNode.label)}
+              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#DC2626] via-[#B91C1C] to-[#991B1B] text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(220,38,38,0.5)] border border-red-500/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+            >
+              <CreditCard className="w-5 h-5" />
+              <span>ثبت سفارش و پرداخت</span>
+            </button>
+          </div>
+        </aside>
+
+        {/* Right Column: Blueprint & Controls */}
+        <div className="flex-1 flex flex-col gap-3 min-w-0">
+          {/* Top Control Bar with Search and View Switchers */}
+          <div className="rounded-[22px] liquid-glass-shell p-2.5 px-4 flex flex-wrap items-center justify-between gap-3 shadow-lg border border-white/10">
+            {/* View Switchers */}
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                className="px-4 py-1.5 rounded-full text-xs font-bold text-amber-200 bg-[#78350F]/90 border border-amber-600/60 shadow-[0_0_12px_rgba(245,158,11,0.35)] cursor-pointer"
+              >
+                مدیریت میزها
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  playPosBeep('click');
+                  onBackToPos();
+                }}
+                className="px-4 py-1.5 rounded-full text-xs font-bold text-[#cbd5e1] hover:text-white bg-white/5 border border-white/10 hover:border-white/20 transition cursor-pointer"
+              >
+                سفارشات
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  playPosBeep('click');
+                  if (onBackToHub) onBackToHub();
+                }}
+                className="px-4 py-1.5 rounded-full text-xs font-bold text-[#cbd5e1] hover:text-white bg-white/5 border border-white/10 hover:border-white/20 transition cursor-pointer"
+              >
+                تنظیمات
+              </button>
+            </div>
+
+            {/* Zone Filters */}
+            <div className="liquid-glass-rail rounded-full p-1 flex items-center gap-1 overflow-x-auto scrollbar-none max-w-full">
+              {zoneTabs.map((tab) => {
+                const isActive = activeZone === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setActiveZone(tab.id);
+                    }}
+                    className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 whitespace-nowrap shrink-0 transition-all duration-200 cursor-pointer ${
+                      isActive
+                        ? 'bg-white/[0.16] text-white font-black border border-white/[0.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.3)]'
+                        : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.06] border border-transparent'
+                    }`}
+                  >
+                    <span className={isActive ? 'text-[#10B981]' : ''}>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Inline Live Operational Summary */}
           <div className="flex items-center gap-3 text-xs text-[#94A3B8] px-2 tabular-nums">
             <div className="flex items-center gap-1.5">
               <strong className="text-white font-mono font-bold text-sm">{freeCount}</strong>
@@ -755,12 +958,12 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         </AnimatePresence>
 
         {/* 3-Wing Floor Plan Canvas Container */}
-        <div className="flex-1 w-full overflow-hidden">
+        <div className="flex-1 w-full overflow-hidden min-h-[750px]">
           <FloorPlanCanvas
             nodes={MODENDO_FLOOR_NODES}
             sessions={sessions}
             activeZone={activeZone}
-            selectedNodeId={selectedNodeId}
+            selectedNodeId={selectedTableNodeId}
             nowMs={nowMs}
             mergeMode={mergeMode}
             mergeSelectedIds={mergeSelectedIds}
@@ -776,6 +979,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               onSelectTableForOrder(node.label || node.display_name);
             }}
           />
+        </div>
         </div>
 
         {/* Table Session Modal (for Timer / PS5 / Settle / Transfer) */}

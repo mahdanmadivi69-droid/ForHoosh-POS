@@ -1660,7 +1660,7 @@ export class SmartOrdersStore {
   static getCategories(): Category[] {
     const activeTenantId = this.getActiveTenantId();
     if (isModendoTenantId(activeTenantId)) {
-      const isV16Seeded = typeof window !== 'undefined' && localStorage?.getItem('smartorders_modendo_v0.16.2_catalog_seeded');
+      const isV16Seeded = typeof window !== 'undefined' && localStorage?.getItem('smartorders_modendo_v0.16.3_89items_catalog_seeded');
       if (!isV16Seeded) {
         this.resetModendoMenuToSeed();
       }
@@ -1679,13 +1679,13 @@ export class SmartOrdersStore {
   }
 
   /**
-   * Resets and syncs Modendo's menu seed with exact 15 categories and 81 items
+   * Resets and syncs Modendo's menu seed with exact 16 categories and 89 items
    */
   static resetModendoMenuToSeed(): { categoriesCount: number; itemsCount: number } {
     save(STORAGE_KEYS.CATEGORIES_MODENDO, MODENDO_CATEGORIES);
     save(STORAGE_KEYS.MENU_ITEMS_MODENDO, MODENDO_MENU_ITEMS);
     if (typeof window !== 'undefined' && localStorage) {
-      localStorage.setItem('smartorders_modendo_v0.16.2_catalog_seeded', 'true');
+      localStorage.setItem('smartorders_modendo_v0.16.3_89items_catalog_seeded', 'true');
     }
     return {
       categoriesCount: MODENDO_CATEGORIES.length,
@@ -1697,14 +1697,15 @@ export class SmartOrdersStore {
   static getMenuItems(): MenuItem[] {
     const activeTenantId = this.getActiveTenantId();
     if (isModendoTenantId(activeTenantId)) {
-      const isV16Seeded = typeof window !== 'undefined' && localStorage?.getItem('smartorders_modendo_v0.16.2_catalog_seeded');
+      const isV16Seeded = typeof window !== 'undefined' && localStorage?.getItem('smartorders_modendo_v0.16.3_89items_catalog_seeded');
       if (!isV16Seeded) {
         this.resetModendoMenuToSeed();
       }
       const rawItems = load<MenuItem[]>(STORAGE_KEYS.MENU_ITEMS_MODENDO, MODENDO_MENU_ITEMS);
-      // Strictly enforce that 100hich items never leak into Modendo runtime
-      const sanitized = rawItems.filter((i) => i.tenantId === 'tenant-modendo-01' || i.id.startsWith('mod-'));
-      const activeItems = sanitized.length > 0 ? sanitized : MODENDO_MENU_ITEMS;
+      // Strictly enforce that 100hich items never leak into Modendo runtime and old items are replaced
+      const modendoItemIds = new Set(MODENDO_MENU_ITEMS.map((m) => m.id));
+      const sanitized = rawItems.filter((i) => modendoItemIds.has(i.id));
+      const activeItems = sanitized.length === MODENDO_MENU_ITEMS.length ? sanitized : MODENDO_MENU_ITEMS;
       const existingIds = new Set(activeItems.map((i) => i.id));
       const missingDefaults = MODENDO_MENU_ITEMS.filter((d) => !existingIds.has(d.id));
       const combined = missingDefaults.length > 0 ? [...activeItems, ...missingDefaults] : activeItems;

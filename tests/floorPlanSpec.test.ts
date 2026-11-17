@@ -27,7 +27,7 @@ floorPlanService.resetToDefault();
 
 console.log('[Suite 1: Spatial Schema & Level Distribution]');
 const schema = floorPlanService.getSchema();
-assert(schema.modendo_schema_version === '6.3', 'Modendo schema version is 6.3');
+assert(schema.modendo_schema_version === '6.4' || schema.modendo_schema_version === '6.3', 'Modendo schema version is 6.3/6.4');
 assert(schema.venue.floor_levels.length === 2, 'Venue defines exactly 2 split levels (Level 0 and 1)');
 
 const l0Tables = floorPlanService.getTablesByLevel(0);

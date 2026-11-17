@@ -1,6 +1,7 @@
 import Dexie, { Table } from 'dexie';
 import { InventoryItem, MenuItem, Order, AuditLog } from '../types/db';
 import type { Order as DomainOrder } from '../types/domain';
+import { MODENDO_CATEGORIES, MODENDO_MENU_ITEMS } from '../data/modendoMenu';
 import {
   AuthUserRecord,
   AppSettingRecord,
@@ -318,7 +319,57 @@ export async function seedTenantDatabaseDefaults(targetDb: CafeDatabase, tenantI
         });
       }
     }
+
+    // 5. Seed exact Modendo 89-item menu catalog into Dexie & overwrite old cache
+    const existingMenuCount = await targetDb.menuItems.count().catch(() => 0);
+    const modendoMenuSeeded = await targetDb.appSettings.get('modendo_menu_v0.16.3_89items').catch(() => null);
+    if (!modendoMenuSeeded || existingMenuCount !== MODENDO_MENU_ITEMS.length) {
+      await targetDb.menuItems.clear().catch(() => {});
+      for (const item of MODENDO_MENU_ITEMS) {
+        await targetDb.menuItems.put({
+          id: item.id,
+          categoryId: item.categoryId,
+          title: item.nameFa,
+          titleEn: item.nameEn,
+          priceToman: item.priceToman,
+          isAvailable: item.isAvailable,
+          currentStock: item.currentStock,
+          lowStockThreshold: item.lowStockThreshold,
+          station: item.station,
+          description: item.description,
+          tenantId: 'tenant-modendo-01',
+        } as any);
+      }
+      await targetDb.appSettings.put({
+        key: 'modendo_menu_v0.16.3_89items',
+        value: { count: MODENDO_MENU_ITEMS.length, timestamp: Date.now() },
+        updatedAt: Date.now(),
+      });
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('smartorders_categories_modendo_v1', JSON.stringify(MODENDO_CATEGORIES));
+          localStorage.setItem('smartorders_menu_items_modendo_v1', JSON.stringify(MODENDO_MENU_ITEMS));
+          localStorage.setItem('smartorders_modendo_v0.16.2_catalog_seeded', 'true');
+          localStorage.setItem('smartorders_modendo_v0.16.3_89items_catalog_seeded', 'true');
+        } catch {}
+      }
+    }
   }
+}
+
+// Synchronous top-level catalog synchronization for Modendo startup
+if (typeof localStorage !== 'undefined') {
+  try {
+    const is89Seeded = localStorage.getItem('smartorders_modendo_v0.16.3_89items_catalog_seeded');
+    const existingStoredItems = localStorage.getItem('smartorders_menu_items_modendo_v1');
+    const parsedLength = existingStoredItems ? JSON.parse(existingStoredItems).length : 0;
+    if (!is89Seeded || parsedLength !== MODENDO_MENU_ITEMS.length) {
+      localStorage.setItem('smartorders_categories_modendo_v1', JSON.stringify(MODENDO_CATEGORIES));
+      localStorage.setItem('smartorders_menu_items_modendo_v1', JSON.stringify(MODENDO_MENU_ITEMS));
+      localStorage.setItem('smartorders_modendo_v0.16.2_catalog_seeded', 'true');
+      localStorage.setItem('smartorders_modendo_v0.16.3_89items_catalog_seeded', 'true');
+    }
+  } catch {}
 }
 
 /**

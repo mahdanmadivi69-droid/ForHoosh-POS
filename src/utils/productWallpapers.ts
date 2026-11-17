@@ -64,6 +64,27 @@ export const WALLPAPER_PRESETS = {
 
   // 9. Hot Chocolate
   HOT_CHOCOLATE: 'https://images.unsplash.com/photo-1542990253-0d0f5be5f0ed?auto=format&fit=crop&w=600&q=80',
+
+  // 10. Breakfast, Omelette & Eggs
+  BREAKFAST_OMELETTE: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?auto=format&fit=crop&w=600&q=80',
+
+  // 11. Gaming, Boardgames & PS5
+  GAMING_LOUNGE: 'https://images.unsplash.com/photo-1612287232230-67d983fb0819?auto=format&fit=crop&w=600&q=80',
+
+  // 12. Cans, Sodas & Energy Drinks
+  COLD_BEVERAGE_CAN: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80',
+
+  // 13. Shakes & Smoothies
+  MILKSHAKE_GOURMET: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=600&q=80',
+
+  // 14. Burgers & Panini
+  BURGER_GOURMET: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
+
+  // 15. Pizza
+  PIZZA_CRUST: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80',
+
+  // 16. Fries & Snacks
+  FRIES_SNACK: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=600&q=80',
 };
 
 // Rich atmospheric gradients for offline / fallback rendering
@@ -95,6 +116,41 @@ export function getProductWallpaper(item: WallpaperItemSource): string {
   const nameFa = (item.nameFa || '').toLowerCase();
   const nameEn = (item.nameEn || '').toLowerCase();
   const cat = (item.categoryId || '').toLowerCase();
+
+  // Breakfast, Omelette & Eggs
+  if (nameFa.includes('صبحانه') || nameFa.includes('املت') || nameFa.includes('نیمرو') || nameFa.includes('کوکو') || cat.includes('breakfast')) {
+    return WALLPAPER_PRESETS.BREAKFAST_OMELETTE;
+  }
+
+  // Gaming, Boardgames, PS5 & Mafia
+  if (nameFa.includes('بازی') || nameFa.includes('فوتبال') || nameFa.includes('مافیا') || nameFa.includes('بردگیم') || nameFa.includes('ps5') || cat.includes('game') || cat.includes('gaming')) {
+    return WALLPAPER_PRESETS.GAMING_LOUNGE;
+  }
+
+  // Cans, Sodas, Doogh & Energy Drinks
+  if (nameFa.includes('انرژی زا') || nameFa.includes('دلستر') || nameFa.includes('دوغ') || nameFa.includes('کوکا') || nameFa.includes('ردبول') || nameFa.includes('هایپ')) {
+    return WALLPAPER_PRESETS.COLD_BEVERAGE_CAN;
+  }
+
+  // Shakes & Smoothies
+  if (nameFa.includes('شیک') || nameFa.includes('اسموتی') || cat.includes('shake')) {
+    return WALLPAPER_PRESETS.MILKSHAKE_GOURMET;
+  }
+
+  // Pizza
+  if (nameFa.includes('پیتزا') || cat.includes('pizza')) {
+    return WALLPAPER_PRESETS.PIZZA_CRUST;
+  }
+
+  // Burgers & Sandwiches
+  if (nameFa.includes('برگر') || nameFa.includes('ساندویچ') || nameFa.includes('استیک') || cat.includes('burger')) {
+    return WALLPAPER_PRESETS.BURGER_GOURMET;
+  }
+
+  // Fries & Snacks
+  if (nameFa.includes('سیب زمینی') || nameFa.includes('سوخاری') || nameFa.includes('قارچ') || nameFa.includes('استریپس')) {
+    return WALLPAPER_PRESETS.FRIES_SNACK;
+  }
 
   // Croissants & Pastries
   if (id.includes('croissant') || nameFa.includes('کروسان') || nameFa.includes('کرواسان') || nameEn.includes('croissant')) {

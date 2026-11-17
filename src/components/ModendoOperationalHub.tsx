@@ -58,7 +58,7 @@ import { SmartOrdersStore } from '../services/storage';
 interface ModendoOperationalHubProps {
   activeUser: AuthUserRecord | User;
   activeShift: Shift | null;
-  onSelectModule: (target: 'floor-plan' | 'pos' | 'takeaway' | 'kds' | 'reports' | 'menu' | 'settings') => void;
+  onSelectModule: (target: 'floor-plan' | 'pos' | 'takeaway' | 'kds' | 'reports' | 'menu' | 'settings' | 'inventory' | 'audit' | 'receipts') => void;
   onLock: () => void;
   onOpenShiftModal?: () => void;
   onOpenKds?: () => void;
@@ -77,7 +77,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   baristaActiveCount = 0,
 }) => {
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
-  const [elevationTarget, setElevationTarget] = useState<'reports' | 'menu' | 'settings' | null>(null);
+  const [elevationTarget, setElevationTarget] = useState<'reports' | 'menu' | 'settings' | 'inventory' | 'audit' | null>(null);
   const [activeTablesCount, setActiveTablesCount] = useState<number>(0);
   const [activePs5Count, setActivePs5Count] = useState<number>(0);
   const [liveKdsCount, setLiveKdsCount] = useState<number>(baristaActiveCount);
@@ -146,7 +146,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   }, []);
 
   const handleCardClick = (
-    target: 'floor-plan' | 'pos' | 'takeaway' | 'kds' | 'receipts' | 'reports' | 'menu' | 'settings'
+    target: 'floor-plan' | 'pos' | 'takeaway' | 'kds' | 'receipts' | 'reports' | 'menu' | 'settings' | 'inventory' | 'audit'
   ) => {
     playPosBeep('click');
 
@@ -359,7 +359,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             </div>
 
             <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
-              ثبت مستقیم فاکتورهای بیرون‌بر (Takeaway)، انتخاب اقلام از کاتالوگ ۸۱ قلمی و تسویه نقدی/پوز.
+              ثبت مستقیم فاکتورهای بیرون‌بر (Takeaway)، انتخاب اقلام از کاتالوگ ۸۹ قلمی و تسویه نقدی/پوز.
             </p>
 
             <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
@@ -550,7 +550,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             </div>
 
             <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
-              پیکربندی ۸۱ قلم منوی مودندو، نرخ ساعتی بازی کنسول PS5، افزودن آیتم جدید و تنظیم مواد اولیه BOM.
+              پیکربندی ۸۹ قلم منوی مودندو، نرخ ساعتی بازی کنسول PS5، افزودن آیتم جدید و تنظیم مواد اولیه BOM.
             </p>
 
             <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">

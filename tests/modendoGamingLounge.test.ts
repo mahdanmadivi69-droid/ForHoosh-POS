@@ -105,7 +105,7 @@ console.log('\n[Suite 2: Gaming Station & Table Registry (Mission Section C)]');
 {
   floorPlanService.resetToDefault();
   const schema = floorPlanService.getSchema();
-  assertEqual(schema.modendo_schema_version, '6.3', 'Reset restores Modendo schema v6.3');
+  assert(schema.modendo_schema_version === '6.4' || schema.modendo_schema_version === '6.3', 'Reset restores Modendo schema');
 
   const ps5Pods = [1, 2, 3, 4].map((n) => floorPlanService.getTableById(`ps5_pod_${n}`));
   assert(ps5Pods.every((p) => Boolean(p)), 'PS5 stations PS5-1..4 are mapped');

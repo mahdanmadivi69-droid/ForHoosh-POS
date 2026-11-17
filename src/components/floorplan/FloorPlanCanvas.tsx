@@ -828,9 +828,10 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     const isMoveTargetCandidate = moveMode && Boolean(moveSourceId) && !isOccupied;
     const isMoveSourceCandidate = moveMode && !moveSourceId && isOccupied;
 
-    // Strict styling discipline:
-    // FREE: pure dark glass (bg-[#1B222C]/70 border-white/10 hover:border-white/20 text-[#E2E8F0]) - strictly NO green borders.
-    // OCCUPIED: emerald glow (bg-[#10B981]/15 border-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.35)] text-white).
+    // Strict styling discipline matching Image 2 reference:
+    // OCCUPIED: glowing red capsule (bg-[#881337]/85 border-2 border-rose-500 shadow-[0_0_22px_rgba(239,68,68,0.6)] text-white)
+    // VACANT: glowing emerald capsule (bg-[#064E3B]/70 border border-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.45)] text-emerald-100)
+    // BAR: glowing amber counter (bg-[#78350F]/70 border-2 border-amber-500 shadow-[0_0_22px_rgba(245,158,11,0.5)])
     const surfaceStyle = isMoveSource
       ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.6)] scale-[1.02]'
       : isMoveTargetCandidate
@@ -844,14 +845,16 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
       : isMergeChecked
       ? 'bg-cyan-500/20 border-cyan-300/80 ring-2 ring-cyan-400/60 shadow-[0_0_26px_-6px_rgba(34,211,238,0.55)]'
       : isSelected
-      ? 'bg-[#10B981]/25 border-white ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.4)] text-white'
+      ? 'bg-emerald-500/40 border-white ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.5)] text-white'
       : isPaymentPending
-      ? 'bg-amber-500/15 border-amber-400/60 shadow-[0_0_16px_rgba(245,158,11,0.35)] text-amber-200'
+      ? 'bg-amber-500/25 border-amber-400/80 shadow-[0_0_18px_rgba(245,158,11,0.45)] text-amber-100'
+      : variant === 'bar-counter'
+      ? 'bg-[#78350F]/70 border-2 border-amber-500 shadow-[0_0_22px_rgba(245,158,11,0.5)] text-amber-100'
       : isOccupied
-      ? `bg-[#10B981]/15 border border-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.35)] text-white ${
+      ? `bg-[#881337]/85 border-2 border-rose-500 shadow-[0_0_22px_rgba(239,68,68,0.6)] text-white ${
           accent ? `${accent.border} ring-1 ${accent.ring}` : ''
         }`
-      : 'bg-[#1B222C]/70 border border-white/10 hover:border-white/20 text-[#E2E8F0] shadow-sm';
+      : 'bg-[#064E3B]/70 border border-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.45)] text-emerald-100 hover:border-emerald-300';
 
     const isWide = variant === 'lounge-counter' || variant === 'bar-counter';
     const showSideChairs = variant === 'vertical-4' || variant === 'vertical-6';
@@ -961,31 +964,29 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
             {/* Center Area: Seats / Order status / Elapsed */}
             <div className="my-auto py-1">
               {isOccupied ? (
-                <div className="flex flex-col gap-0.5">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="font-bold text-emerald-300 flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
-                      <span>{isMerged ? (isHost ? 'میز ادغامی' : 'پیوست') : 'مشغول'}</span>
-                    </span>
-                    {elapsedText && (
-                      <span className="font-mono text-[10px] text-emerald-200/90 tabular-nums">
-                        {elapsedText}
-                      </span>
-                    )}
+                <div className="flex flex-col gap-0.5 text-center">
+                  <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-rose-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                    <span>{node.seats} نفر · اشغال</span>
                   </div>
+                  {elapsedText && (
+                    <span className="font-mono text-[10px] text-rose-200/90 tabular-nums">
+                      {elapsedText}
+                    </span>
+                  )}
                   {itemsCount > 0 && (
-                    <span className="text-[10px] text-[#cbd5e1] font-medium">
+                    <span className="text-[10px] text-white/90 font-medium">
                       {itemsCount} آیتم سفارش
                     </span>
                   )}
                 </div>
               ) : (
-                <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
+                <div className="flex items-center justify-between text-[11px] text-emerald-200 px-0.5">
                   <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3 text-[#94A3B8]" />
+                    <Users className="w-3 h-3 text-emerald-300" />
                     <span>{node.seats} نفره</span>
                   </span>
-                  <span className="text-[10px] text-slate-400">آزاد</span>
+                  <span className="text-[10px] font-bold text-emerald-300/80">خالی</span>
                 </div>
               )}
             </div>
@@ -1310,10 +1311,10 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                       'linear-gradient(165deg, rgba(255, 255, 255, 0.03) 0%, rgba(20, 24, 33, 0.75) 55%, rgba(11, 14, 18, 0.9) 100%)',
                   }}
                 >
-                  {/* U-Shape Wall Banquette silhouette */}
+                  {/* U-Shape Wall Banquette silhouette with vivid neon-emerald glow */}
                   <div
                     aria-hidden="true"
-                    className="pointer-events-none absolute top-2 left-2 right-2 h-9 rounded-t-[18px] bg-gradient-to-b from-[#1e3a2b]/60 to-transparent border-t border-x border-white/10"
+                    className="pointer-events-none absolute top-2 left-2 right-2 bottom-3 rounded-[32px] modendo-sofa-u-glow bg-gradient-to-b from-[#0A382A]/70 via-[#06241B]/50 to-transparent"
                   />
 
                   {/* Top Banquette Counters: L-01 + L-07 */}

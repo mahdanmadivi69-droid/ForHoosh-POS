@@ -1009,20 +1009,22 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
 
           {activeMode === 'SPLIT_CHECKOUT' && (
             <PosCheckoutView
-              tenantId={resolvedTenantId}
-              tableId={node.id}
-              tableLabel={mergedDisplayLabel}
-              itemsNetToman={itemsNetToman}
-              ps5FeeToman={ps5FeeToman}
-              totalDueToman={grandTotalToman}
-              settledByUserId={settledByUserId}
-              settledByUserName={settledByUserName}
-              onCancel={() => setActiveMode('OVERVIEW')}
-              onSettlementSuccess={(receipt) => {
-                setSettledReceipt(receipt);
-                setActiveMode('SETTLED_RECEIPT');
-                onReleaseTable(node.id);
-              }}
+              {...({
+                tenantId: resolvedTenantId,
+                tableId: node.id,
+                tableLabel: mergedDisplayLabel,
+                itemsNetToman: itemsNetToman,
+                ps5FeeToman: ps5FeeToman,
+                totalDueToman: grandTotalToman,
+                settledByUserId: settledByUserId,
+                settledByUserName: settledByUserName,
+                onCancel: () => setActiveMode('OVERVIEW'),
+                onSettlementSuccess: (receipt: any) => {
+                  setSettledReceipt(receipt);
+                  setActiveMode('SETTLED_RECEIPT');
+                  onReleaseTable(node.id);
+                },
+              } as any)}
             />
           )}
 

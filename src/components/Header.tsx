@@ -87,9 +87,12 @@ export const Header: React.FC<HeaderProps> = ({
     tenant.id === 'tenant-modendo-01' ||
     tenant.id === 'modendo' ||
     activeTenantConfig.id === 'modendo' ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE === 'modendo') ||
+    (typeof import.meta !== 'undefined' && /modendo/i.test((import.meta as any).env?.VITE_TENANT_ID || '')) ||
     (typeof document !== 'undefined' && document.documentElement.dataset.theme === 'modendo');
   const isManager = isManagerOrOwner(activeUser.role);
   const [liveClock, setLiveClock] = useState<string>('');
+  const [persianDate, setPersianDate] = useState<string>('امروز');
   const [isUtilityMenuOpen, setIsUtilityMenuOpen] = useState<boolean>(false);
   const utilityMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -103,6 +106,25 @@ export const Header: React.FC<HeaderProps> = ({
     };
     update();
     const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const updateDate = () => {
+      try {
+        const now = new Date();
+        const formatted = new Intl.DateTimeFormat('fa-IR', {
+          weekday: 'long',
+          month: 'numeric',
+          day: 'numeric',
+        }).format(now);
+        setPersianDate(formatted);
+      } catch {
+        setPersianDate('امروز');
+      }
+    };
+    updateDate();
+    const interval = setInterval(updateDate, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -134,209 +156,33 @@ export const Header: React.FC<HeaderProps> = ({
       : 'باریستا';
 
   /* ============================================================================
-   * MODENDO: Ultra-Clean Floating Liquid Glass Spatial Header
+   * MODENDO: Floating Liquid Glass Spatial Header (Reference Image Fidelity)
    * ============================================================================ */
   if (isModendo) {
     return (
-      <header className="sticky top-0 md:top-2.5 z-40 md:mx-auto md:w-[calc(100%-2rem)] max-w-[1720px] md:rounded-[22px] liquid-glass-shell shadow-2xl transition-all duration-200 select-none">
-        <div className="px-3 md:px-5 py-2.5 flex items-center justify-between gap-2 md:gap-4 min-w-0">
-          {/* Zone 1: Minimal Brand Mark */}
-          <div className="flex items-center gap-2 md:gap-2.5 shrink-0 min-w-0">
-            <span className="text-base md:text-[17px] font-black tracking-tight text-white font-display-latin">
-              MODENDO
-            </span>
-            <span className="text-white/40 text-xs hidden sm:inline">—</span>
-            <span className="hidden sm:inline text-xs font-bold text-emerald-300 whitespace-nowrap">
-              کافه گیمینگ مودندو
-            </span>
-          </div>
+      <header className="sticky top-0 md:top-2 z-40 md:mx-auto md:w-[calc(100%-1.5rem)] max-w-[1780px] md:rounded-full bg-gradient-to-r from-[#072019]/92 via-[#0A2E24]/92 to-[#072019]/92 backdrop-blur-2xl border border-[#164538]/70 shadow-[0_12px_36px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(167,243,208,0.15)] transition-all duration-200 select-none">
+        <div className="px-3 md:px-5 py-2 flex items-center justify-between gap-2 md:gap-4 min-w-0">
+          {/* Left Zone: Red Badge · Exit Button · User Pill (Red Border) · Clock/Date · Launcher */}
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-nowrap">
+            {/* Crimson Monogram Emblem [ K ] */}
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7F1D1D] to-[#450A0A] border border-[#DC2626]/70 flex items-center justify-center font-black text-rose-300 shadow-[0_0_12px_rgba(220,38,38,0.35)] shrink-0">
+              <span className="font-display-latin text-xs font-black">K</span>
+            </div>
 
-          {/* Zone 2: Clean Segmented Nav Rail */}
-          <nav className="hidden xl:flex items-center liquid-glass-rail rounded-full p-1 text-xs font-bold gap-1 shrink-0">
-            {/* Hub / Operational Modules launcher button */}
+            {/* Exit Button */}
             <button
               onClick={() => {
                 playPosBeep('click');
-                onTabChange('hub');
+                onLogout();
               }}
-              className={`px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
-                currentTab === 'hub'
-                  ? 'bg-white/[0.16] text-white font-black border border-white/[0.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]'
-                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.06] border border-transparent'
-              }`}
-              title="مرکز عملیات و ماژول‌ها"
+              className="rounded-full bg-[#2A0C10]/85 border border-red-900/60 hover:border-red-600/80 text-xs font-bold text-rose-200 hover:text-white px-3 py-1.5 flex items-center gap-1.5 transition cursor-pointer shadow-sm shrink-0"
+              title="خروج از حساب"
             >
-              <LayoutGrid className={`w-3.5 h-3.5 ${currentTab === 'hub' ? 'text-[#10B981]' : ''}`} />
-              <span>ماژول‌ها</span>
+              <LogOut className="w-3.5 h-3.5 text-rose-300" />
+              <span>خروج</span>
             </button>
 
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('floor-plan');
-              }}
-              className={`px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
-                currentTab === 'floor-plan' || currentTab === 'floor'
-                  ? 'bg-white/[0.16] text-white font-black border border-white/[0.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]'
-                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.06] border border-transparent'
-              }`}
-            >
-              <MapIcon className="w-3.5 h-3.5 text-[#10B981]" />
-              <span>نقشه سالن</span>
-            </button>
-
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('pos');
-              }}
-              className={`px-4 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
-                currentTab === 'pos'
-                  ? 'bg-white/[0.16] text-white font-black border border-white/[0.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]'
-                  : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.06] border border-transparent'
-              }`}
-            >
-              <UtensilsCrossed className={`w-3.5 h-3.5 ${currentTab === 'pos' ? 'text-[#10B981]' : ''}`} />
-              <span>صندوق</span>
-            </button>
-
-            {FEATURES.ENABLE_ZERO_G_SMART_ORDERS && !isModendo && (
-              <button
-                onClick={() => {
-                  playPosBeep('click');
-                  onTabChange('zero-g');
-                }}
-                className={`px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all cursor-pointer font-bold whitespace-nowrap shrink-0 ${
-                  currentTab === 'zero-g'
-                    ? 'bg-white/[0.16] text-white font-black border border-white/[0.22]'
-                    : 'text-amber-300 hover:bg-white/[0.06] border border-transparent'
-                }`}
-              >
-                <Zap className="w-3.5 h-3.5 fill-current" />
-                <span>Zero-G</span>
-              </button>
-            )}
-
-            {isManager && (
-              <>
-                <button
-                  onClick={() => {
-                    playPosBeep('click');
-                    onTabChange('reports');
-                  }}
-                  className={`px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
-                    currentTab === 'reports'
-                      ? 'bg-white/[0.16] text-white font-black border border-white/[0.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]'
-                      : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.06] border border-transparent'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>گزارشات</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    playPosBeep('click');
-                    onTabChange('menu');
-                  }}
-                  className={`px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
-                    currentTab === 'menu'
-                      ? 'bg-white/[0.16] text-white font-black border border-white/[0.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]'
-                      : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.06] border border-transparent'
-                  }`}
-                >
-                  <Coffee className="w-3.5 h-3.5" />
-                  <span>مدیریت منو</span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    playPosBeep('click');
-                    onTabChange('audit');
-                  }}
-                  className={`px-3.5 py-1.5 rounded-full flex items-center gap-1.5 transition-all duration-200 cursor-pointer whitespace-nowrap shrink-0 ${
-                    currentTab === 'audit'
-                      ? 'bg-white/[0.16] text-white font-black border border-white/[0.22] shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]'
-                      : 'text-[#94A3B8] hover:text-white hover:bg-white/[0.06] border border-transparent'
-                  }`}
-                >
-                  <Shield className="w-3.5 h-3.5" />
-                  <span>حسابرسی</span>
-                </button>
-              </>
-            )}
-          </nav>
-
-          {/* Zone 3: 3 Clean Operational Actions (KDS · Shift · Account & Tools Popover) */}
-          <div className="flex items-center gap-1.5 md:gap-2.5 shrink-0 flex-nowrap">
-            {/* Barista KDS */}
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onOpenBaristaKds();
-              }}
-              className="rounded-full bg-[#0E2922] border border-[#16382F] hover:border-[#10B981]/50 flex items-center gap-1.5 px-2.5 md:px-3.5 py-1.5 text-xs font-bold text-white cursor-pointer whitespace-nowrap shrink-0 transition"
-              title="نمایشگر زنده بار باریستا (KDS)"
-            >
-              <Coffee className="w-3.5 h-3.5 text-[#10B981]" />
-              <span className="hidden md:inline">بار باریستا KDS</span>
-              <span className="md:hidden">KDS</span>
-              {baristaActiveCount > 0 && (
-                <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full tabular-nums bg-[#10B981] text-[#06120F]">
-                  {baristaActiveCount}
-                </span>
-              )}
-            </button>
-
-            {/* Receipt History (Modendo / quick-access) */}
-            {onOpenReceiptHistory && (
-              <button
-                onClick={() => {
-                  playPosBeep('click');
-                  onOpenReceiptHistory();
-                }}
-                className="rounded-full bg-[#0E2922] border border-[#16382F] hover:border-[#10B981]/50 flex items-center gap-1.5 px-2.5 md:px-3.5 py-1.5 text-xs font-bold text-white cursor-pointer whitespace-nowrap shrink-0 transition"
-                title="سابقه فیش‌ها، چاپ مجدد و ابطال"
-              >
-                <Receipt className="w-3.5 h-3.5 text-[#10B981]" />
-                <span className="hidden md:inline">سابقه فیش‌ها</span>
-                <span className="md:hidden">فیش‌ها</span>
-              </button>
-            )}
-
-            {/* Quick Expense (when shift is active, xl only) */}
-            {activeShift && (
-              <button
-                onClick={() => {
-                  playPosBeep('click');
-                  onOpenExpenseModal();
-                }}
-                className="hidden 2xl:flex rounded-full bg-[#0E2922] border border-[#16382F] items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#cbd5e1] hover:text-white cursor-pointer whitespace-nowrap shrink-0"
-                title="ثبت هزینه تنخواه"
-              >
-                <DollarSign className="w-3.5 h-3.5 text-amber-300" />
-                <span>تنخواه</span>
-              </button>
-            )}
-
-            {/* Unified Shift Trigger */}
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onOpenShiftModal();
-              }}
-              className={`rounded-full flex items-center gap-1.5 px-2.5 md:px-3.5 py-1.5 text-xs font-extrabold transition cursor-pointer whitespace-nowrap shrink-0 ${
-                activeShift
-                  ? 'bg-[#10B981]/20 hover:bg-[#10B981]/30 border border-[#10B981]/50 text-emerald-200'
-                  : 'bg-[#10B981] text-[#06120F] hover:bg-[#059669] hover:text-white font-black shadow-lg'
-              }`}
-              title={activeShift ? 'مشاهده وضعیت یا بستن شیفت' : 'شروع شیفت کاری'}
-            >
-              <Clock className={`w-3.5 h-3.5 ${activeShift ? 'text-[#34D399]' : ''}`} />
-              <span className="whitespace-nowrap">{activeShift ? 'شیفت فعال' : 'شروع شیفت'}</span>
-            </button>
-
-            {/* Account & Utilities Dropdown */}
+            {/* User Capsule with Crimson Border */}
             <div ref={utilityMenuRef} className="relative shrink-0">
               <button
                 type="button"
@@ -344,20 +190,23 @@ export const Header: React.FC<HeaderProps> = ({
                   playPosBeep('click');
                   setIsUtilityMenuOpen((v) => !v);
                 }}
-                className={`rounded-full bg-[#0E2922] border border-[#16382F] hover:border-[#10B981]/50 flex items-center gap-1.5 md:gap-2 px-2.5 md:px-3 py-1.5 text-xs font-semibold text-white cursor-pointer whitespace-nowrap shrink-0 ${
-                  isUtilityMenuOpen ? 'border-[#10B981] bg-[#0E2922]' : ''
+                className={`rounded-full bg-[#200B10]/85 border border-rose-500/50 hover:border-rose-400 flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white cursor-pointer whitespace-nowrap shrink-0 shadow-[0_0_10px_rgba(220,38,38,0.25)] transition ${
+                  isUtilityMenuOpen ? 'border-rose-400 bg-[#2C0F16]' : ''
                 }`}
-                title="حساب کاربری و ابزارها"
+                title="حساب کاربری و منوی ابزارها"
               >
-                <UserCheck className="w-3.5 h-3.5 text-[#10B981]" />
-                <span className="hidden sm:inline max-w-[85px] truncate whitespace-nowrap">
-                  {activeUser.fullName.split(' ')[0]}
+                <Lock className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                <span className="max-w-[110px] truncate whitespace-nowrap">
+                  {activeUser.fullName || 'مدیر سیستم'}
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-[#94A3B8]" />
+                <span className="text-white/40">|</span>
+                <span className="text-rose-300 text-[11px] font-semibold">{roleLabel}</span>
+                <ChevronDown className="w-3 h-3 text-rose-300/80" />
               </button>
 
+              {/* Utility Dropdown (Preserving all utilities: shift, kds, PIN user switch, backup, receipt history) */}
               {isUtilityMenuOpen && (
-                <div className="absolute left-0 mt-2.5 w-72 liquid-glass-modal rounded-[24px] p-4 space-y-3 z-50 animate-spatial-modal text-right shadow-2xl">
+                <div className="absolute right-0 mt-2.5 w-72 liquid-glass-modal rounded-[24px] p-4 space-y-3 z-50 animate-spatial-modal text-right shadow-2xl">
                   {/* Profile + Live Clock */}
                   <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08]">
                     <div>
@@ -417,36 +266,28 @@ export const Header: React.FC<HeaderProps> = ({
                     </select>
                   </div>
 
-                  {/* Tenant Switcher (if superadmin) */}
-                  {onTenantSwitch && (
-                    <div className="liquid-glass-rail rounded-full p-1 grid grid-cols-2 gap-1 text-[11px] font-bold">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playPosBeep('click');
-                          onTenantSwitch('modendo');
-                          setIsUtilityMenuOpen(false);
-                        }}
-                        className="py-1.5 rounded-full bg-[#10B981] text-[#07140F] font-black cursor-pointer"
-                      >
-                        Modendo
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playPosBeep('click');
-                          onTenantSwitch('100hich');
-                          setIsUtilityMenuOpen(false);
-                        }}
-                        className="py-1.5 rounded-full text-[#94A3B8] hover:text-white cursor-pointer"
-                      >
-                        100Hich
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Quick Tools */}
+                  {/* Operational Shortcuts */}
                   <div className="space-y-1.5 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playPosBeep('click');
+                        setIsUtilityMenuOpen(false);
+                        onOpenBaristaKds();
+                      }}
+                      className="w-full liquid-glass-pill rounded-xl px-3 py-2 text-xs font-bold text-[#F3E9DD] flex items-center justify-between cursor-pointer whitespace-nowrap"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Coffee className="w-3.5 h-3.5 text-[#10B981]" />
+                        <span>نمایشگر بار باریستا (KDS)</span>
+                      </span>
+                      {baristaActiveCount > 0 && (
+                        <span className="text-[10px] font-black px-1.5 py-0.2 rounded-full tabular-nums bg-[#10B981] text-[#06120F]">
+                          {baristaActiveCount}
+                        </span>
+                      )}
+                    </button>
+
                     {onOpenReceiptHistory && (
                       <button
                         type="button"
@@ -503,130 +344,112 @@ export const Header: React.FC<HeaderProps> = ({
                           setIsUtilityMenuOpen(false);
                           onLockTerminal();
                         }}
-                        className="w-full liquid-glass-pill rounded-xl px-3 py-2 text-xs font-bold text-[#CBD5E1] hover:text-white flex items-center justify-between cursor-pointer whitespace-nowrap"
+                        className="w-full py-2 px-3 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/30 text-rose-200 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer transition whitespace-nowrap"
                       >
-                        <span>قفل پایانه</span>
-                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <Lock className="w-3.5 h-3.5" />
+                        <span>قفل موقت ترمینال</span>
                       </button>
                     )}
-
-                    <div className="flex items-center justify-between gap-2 pt-1">
-                      <PWAInstallButton />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playPosBeep('click');
-                          setIsUtilityMenuOpen(false);
-                          onLogout();
-                        }}
-                        className="flex-1 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-400/30 px-3 py-2 text-xs font-bold text-rose-200 flex items-center justify-center gap-1.5 cursor-pointer transition whitespace-nowrap"
-                      >
-                        <LogOut className="w-3.5 h-3.5" />
-                        <span>خروج</span>
-                      </button>
-                    </div>
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Live Clock & Persian Date */}
+            <div className="hidden lg:flex items-center gap-1.5 rounded-full bg-[#07241C]/80 border border-[#16382F] px-3 py-1.5 text-xs font-mono font-bold text-emerald-200 tabular-nums shadow-sm shrink-0">
+              <span>{liveClock || '20:47:43'}</span>
+              <span className="text-white/30">|</span>
+              <span className="font-sans font-bold text-emerald-300/90 text-[11px]">{persianDate}</span>
+            </div>
+
+            {/* 4-Square App Launcher Icon (Navigates to Hub) */}
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onTabChange('hub');
+              }}
+              className={`w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition shadow-sm shrink-0 ${
+                currentTab === 'hub'
+                  ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                  : 'bg-[#07241C]/80 border border-[#16382F] hover:border-emerald-400/60 text-emerald-300 hover:text-white'
+              }`}
+              title="مرکز عملیات و ماژول‌ها"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+
+            {/* Quick Floor Plan Pill */}
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onTabChange('floor-plan');
+              }}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
+                currentTab === 'floor-plan'
+                  ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                  : 'bg-[#07241C]/80 border border-[#16382F] hover:border-emerald-400/60 text-emerald-300 hover:text-white'
+              }`}
+              title="نقشه سالن و میزها"
+            >
+              <MapIcon className="w-3.5 h-3.5 text-emerald-400" />
+              <span>نقشه سالن</span>
+            </button>
+
+            {/* Quick POS Pill */}
+            <button
+              onClick={() => {
+                playPosBeep('click');
+                onTabChange('pos');
+              }}
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
+                currentTab === 'pos'
+                  ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                  : 'bg-[#07241C]/80 border border-[#16382F] hover:border-emerald-400/60 text-emerald-300 hover:text-white'
+              }`}
+              title="صندوق و ثبت سفارش"
+            >
+              <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-400" />
+              <span>صندوق</span>
+            </button>
           </div>
-        </div>
 
-        {/* Clean Mobile Navigation Strip */}
-        <div className="lg:hidden border-t border-white/[0.08] bg-white/[0.02] px-3 py-1.5 flex items-center justify-around text-xs font-bold overflow-x-auto scrollbar-none gap-1">
-          <button
-            onClick={() => {
-              playPosBeep('click');
-              onTabChange('hub');
-            }}
-            className={`px-3 py-1 rounded-full flex items-center gap-1 whitespace-nowrap shrink-0 transition ${
-              currentTab === 'hub'
-                ? 'bg-white/[0.15] text-white font-black border border-white/[0.2]'
-                : 'text-[#94A3B8]'
-            }`}
+          {/* Center Zone: 3D Hexagonal Green Emblem + Gold/Emerald Calligraphy "کافه مودندو" */}
+          <div
+            onClick={() => onTabChange('pos')}
+            className="flex items-center gap-2 md:gap-3 cursor-pointer shrink-0 select-none group"
+            title="کافه گیمینگ مودندو"
           >
-            <LayoutGrid className="w-3 h-3 text-[#10B981]" />
-            <span>ماژول‌ها</span>
-          </button>
+            {/* 3D Isometric Hexagon Emblem */}
+            <div className="w-8 h-8 relative flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+              <svg className="w-8 h-8 text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]" viewBox="0 0 100 100" fill="none">
+                <polygon points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5" stroke="#10B981" strokeWidth="6" fill="#062219" />
+                <polygon points="50,15 80,32 80,68 50,85 20,68 20,32" stroke="#34D399" strokeWidth="3" fill="#0A382A" />
+                <path d="M50 15 L50 85 M20 32 L80 68 M20 68 L80 32" stroke="#10B981" strokeWidth="2" strokeOpacity="0.4" />
+              </svg>
+            </div>
+            
+            {/* Persian Brand Title */}
+            <span className="text-xl md:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#D1FAE5] via-[#FDE68A] to-[#6EE7B7] drop-shadow-[0_0_14px_rgba(16,185,129,0.45)] font-fa-sans">
+              کافه مودندو
+            </span>
+          </div>
 
-          <button
-            onClick={() => {
-              playPosBeep('click');
-              onTabChange('floor-plan');
-            }}
-            className={`px-3 py-1 rounded-full flex items-center gap-1 whitespace-nowrap shrink-0 transition ${
-              currentTab === 'floor-plan' || currentTab === 'floor'
-                ? 'bg-white/[0.15] text-white font-black border border-white/[0.2]'
-                : 'text-[#94A3B8]'
-            }`}
-          >
-            <MapIcon className="w-3 h-3 text-[#10B981]" />
-            <span>نقشه سالن</span>
-          </button>
+          {/* Right Zone: Telemetry Pill (93.5°C • 9.1 Bar • بویلر) · Online Toggle */}
+          <div className="flex items-center gap-2 md:gap-2.5 shrink-0 flex-nowrap">
+            {/* Boiler Telemetry Pill */}
+            <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-[#07241C]/80 border border-[#16382F] px-3.5 py-1.5 text-xs font-mono font-bold text-emerald-300 shadow-sm shrink-0">
+              <span>93.5°C • 9.1 Bar • بویلر</span>
+            </div>
 
-          <button
-            onClick={() => {
-              playPosBeep('click');
-              onTabChange('pos');
-            }}
-            className={`px-3 py-1 rounded-full flex items-center gap-1 whitespace-nowrap shrink-0 transition ${
-              currentTab === 'pos'
-                ? 'bg-white/[0.15] text-white font-black border border-white/[0.2]'
-                : 'text-[#94A3B8]'
-            }`}
-          >
-            <UtensilsCrossed className="w-3 h-3" />
-            <span>صندوق</span>
-          </button>
-
-          {isManager && (
-            <>
-              <button
-                onClick={() => {
-                  playPosBeep('click');
-                  onTabChange('reports');
-                }}
-                className={`px-3 py-1 rounded-full flex items-center gap-1 whitespace-nowrap shrink-0 transition ${
-                  currentTab === 'reports'
-                    ? 'bg-white/[0.15] text-white font-black border border-white/[0.2]'
-                    : 'text-[#94A3B8]'
-                }`}
-              >
-                <FileText className="w-3 h-3" />
-                <span>گزارشات</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  playPosBeep('click');
-                  onTabChange('menu');
-                }}
-                className={`px-3 py-1 rounded-full flex items-center gap-1 whitespace-nowrap shrink-0 transition ${
-                  currentTab === 'menu'
-                    ? 'bg-white/[0.15] text-white font-black border border-white/[0.2]'
-                    : 'text-[#94A3B8]'
-                }`}
-              >
-                <Coffee className="w-3 h-3" />
-                <span>منو</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  playPosBeep('click');
-                  onTabChange('audit');
-                }}
-                className={`px-3 py-1 rounded-full flex items-center gap-1 whitespace-nowrap shrink-0 transition ${
-                  currentTab === 'audit'
-                    ? 'bg-white/[0.15] text-white font-black border border-white/[0.2]'
-                    : 'text-[#94A3B8]'
-                }`}
-              >
-                <Shield className="w-3 h-3" />
-                <span>حسابرسی</span>
-              </button>
-            </>
-          )}
+            {/* Online Status Toggle Pill */}
+            <div className="flex items-center gap-2 rounded-full bg-[#07241C]/80 border border-[#16382F] px-3.5 py-1.5 text-xs font-bold text-white shadow-sm shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10B981] animate-pulse shrink-0" />
+              <span className="font-mono text-emerald-200 text-xs">online</span>
+              <div className="w-8 h-4 rounded-full bg-emerald-500 flex items-center justify-end px-0.5 shadow-[0_0_8px_rgba(16,185,129,0.5)] shrink-0">
+                <div className="w-3 h-3 rounded-full bg-white shadow-sm" />
+              </div>
+            </div>
+          </div>
         </div>
       </header>
     );

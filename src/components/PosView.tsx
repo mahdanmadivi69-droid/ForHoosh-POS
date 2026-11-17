@@ -65,6 +65,8 @@ import { playPosBeep } from '../services/soundEffects';
 import { printThermalReceipt } from '../services/receiptPrinter';
 import { MODENDO_FLOOR_NODES, TableSession } from './FloorPlanCanvas';
 import { openTabService } from '../services/openTabService';
+import { TabCartItem } from '../types/inventory-tab';
+import { getProductWallpaper } from '../utils/productWallpapers';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -157,6 +159,8 @@ export const PosView: React.FC<PosViewProps> = ({
   const isModendo =
     tenant.id === 'tenant-modendo-01' ||
     tenant.id === 'modendo' ||
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE === 'modendo') ||
+    (typeof import.meta !== 'undefined' && /modendo/i.test((import.meta as any).env?.VITE_TENANT_ID || '')) ||
     (typeof document !== 'undefined' && document.documentElement.dataset.theme === 'modendo');
   const canEditFinancials = isManagerOrOwner(activeUser.role);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
@@ -621,14 +625,14 @@ export const PosView: React.FC<PosViewProps> = ({
       // 2. Sync to openTabService
       try {
         const effectiveTenantId = tenant.id === 'modendo' ? 'tenant-modendo-01' : tenant.id;
-        const tabItems = cartItems.map((ci) => ({
+        const tabItems: TabCartItem[] = cartItems.map((ci) => ({
           id: ci.id,
-          menu_item_id: ci.menuItemId,
-          name: ci.itemNameSnapshot,
-          price: ci.unitPriceSnapshotToman,
+          menuItemId: ci.menuItemId,
+          title: ci.itemNameSnapshot,
+          unitPrice: ci.unitPriceSnapshotToman,
           quantity: ci.quantity,
           subtotal: ci.subtotalToman,
-          modifiers: ci.modifiers?.map((m) => (typeof m === 'string' ? m : m.nameFa || m.id)) || [],
+          modifiers: [],
           notes: ci.notes,
         }));
 
@@ -1076,13 +1080,13 @@ export const PosView: React.FC<PosViewProps> = ({
                     playPosBeep('click');
                     setSelectedCategoryId('all');
                   }}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition cursor-pointer ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition cursor-pointer ${
                     selectedCategoryId === 'all'
-                      ? 'bg-white/[0.16] text-white border border-white/[0.22]'
-                      : 'liquid-glass-pill text-[#94A3B8] hover:text-white'
+                      ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_15px_rgba(220,38,38,0.5)]'
+                      : 'bg-[#0A261E]/80 text-[#A3B8B0] border border-[#16382F] hover:text-white'
                   }`}
                 >
-                  همه دسته‌ها
+                  همه محصولات
                 </button>
 
                 {visibleCategories.map((cat) => {
@@ -1094,10 +1098,10 @@ export const PosView: React.FC<PosViewProps> = ({
                         playPosBeep('click');
                         setSelectedCategoryId(cat.id);
                       }}
-                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition cursor-pointer ${
+                      className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition cursor-pointer ${
                         isActive
-                          ? 'bg-white/[0.16] text-white border border-white/[0.22]'
-                          : 'liquid-glass-pill text-[#94A3B8] hover:text-white'
+                          ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_15px_rgba(220,38,38,0.5)]'
+                          : 'bg-[#0A261E]/80 text-[#A3B8B0] border border-[#16382F] hover:text-white'
                       }`}
                     >
                       {cat.nameFa}
@@ -1321,30 +1325,73 @@ export const PosView: React.FC<PosViewProps> = ({
               const isOutOfStock = stockStatus.isOutOfStock;
               const isLow = stockStatus.isLowStock && !isOutOfStock;
 
+              const isSpecial =
+                isModendo &&
+                (item.categoryId?.includes('dessert') ||
+                  item.nameFa.includes('چیزکیک') ||
+                  item.nameFa.includes('کیک') ||
+                  item.badge === 'محبوب' ||
+                  item.badge === 'فروش ویژه');
+
               return (
                 <article
                   key={item.id}
                   onClick={() => !isOutOfStock && handleAddItem(item)}
                   className={`${
                     isModendo
-                      ? 'liquid-glass-card rounded-[22px]'
+                      ? isSpecial
+                        ? 'modendo-product-card-special rounded-[24px]'
+                        : 'modendo-product-card rounded-[24px]'
                       : 'bg-[#1B222C] border border-[#293444] hover:border-[#9EACB8]/60 rounded-xl shadow-lg'
                   } overflow-hidden transition-all duration-200 flex flex-col justify-between group relative ${
                     isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                   }`}
                 >
+                  {/* Photo Wallpaper Backdrop for Modendo */}
+                  {isModendo && (
+                    <>
+                      <img
+                        src={getProductWallpaper(item)}
+                        alt={item.nameFa}
+                        loading="lazy"
+                        className="absolute inset-0 w-full h-full object-cover opacity-35 filter blur-[0.4px] scale-105 group-hover:scale-110 transition-transform duration-500 pointer-events-none"
+                      />
+                      <div
+                        className={`absolute inset-0 pointer-events-none ${
+                          isSpecial
+                            ? 'bg-gradient-to-t from-[#1F070B]/95 via-[#1F070B]/75 to-[#1F070B]/45'
+                            : 'bg-gradient-to-t from-[#061813]/95 via-[#061813]/75 to-[#061813]/45'
+                        }`}
+                      />
+                    </>
+                  )}
+
                   {/* Card Header & Specs */}
-                  <div className="p-4 pb-3 flex-1 flex flex-col justify-between">
+                  <div className="p-4 pb-3 flex-1 flex flex-col justify-between relative z-10">
                     {isModendo ? (
-                      <div className="flex items-center justify-between gap-2 mb-1.5 text-[10px] min-h-[16px]">
-                        <span className="font-bold text-[#10B981] truncate">
-                          {item.badge || item.roastLevelText || item.weight || ''}
+                      <div className="flex items-center justify-between gap-1.5 mb-2 text-[10px]">
+                        {/* Right Badge (Special/Popular/Fresh) */}
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full font-black tracking-wide text-white shadow-sm ${
+                            isSpecial
+                              ? 'bg-rose-600/85 border border-rose-400/60'
+                              : 'bg-emerald-600/30 border border-emerald-400/40 text-emerald-300'
+                          }`}
+                        >
+                          {item.badge || (item.nameFa.includes('چیزکیک') ? 'محبوب' : item.nameFa.includes('کیک') ? 'فروش ویژه' : 'تازه')}
                         </span>
-                        {idx < 9 && (
-                          <span className="font-mono tabular-nums text-[#64748b] shrink-0">
-                            {idx + 1}
+
+                        {/* Left Badge (Bean/Roast or 50/50 or Shortcut key) */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-950/70 border border-emerald-500/30 text-emerald-300 font-mono text-[10px] font-bold">
+                            {item.roastLevelText || (item.isBean ? '100% Arabica' : '۵۰/۵۰')}
                           </span>
-                        )}
+                          {idx < 9 && (
+                            <span className="font-mono tabular-nums text-white/40 text-[10px] hidden sm:inline">
+                              کلید {idx + 1}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     ) : (
                       <div className="flex items-start justify-between gap-2 mb-2">
@@ -1388,13 +1435,23 @@ export const PosView: React.FC<PosViewProps> = ({
                     ) : null}
 
                     {/* Product Titles */}
-                    <h3 className="font-extrabold text-sm md:text-[15px] text-white group-hover:text-[#F3E9DD] transition-colors leading-snug">
+                    <h3
+                      className={`font-extrabold text-sm md:text-[15px] text-white transition-colors leading-snug ${
+                        isModendo ? 'text-center my-auto py-1.5' : 'group-hover:text-[#F3E9DD]'
+                      }`}
+                    >
                       {item.nameFa}
                     </h3>
-                    {!isModendo && item.nameEn && (
-                      <p className="text-[11px] font-display-latin text-[#94A3B8] mt-0.5 truncate tracking-tight">
-                        {item.nameEn}
-                      </p>
+                    {isModendo ? (
+                      <div className="text-center font-bold text-xs text-emerald-300/90 num-heavy tabular-nums mt-1">
+                        قیمت نهایی: {formatToman(item.priceToman)} تومان
+                      </div>
+                    ) : (
+                      item.nameEn && (
+                        <p className="text-[11px] font-display-latin text-[#94A3B8] mt-0.5 truncate tracking-tight">
+                          {item.nameEn}
+                        </p>
+                      )
                     )}
 
                     {/* Technical Roast Specs Grid (100Hich only or beans) */}
@@ -1422,7 +1479,7 @@ export const PosView: React.FC<PosViewProps> = ({
                     {/* Taste Notes Inline */}
                     {item.notes && item.notes.length > 0 && (
                       isModendo ? (
-                        <p className="text-[11px] text-[#94A3B8]/90 mt-1.5 truncate">
+                        <p className="text-[11px] text-[#94A3B8]/90 mt-1.5 text-center truncate">
                           {item.notes.slice(0, 2).join(' · ')}
                         </p>
                       ) : (
@@ -1442,58 +1499,80 @@ export const PosView: React.FC<PosViewProps> = ({
 
                   {/* Card Bottom Bar: Price & Action CTA */}
                   <div
-                    className={`px-4 py-2.5 border-t flex items-center justify-between gap-2 mt-auto overflow-hidden ${
+                    className={`px-3.5 py-2.5 border-t flex items-center justify-between gap-2 mt-auto overflow-hidden relative z-10 ${
                       isModendo
-                        ? 'bg-black/20 border-white/[0.08]'
+                        ? 'bg-black/25 border-white/[0.08]'
                         : 'bg-[#121417]/85 border-[#293444] rounded-b-xl'
                     }`}
                   >
-                    <div className="min-w-0">
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-[15px] font-black text-white num-heavy tabular-nums tracking-tight">
-                          {formatToman(item.priceToman)}
-                        </span>
-                        <span className="text-[10px] text-[#94A3B8] shrink-0">تومان</span>
-                      </div>
-                    </div>
+                    {isModendo ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenModifierModal(e, item)}
+                          title="تنظیم آپشن / مودیفایر"
+                          className="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white flex items-center justify-center transition cursor-pointer active:scale-95 shrink-0"
+                        >
+                          <Sliders className="w-3.5 h-3.5" />
+                        </button>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={(e) => handleOpenModifierModal(e, item)}
-                        title={item.isBean ? 'تنظیم درجه آسیاب' : 'تنظیم آپشن / مودیفایر'}
-                        className={`${
-                          isModendo
-                            ? 'liquid-glass-pill rounded-full text-[#cbd5e1] hover:text-white h-7 w-7'
-                            : 'bg-[#0F223D] hover:bg-[#222B38] border border-[#293444] rounded-lg text-[#F3E9DD] h-7 px-2.5 gap-1'
-                        } font-bold flex items-center justify-center transition cursor-pointer text-xs shrink-0 active:scale-95`}
-                      >
-                        <Sliders className="w-3 h-3 shrink-0" />
-                        {!isModendo && (
-                          <span className="text-[10px] font-semibold">
-                            {item.isBean ? 'آسیاب' : 'آپشن'}
-                          </span>
-                        )}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddItem(item);
+                          }}
+                          disabled={isOutOfStock}
+                          title="افزودن به سفارش"
+                          className={`w-8 h-8 rounded-full border flex items-center justify-center transition cursor-pointer font-bold active:scale-95 shadow-sm shrink-0 ${
+                            isSpecial
+                              ? 'border-rose-400 bg-rose-500/25 text-rose-200 hover:bg-rose-500/40 hover:scale-105'
+                              : 'border-emerald-400/80 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/40 hover:scale-105'
+                          }`}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="min-w-0">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-[15px] font-black text-white num-heavy tabular-nums tracking-tight">
+                              {formatToman(item.priceToman)}
+                            </span>
+                            <span className="text-[10px] text-[#94A3B8] shrink-0">تومان</span>
+                          </div>
+                        </div>
 
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAddItem(item);
-                        }}
-                        disabled={isOutOfStock}
-                        title="افزودن به سفارش"
-                        className={`active:scale-95 disabled:bg-stone-700 h-7 px-3 flex items-center justify-center gap-1 transition cursor-pointer text-xs shrink-0 ${
-                          isModendo
-                            ? 'liquid-glass-cta rounded-full font-black'
-                            : 'bg-[#D71921] hover:bg-[#B8141B] text-white font-bold rounded-lg shadow-md shadow-[#D71921]/30'
-                        }`}
-                      >
-                        <Plus className="w-3.5 h-3.5 shrink-0" />
-                        <span className="text-xs font-black">افزودن</span>
-                      </button>
-                    </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => handleOpenModifierModal(e, item)}
+                            title={item.isBean ? 'تنظیم درجه آسیاب' : 'تنظیم آپشن / مودیفایر'}
+                            className="bg-[#0F223D] hover:bg-[#222B38] border border-[#293444] rounded-lg text-[#F3E9DD] h-7 px-2.5 gap-1 font-bold flex items-center justify-center transition cursor-pointer text-xs shrink-0 active:scale-95"
+                          >
+                            <Sliders className="w-3 h-3 shrink-0" />
+                            <span className="text-[10px] font-semibold">
+                              {item.isBean ? 'آسیاب' : 'آپشن'}
+                            </span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAddItem(item);
+                            }}
+                            disabled={isOutOfStock}
+                            title="افزودن به سفارش"
+                            className="active:scale-95 disabled:bg-stone-700 h-7 px-3 flex items-center justify-center gap-1 transition cursor-pointer text-xs shrink-0 bg-[#D71921] hover:bg-[#B8141B] text-white font-bold rounded-lg shadow-md shadow-[#D71921]/30"
+                          >
+                            <Plus className="w-3.5 h-3.5 shrink-0" />
+                            <span className="text-xs font-black">افزودن</span>
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </article>
               );
@@ -1507,7 +1586,7 @@ export const PosView: React.FC<PosViewProps> = ({
         id="pos-cart-panel"
         className={`hidden xl:flex flex-col w-[420px] sticky top-3 max-h-[calc(100vh-5rem)] h-[calc(100vh-5rem)] transition-all overflow-hidden ${
           isModendo
-            ? 'liquid-glass-shell rounded-[26px]'
+            ? 'modendo-cart-shell rounded-[28px]'
             : 'bg-[#1B222C] border border-[#293444] rounded-xl shadow-2xl'
         }`}
       >
@@ -1515,25 +1594,25 @@ export const PosView: React.FC<PosViewProps> = ({
         <div
           className={`p-4 border-b flex flex-col gap-3 ${
             isModendo
-              ? 'border-white/[0.08] bg-white/[0.03]'
+              ? 'border-white/[0.08] bg-black/20'
               : 'border-[#293444] bg-[#0F223D] rounded-t-xl'
           }`}
         >
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold text-white tracking-wide">
-              سفارش جاری بار (فاکتور)
-            </h2>
-            <span className="font-mono tabular-nums text-xs text-[#94A3B8] font-bold">
-              #{isModendo ? 'MOD' : '100H'}-{activeShift ? activeShift.id.slice(-4) : 'POS'}
+            <span className="font-mono tabular-nums text-xs font-bold text-white/80">
+              #{isModendo ? '10BM' : '100H'}-{activeShift ? activeShift.id.slice(-4) : '1488'}
             </span>
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-[11px] font-bold text-cyan-300 shadow-sm">
+              <span>🪑 تب‌ها: {cartItems.length > 0 ? '۱' : '۰'}</span>
+            </div>
           </div>
 
           {/* Dine-in vs Takeaway Toggle */}
           <div
-            className={`grid grid-cols-2 gap-1 text-xs font-bold ${
+            className={`grid grid-cols-2 gap-2 text-xs font-bold p-1 ${
               isModendo
-                ? 'liquid-glass-rail rounded-full p-1'
-                : 'bg-[#121417]/90 p-1 rounded-lg border border-white/[0.08]'
+                ? 'rounded-full bg-black/40 border border-white/[0.08]'
+                : 'bg-[#121417]/90 rounded-lg border border-white/[0.08]'
             }`}
           >
             <button
@@ -1542,18 +1621,14 @@ export const PosView: React.FC<PosViewProps> = ({
                 playPosBeep('click');
                 setOrderType('TAKEAWAY');
               }}
-              className={`py-1.5 flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                isModendo ? 'rounded-full' : 'rounded'
-              } ${
+              className={`py-2 rounded-full flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 orderType === 'TAKEAWAY'
-                  ? isModendo
-                    ? 'liquid-glass-cta font-black'
-                    : 'bg-[#D71921] text-white shadow-sm'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                  : 'bg-[#381116] border border-red-900/50 text-[#FCA5A5] hover:text-white'
               }`}
             >
               <ShoppingBag className="w-3.5 h-3.5" />
-              <span>بیرون‌بر</span>
+              <span>Takeout</span>
             </button>
 
             <button
@@ -1562,78 +1637,70 @@ export const PosView: React.FC<PosViewProps> = ({
                 playPosBeep('click');
                 setOrderType('DINE_IN');
               }}
-              className={`py-1.5 flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                isModendo ? 'rounded-full' : 'rounded'
-              } ${
+              className={`py-2 rounded-full flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
                 orderType === 'DINE_IN'
-                  ? isModendo
-                    ? 'liquid-glass-cta font-black'
-                    : 'bg-[#D71921] text-white shadow-sm'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                  : 'bg-[#381116] border border-red-900/50 text-[#FCA5A5] hover:text-white'
               }`}
             >
               <Store className="w-3.5 h-3.5" />
-              <span>سرو در سالن</span>
+              <span>Table 🪑</span>
             </button>
           </div>
         </div>
 
-        {/* Customer Detail */}
-        <div
-          className={`px-4 py-2.5 border-b flex items-center justify-between text-xs gap-2 ${
-            isModendo ? 'border-white/[0.08] bg-black/15' : 'bg-[#121417]/50 border-white/[0.08]'
-          }`}
-        >
-          <input
-            type="text"
-            value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
-            placeholder={
-              orderType === 'DINE_IN'
-                ? 'نام مشتری / مهمان سالن...'
-                : 'نام مشتری بیرون‌بر...'
-            }
-            className="bg-transparent text-white placeholder:text-[#94A3B8]/65 text-xs w-full focus:outline-none"
-          />
-          {orderType === 'DINE_IN' ? (
-            <select
-              value={tableLabel}
-              onChange={(e) => setTableLabel(e.target.value)}
-              className={`text-[11px] text-white px-2.5 py-1 cursor-pointer focus:outline-none ${
-                isModendo
-                  ? 'liquid-glass-pill rounded-full font-bold'
-                  : 'bg-[#1B222C] px-1.5 py-0.5 rounded border border-white/[0.08]'
-              }`}
-            >
-              {Array.from(
-                new Set([
-                  ...(boundTable ? [boundTable.label] : []),
-                  ...(isModendo
-                    ? MODENDO_FLOOR_NODES.map((n) => n.label)
-                    : ['میز ۱', 'میز ۲', 'میز ۳', 'میز ۴', 'میز ۵', 'میز ۶', 'میز ۷', 'کانتر بار']),
-                ])
-              ).map((tbl) => (
-                <option key={tbl} value={tbl} className="bg-[#12161d] text-white">
-                  {tbl}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <span className="text-[11px] text-[#94A3B8] whitespace-nowrap font-medium">
-              بیرون‌بر
-            </span>
-          )}
-        </div>
+        {/* Customer Detail & Invoice Notes */}
+        <div className="px-4 py-2.5 border-b border-white/[0.08] bg-black/15 space-y-2 text-xs">
+          <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
+            <span className="text-white/40">👤</span>
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder={orderType === 'DINE_IN' ? 'نام مشتری / مهمان سالن...' : 'نام مشتری بیرون‌بر...'}
+              className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
+            />
+            {orderType === 'DINE_IN' && (
+              <select
+                value={tableLabel}
+                onChange={(e) => setTableLabel(e.target.value)}
+                className="text-[11px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5 focus:outline-none"
+              >
+                {Array.from(
+                  new Set([
+                    ...(boundTable ? [boundTable.label] : []),
+                    ...(isModendo
+                      ? MODENDO_FLOOR_NODES.map((n) => n.label)
+                      : ['میز ۱', 'میز ۲', 'میز ۳', 'میز ۴', 'میز ۵', 'میز ۶', 'میز ۷', 'کانتر بار']),
+                  ])
+                ).map((tbl) => (
+                  <option key={tbl} value={tbl} className="bg-[#12161d] text-white">
+                    {tbl}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
 
-        {/* Invoice Notes */}
-        <div className="px-4 py-2 bg-black/10 border-b border-white/[0.08] flex items-center text-xs gap-2">
-          <input
-            type="text"
-            value={orderNotes}
-            onChange={(e) => setOrderNotes(e.target.value)}
-            placeholder="یادداشت فاکتور (توضیحات کلی سفارش)..."
-            className="bg-transparent text-white placeholder:text-[#94A3B8]/50 text-xs w-full focus:outline-none"
-          />
+          <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
+            <span className="text-white/40">📞</span>
+            <input
+              type="text"
+              placeholder="شماره تماس..."
+              className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
+            />
+          </div>
+
+          <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
+            <span className="text-white/40">📝</span>
+            <input
+              type="text"
+              value={orderNotes}
+              onChange={(e) => setOrderNotes(e.target.value)}
+              placeholder="یادداشت فاکتور (توضیحات کل سفارش)..."
+              className="bg-transparent text-white placeholder:text-[#94A3B8]/50 text-xs w-full focus:outline-none"
+            />
+          </div>
         </div>
 
         {/* Cart Items List (Scrollable Area) */}
@@ -1664,7 +1731,7 @@ export const PosView: React.FC<PosViewProps> = ({
                 key={item.id}
                 className={`p-3 flex flex-col gap-2 transition animate-ticket-item-spring ${
                   isModendo
-                    ? 'liquid-glass-well rounded-2xl hover:border-white/[0.16]'
+                    ? 'rounded-2xl bg-black/35 border border-red-500/15'
                     : 'bg-[#121417] border border-white/[0.08] rounded-lg hover:border-white/[0.16]'
                 }`}
               >
@@ -1674,9 +1741,9 @@ export const PosView: React.FC<PosViewProps> = ({
                       {item.itemNameSnapshot}
                     </h4>
                     {item.modifiers && item.modifiers.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-[#94A3B8]">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-emerald-300/80">
                         {item.modifiers.map((m, mIdx) => (
-                          <span key={mIdx} className="text-[#F3E9DD] font-medium">
+                          <span key={mIdx} className="font-medium">
                             {m.nameFa}
                           </span>
                         ))}
@@ -1701,18 +1768,18 @@ export const PosView: React.FC<PosViewProps> = ({
                   <div
                     className={`flex items-center overflow-hidden ${
                       isModendo
-                        ? 'liquid-glass-rail rounded-full p-0.5'
+                        ? 'rounded-full bg-[#3B1218] border border-red-900/60 p-0.5'
                         : 'bg-[#1B222C] border border-white/[0.08] rounded-md'
                     }`}
                   >
                     <button
                       type="button"
                       onClick={() => handleUpdateQuantity(item.id, -1)}
-                      className={`w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-white font-black text-sm ${
+                      className={`w-6 h-6 flex items-center justify-center font-black text-sm cursor-pointer transition ${
                         isModendo
-                          ? 'rounded-full active:bg-[#10B981] active:text-[#04150e]'
-                          : 'active:bg-[#D71921]'
-                      } cursor-pointer transition`}
+                          ? 'rounded-full text-red-200 hover:text-white active:bg-red-800'
+                          : 'text-[#94A3B8] hover:text-white active:bg-[#D71921]'
+                      }`}
                     >
                       -
                     </button>
@@ -1722,18 +1789,18 @@ export const PosView: React.FC<PosViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleUpdateQuantity(item.id, 1)}
-                      className={`w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-white font-black text-sm ${
+                      className={`w-6 h-6 flex items-center justify-center font-black text-sm cursor-pointer transition ${
                         isModendo
-                          ? 'rounded-full active:bg-[#10B981] active:text-[#04150e]'
-                          : 'active:bg-[#D71921]'
-                      } cursor-pointer transition`}
+                          ? 'rounded-full text-red-200 hover:text-white active:bg-red-800'
+                          : 'text-[#94A3B8] hover:text-white active:bg-[#D71921]'
+                      }`}
                     >
                       +
                     </button>
                   </div>
 
                   <div className="text-left">
-                    <span className="text-xs font-black text-white num-heavy tabular-nums">
+                    <span className="text-xs font-black text-emerald-300 num-heavy tabular-nums">
                       {formatToman(item.subtotalToman)}
                     </span>
                     <span className="text-[9px] text-[#94A3B8] mr-1">تومان</span>
@@ -1764,15 +1831,9 @@ export const PosView: React.FC<PosViewProps> = ({
             <button
               type="button"
               onClick={() => handleApplyDiscountPercent(0)}
-              className={`py-1.5 text-[11px] cursor-pointer transition ${
-                isModendo ? 'rounded-full' : 'rounded border'
-              } ${
+              className={`py-1.5 text-[11px] cursor-pointer transition rounded-full ${
                 discountPercent === 0
-                  ? isModendo
-                    ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-300'
-                    : 'bg-[#0F223D] border-[#D71921] text-white'
-                  : isModendo
-                  ? 'liquid-glass-pill text-[#94A3B8] hover:text-white'
+                  ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.4)]'
                   : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white'
               }`}
             >
@@ -1783,17 +1844,11 @@ export const PosView: React.FC<PosViewProps> = ({
               disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(5)}
               title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1.5 text-[11px] transition ${
-                isModendo ? 'rounded-full' : 'rounded border'
-              } ${
+              className={`py-1.5 text-[11px] transition rounded-full ${
                 !canEditFinancials
-                  ? 'opacity-40 cursor-not-allowed liquid-glass-pill text-[#94A3B8]'
+                  ? 'opacity-40 cursor-not-allowed text-[#94A3B8]'
                   : discountPercent === 5
-                  ? isModendo
-                    ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-300 cursor-pointer'
-                    : 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
-                  : isModendo
-                  ? 'liquid-glass-pill text-[#94A3B8] hover:text-white cursor-pointer'
+                  ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.4)]'
                   : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
               }`}
             >
@@ -1804,17 +1859,11 @@ export const PosView: React.FC<PosViewProps> = ({
               disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(10)}
               title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1.5 text-[11px] transition ${
-                isModendo ? 'rounded-full' : 'rounded border'
-              } ${
+              className={`py-1.5 text-[11px] transition rounded-full ${
                 !canEditFinancials
-                  ? 'opacity-40 cursor-not-allowed liquid-glass-pill text-[#94A3B8]'
+                  ? 'opacity-40 cursor-not-allowed text-[#94A3B8]'
                   : discountPercent === 10
-                  ? isModendo
-                    ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-300 cursor-pointer'
-                    : 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
-                  : isModendo
-                  ? 'liquid-glass-pill text-[#94A3B8] hover:text-white cursor-pointer'
+                  ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.4)]'
                   : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
               }`}
             >
@@ -1825,17 +1874,11 @@ export const PosView: React.FC<PosViewProps> = ({
               disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(15)}
               title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1.5 text-[11px] transition ${
-                isModendo ? 'rounded-full' : 'rounded border'
-              } ${
+              className={`py-1.5 text-[11px] transition rounded-full ${
                 !canEditFinancials
-                  ? 'opacity-40 cursor-not-allowed liquid-glass-pill text-[#94A3B8]'
+                  ? 'opacity-40 cursor-not-allowed text-[#94A3B8]'
                   : discountPercent === 15
-                  ? isModendo
-                    ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-300 cursor-pointer'
-                    : 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
-                  : isModendo
-                  ? 'liquid-glass-pill text-[#94A3B8] hover:text-white cursor-pointer'
+                  ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.4)]'
                   : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
               }`}
             >
@@ -1913,14 +1956,14 @@ export const PosView: React.FC<PosViewProps> = ({
                 type="button"
                 onClick={handleStartCheckout}
                 disabled={cartItems.length === 0}
-                className={`col-span-4 py-3 px-4 flex items-center justify-center gap-2 transition transform active:scale-[0.98] cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                className={`col-span-4 py-3.5 px-4 flex items-center justify-center gap-2 transition transform active:scale-[0.98] cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
                   isModendo
-                    ? 'liquid-glass-cta rounded-2xl font-black'
+                    ? 'rounded-2xl bg-gradient-to-r from-[#DC2626] via-[#B91C1C] to-[#991B1B] text-white font-black text-sm shadow-[0_4px_25px_rgba(220,38,38,0.5)] border border-red-500/40 hover:brightness-110'
                     : 'bg-[#D71921] hover:bg-[#B8141B] disabled:bg-stone-700 text-white font-black rounded-lg shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
                 }`}
               >
                 <CreditCard className="w-5 h-5" />
-                <span>ثبت نهایی سفارش و تسویه</span>
+                <span>ثبت سفارش و پرداخت</span>
               </button>
             </div>
           </div>

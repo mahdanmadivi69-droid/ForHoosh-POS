@@ -356,6 +356,58 @@ body.theme-modendo,
     radial-gradient(60% 50% at 52% 96%, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
 }
 
+/* Modendo Visual Identity Tokens (Reference Image Fidelity) */
+.modendo-cart-shell {
+  background: linear-gradient(180deg, rgba(38, 12, 17, 0.90) 0%, rgba(18, 7, 10, 0.96) 100%) !important;
+  border: 1px solid rgba(239, 68, 68, 0.28) !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(254, 202, 202, 0.12) !important;
+}
+
+.modendo-product-card {
+  background: linear-gradient(160deg, rgba(12, 38, 30, 0.88) 0%, rgba(5, 18, 14, 0.94) 100%) !important;
+  border: 1px solid rgba(16, 185, 129, 0.28) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(167, 243, 208, 0.1) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.modendo-product-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.7) !important;
+  box-shadow: 0 16px 36px rgba(16, 185, 129, 0.22), inset 0 1px 0 rgba(167, 243, 208, 0.25) !important;
+}
+
+.modendo-product-card-special {
+  background: linear-gradient(160deg, rgba(45, 14, 20, 0.90) 0%, rgba(18, 7, 10, 0.95) 100%) !important;
+  border: 1px solid rgba(244, 63, 94, 0.6) !important;
+  box-shadow: 0 12px 30px rgba(244, 63, 94, 0.25), inset 0 1px 0 rgba(254, 202, 202, 0.2) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.modendo-product-card-special:hover {
+  transform: translateY(-2px);
+  border-color: rgba(244, 63, 94, 0.95) !important;
+  box-shadow: 0 16px 40px rgba(244, 63, 94, 0.4), inset 0 1px 0 rgba(254, 202, 202, 0.35) !important;
+}
+
+.neon-glow-emerald {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.55), inset 0 0 12px rgba(16, 185, 129, 0.25) !important;
+  border: 1.5px solid #10B981 !important;
+}
+.neon-glow-red {
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.6), inset 0 0 12px rgba(239, 68, 68, 0.3) !important;
+  border: 1.5px solid #EF4444 !important;
+}
+.neon-glow-amber {
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.5), inset 0 0 12px rgba(245, 158, 11, 0.25) !important;
+  border: 2px solid #F59E0B !important;
+}
+.neon-glow-cyan {
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.55), inset 0 0 10px rgba(56, 189, 248, 0.25) !important;
+  border: 1.5px solid #38BDF8 !important;
+}
+.modendo-sofa-u-glow {
+  box-shadow: 0 0 25px rgba(16, 185, 129, 0.6), inset 0 0 16px rgba(16, 185, 129, 0.3) !important;
+  border: 2.5px solid #10B981 !important;
+}
+
 /* Primary Frosted Window / Floating Navigation Chrome */
 .liquid-glass-shell {
   background: linear-gradient(

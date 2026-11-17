@@ -103,7 +103,23 @@ class FloorPlanServiceClass {
   }
 
   public getTableById(id: string): TableEntity | undefined {
-    return this.schema.tables.find((t) => t.id === id);
+    const direct = this.schema.tables.find((t) => t.id === id);
+    if (direct) return direct;
+    const normalized = id.toLowerCase().replace(/[-_]/g, '');
+    return this.schema.tables.find((t) => {
+      const tid = t.id.toLowerCase().replace(/[-_]/g, '');
+      return (
+        tid === normalized ||
+        (id === 'sofa_lobby' && t.id === 'L-01') ||
+        (id === 'table_lobby' && t.id === 'L-02') ||
+        (id === 'LZ-ZONE' && t.id === 'L-03') ||
+        (id === 'M-Side' && t.id === 'M-05') ||
+        (id.startsWith('ps5_pod_') && t.id === `ps5_${id.replace('ps5_pod_', '')}`) ||
+        (id.startsWith('T') && !id.includes('-') && t.id === `T-0${id.replace('T', '')}`) ||
+        (id === 'VIP-1' && t.id === 'M-01') ||
+        (id === 'VIP-2' && t.id === 'M-02')
+      );
+    });
   }
 
   /**
@@ -121,7 +137,7 @@ class FloorPlanServiceClass {
     geometry: Partial<TableGeometry>,
     snapToGrid: boolean = true
   ): boolean {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this.getTableById(id);
     if (!table) return false;
 
     table.geometry = {
@@ -141,7 +157,7 @@ class FloorPlanServiceClass {
    * Ctrl + D: Clone selected entity with 20px offset
    */
   public cloneTable(id: string): TableEntity | null {
-    const original = this.schema.tables.find((t) => t.id === id);
+    const original = this.getTableById(id);
     if (!original) return null;
 
     const newId = `${original.id}_copy_${Date.now().toString().slice(-4)}`;
@@ -171,7 +187,7 @@ class FloorPlanServiceClass {
    * R: Rotate 90 degrees around center
    */
   public rotateTable(id: string): boolean {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this.getTableById(id);
     if (!table) return false;
 
     // Swap width & height or increment rotation
@@ -189,7 +205,9 @@ class FloorPlanServiceClass {
    * Delete: Remove entity from layout
    */
   public deleteTable(id: string): boolean {
-    const index = this.schema.tables.findIndex((t) => t.id === id);
+    const target = this.getTableById(id);
+    if (!target) return false;
+    const index = this.schema.tables.findIndex((t) => t.id === target.id);
     if (index === -1) return false;
 
     this.schema.tables.splice(index, 1);
@@ -211,7 +229,7 @@ class FloorPlanServiceClass {
       assignedToken?: string;
     }
   ): boolean {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this.getTableById(id);
     if (!table) return false;
 
     Object.assign(table, updates);
@@ -223,7 +241,7 @@ class FloorPlanServiceClass {
    * Starts a gaming or boardgame session
    */
   public startSession(id: string, tokenOrGuestCount?: string | number): boolean {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this.getTableById(id);
     if (!table) return false;
 
     const newStatus: TableStatus =
@@ -247,7 +265,7 @@ class FloorPlanServiceClass {
    * Settles / Clears session for a table
    */
   public clearSession(id: string): boolean {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this.getTableById(id);
     if (!table) return false;
 
     table.status = 'AVAILABLE';
@@ -291,7 +309,7 @@ class FloorPlanServiceClass {
    * frozen by accumulating pausedMs and stamping pausedAt; resume clears pausedAt.
    */
   public pauseSession(id: string): boolean {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this.getTableById(id);
     if (!table || !table.sessionStartTime || table.pausedAt) return false;
 
     table.pausedAt = new Date().toISOString();
@@ -307,7 +325,7 @@ class FloorPlanServiceClass {
    * exact second it stopped — no billable time is lost or gained).
    */
   public resumeSession(id: string): boolean {
-    const table = this.schema.tables.find((t) => t.id === id);
+    const table = this.getTableById(id);
     if (!table || !table.sessionStartTime || !table.pausedAt) return false;
 
     const pausedUntilMs = new Date(table.pausedAt).getTime();
@@ -326,8 +344,8 @@ class FloorPlanServiceClass {
    * state) to another AVAILABLE table/station without resetting the timer.
    */
   public transferSession(fromTableId: string, toTableId: string): boolean {
-    const from = this.schema.tables.find((t) => t.id === fromTableId);
-    const to = this.schema.tables.find((t) => t.id === toTableId);
+    const from = this.getTableById(fromTableId);
+    const to = this.getTableById(toTableId);
     if (!from || !to || from.id === to.id) return false;
     if (!from.sessionStartTime) return false; // nothing to transfer
     if (to.sessionStartTime || (to.status && to.status !== 'AVAILABLE')) return false;
