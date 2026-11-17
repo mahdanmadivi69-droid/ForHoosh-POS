@@ -158,7 +158,7 @@ export class RBACService {
           {
             id: 'auth-user-owner',
             username: 'admin',
-            fullName: 'مهدان مهدوی',
+            fullName: 'مدیر سیستم',
             role: 'OWNER',
             pin: '1234',
           },

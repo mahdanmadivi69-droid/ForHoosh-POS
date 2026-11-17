@@ -91,12 +91,12 @@ pub struct VenueConfig {
 impl Default for VenueConfig {
     fn default() -> Self {
         Self {
-            tenant_id: "100hich".into(),
+            tenant_id: "tenant-modendo-01".into(),
             hardware_profile: HardwareProfile {
                 cashier_printer: PrinterConfig::default(),
             },
             offline_engine: OfflineEngineConfig {
-                indexed_db_prefix: "CafeOS_100hich_DB".into(),
+                indexed_db_prefix: "CafeOS_Modendo_DB".into(),
                 sync_interval_ms: 30000,
             },
             installed_at: None,

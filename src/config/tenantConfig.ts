@@ -83,13 +83,35 @@ TENANT_PROFILES['tenant-100hich-01'] = TENANT_PROFILES['100hich'];
 TENANT_PROFILES['tenant-modendo-01'] = TENANT_PROFILES['modendo'];
 
 export function getActiveTenant(): TenantProfile {
+  // 1. URL search parameters take top priority
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
     const urlTenant = params.get('tenant');
     if (urlTenant && TENANT_PROFILES[urlTenant]) {
       return TENANT_PROFILES[urlTenant];
     }
+    if (urlTenant && /modendo/i.test(urlTenant)) {
+      return TENANT_PROFILES['modendo'];
+    }
   }
+
+  // 2. Build-time environment variables (Modendo mode priority)
+  const envTenant =
+    (typeof import.meta !== 'undefined' && ((import.meta as any).env?.VITE_TENANT_ID || (import.meta as any).env?.VITE_ACTIVE_TENANT)) ||
+    (typeof process !== 'undefined' && (process.env?.VITE_TENANT_ID || process.env?.VITE_ACTIVE_TENANT)) ||
+    '';
+  const envMode =
+    (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE) ||
+    (typeof process !== 'undefined' && (process.env?.NODE_ENV || process.env?.MODE)) ||
+    '';
+  if (envMode === 'modendo' || (envTenant && /modendo/i.test(envTenant))) {
+    return TENANT_PROFILES['modendo'];
+  }
+  if (envTenant && TENANT_PROFILES[envTenant]) {
+    return TENANT_PROFILES[envTenant];
+  }
+
+  // 3. Stored local tenant selection
   if (typeof localStorage !== 'undefined' && localStorage) {
     try {
       const stored = localStorage.getItem('cafeos_active_tenant_id');
@@ -103,22 +125,7 @@ export function getActiveTenant(): TenantProfile {
       // ignore
     }
   }
-  // Modendo Edition: VITE_TENANT_ID is the primary build-time tenant switch
-  // (mission: default tenant 'modendo'); VITE_ACTIVE_TENANT kept as legacy fallback.
-  const envTenant =
-    (typeof import.meta !== 'undefined' && ((import.meta as any).env?.VITE_TENANT_ID || (import.meta as any).env?.VITE_ACTIVE_TENANT)) ||
-    (typeof process !== 'undefined' && (process.env?.VITE_TENANT_ID || process.env?.VITE_ACTIVE_TENANT)) ||
-    '';
-  if (envTenant && TENANT_PROFILES[envTenant]) {
-    return TENANT_PROFILES[envTenant];
-  }
-  const envMode =
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE) ||
-    (typeof process !== 'undefined' && (process.env?.NODE_ENV || process.env?.MODE)) ||
-    '';
-  if (envMode === 'modendo' || (envTenant && /modendo/i.test(envTenant))) {
-    return TENANT_PROFILES['modendo'];
-  }
+
   // Default tenant for the Modendo Gaming Lounge Edition build
   return TENANT_PROFILES['modendo'];
 }

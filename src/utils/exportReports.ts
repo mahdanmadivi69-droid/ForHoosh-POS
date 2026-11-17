@@ -82,7 +82,7 @@ export function generateOrdersExcelHTML(orders: Order[], venueName: string = 'ق
         <td style="padding: 8px; border: 1px solid #CBD5E1;">${orderTypeFa}</td>
         <td style="padding: 8px; border: 1px solid #CBD5E1;">${o.tableLabel || o.customerName || '-'}</td>
         <td style="padding: 8px; border: 1px solid #CBD5E1; color: ${isCancelled ? '#DC2626' : '#16A34A'}; font-weight: bold;">${statusFa}</td>
-        <td style="padding: 8px; border: 1px solid #CBD5E1;">${o.createdByUserName || 'مهدان مهدوی'}</td>
+        <td style="padding: 8px; border: 1px solid #CBD5E1;">${o.createdByUserName || 'مدیر سیستم'}</td>
         <td style="padding: 8px; border: 1px solid #CBD5E1; text-align: right;">${itemsSummary}</td>
         <td style="padding: 8px; border: 1px solid #CBD5E1; font-family: monospace;">${formatToman(o.grossAmountToman)} تومان</td>
         <td style="padding: 8px; border: 1px solid #CBD5E1; color: #DC2626; font-family: monospace;">${o.discountAmountToman > 0 ? formatToman(o.discountAmountToman) + ' تومان' : '۰'}</td>
@@ -176,7 +176,7 @@ export function generateExpensesExcelHTML(expenses: Expense[], venueName: string
         <td style="padding: 8px; border: 1px solid #CBD5E1;">${e.category || 'متفرقه'}</td>
         <td style="padding: 8px; border: 1px solid #CBD5E1; text-align: right;">${e.description || '-'}</td>
         <td style="padding: 8px; border: 1px solid #CBD5E1;">${paymentSourceFa}</td>
-        <td style="padding: 8px; border: 1px solid #CBD5E1;">${e.recordedByUserName || 'مهدان مهدوی'}</td>
+        <td style="padding: 8px; border: 1px solid #CBD5E1;">${e.recordedByUserName || 'مدیر سیستم'}</td>
         <td style="padding: 8px; border: 1px solid #CBD5E1; font-weight: bold; color: #DC2626; font-family: monospace;">${formatToman(e.amountToman)} تومان</td>
       </tr>
     `;

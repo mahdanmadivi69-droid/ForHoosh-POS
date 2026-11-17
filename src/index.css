@@ -190,25 +190,52 @@ body.theme-modendo,
   background-color: #06120F !important;
 }
 
-/* Solid Matte Emerald-Charcoal Surfaces (No see-through blur or translucency in Modendo) */
+/* Modendo Frosted Emerald Liquid Glass & visionOS Translucent Surfaces */
 [data-theme="modendo"] .liquid-ambient-canvas,
 [data-tenant="tenant-modendo-01"] .liquid-ambient-canvas,
 [data-tenant="modendo"] .liquid-ambient-canvas,
 .theme-modendo .liquid-ambient-canvas {
   background-color: #06120F !important;
-  background-image: none !important;
+  background-image:
+    radial-gradient(64% 48% at 14% 6%, rgba(16, 185, 129, 0.22) 0%, transparent 65%),
+    radial-gradient(52% 44% at 86% 12%, rgba(5, 150, 105, 0.14) 0%, transparent 65%),
+    radial-gradient(60% 50% at 52% 96%, rgba(16, 185, 129, 0.12) 0%, transparent 70%) !important;
 }
 
 [data-theme="modendo"] .vision-ambient-mesh,
 [data-tenant="tenant-modendo-01"] .vision-ambient-mesh,
 [data-tenant="modendo"] .vision-ambient-mesh,
 .theme-modendo .vision-ambient-mesh {
-  display: none !important;
+  display: block !important;
+  opacity: 0.85;
+}
+
+[data-theme="modendo"] .vision-orb-carmine,
+.theme-modendo .vision-orb-carmine {
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, transparent 70%) !important;
+}
+
+[data-theme="modendo"] .vision-orb-navy,
+.theme-modendo .vision-orb-navy {
+  background: radial-gradient(circle, rgba(5, 150, 105, 0.22) 0%, transparent 70%) !important;
 }
 
 [data-theme="modendo"] .liquid-glass-shell,
 [data-tenant="tenant-modendo-01"] .liquid-glass-shell,
-[data-tenant="modendo"] .liquid-glass-shell,
+[data-tenant="modendo"] .liquid-glass-shell {
+  background: linear-gradient(
+    180deg,
+    rgba(14, 38, 32, 0.78) 0%,
+    rgba(8, 24, 20, 0.82) 100%
+  ) !important;
+  backdrop-filter: blur(28px) saturate(185%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(185%) !important;
+  border: 1px solid rgba(22, 56, 47, 0.85) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
+    0 24px 56px -18px rgba(0, 0, 0, 0.72) !important;
+}
+
 [data-theme="modendo"] .liquid-glass-panel,
 [data-tenant="tenant-modendo-01"] .liquid-glass-panel,
 [data-tenant="modendo"] .liquid-glass-panel,
@@ -227,11 +254,29 @@ body.theme-modendo,
 [data-theme="modendo"] .glass-card,
 [data-tenant="tenant-modendo-01"] .glass-card,
 [data-tenant="modendo"] .glass-card {
-  background: #0B1F1A !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid #16382F !important;
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45) !important;
+  background: linear-gradient(
+    165deg,
+    rgba(11, 31, 26, 0.78) 0%,
+    rgba(6, 18, 15, 0.86) 100%
+  ) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(22, 56, 47, 0.85) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12),
+    0 16px 40px -12px rgba(0, 0, 0, 0.65) !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+[data-theme="modendo"] .liquid-glass-card:hover,
+[data-tenant="tenant-modendo-01"] .liquid-glass-card:hover,
+[data-tenant="modendo"] .liquid-glass-card:hover,
+.theme-modendo .liquid-glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.45) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(167, 243, 208, 0.25),
+    0 20px 44px -10px rgba(16, 185, 129, 0.22) !important;
 }
 
 [data-theme="modendo"] .liquid-glass-emerald,
@@ -240,11 +285,13 @@ body.theme-modendo,
 [data-theme="modendo"] .liquid-glass-surface,
 [data-tenant="tenant-modendo-01"] .liquid-glass-surface,
 [data-tenant="modendo"] .liquid-glass-surface {
-  background: #0E2922 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid #16382F !important;
-  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.45) !important;
+  background: rgba(16, 185, 129, 0.18) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
+  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(167, 243, 208, 0.25),
+    0 14px 34px -12px rgba(16, 185, 129, 0.28) !important;
 }
 
 [data-theme="modendo"] .liquid-glass-well,
@@ -253,47 +300,51 @@ body.theme-modendo,
 [data-theme="modendo"] .liquid-glass-rail,
 [data-tenant="tenant-modendo-01"] .liquid-glass-rail,
 [data-tenant="modendo"] .liquid-glass-rail {
-  background: #06120F !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid #16382F !important;
+  background: rgba(6, 18, 15, 0.72) !important;
+  backdrop-filter: blur(20px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(170%) !important;
+  border: 1px solid rgba(22, 56, 47, 0.8) !important;
 }
 
 [data-theme="modendo"] .liquid-glass-pill,
 [data-tenant="tenant-modendo-01"] .liquid-glass-pill,
 [data-tenant="modendo"] .liquid-glass-pill {
-  background: #0B1F1A !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  border: 1px solid #16382F !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
 }
 
 [data-theme="modendo"] .liquid-glass-card-active,
 [data-tenant="tenant-modendo-01"] .liquid-glass-card-active,
 [data-tenant="modendo"] .liquid-glass-card-active {
-  background: #0E2922 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: rgba(16, 185, 129, 0.22) !important;
+  backdrop-filter: blur(28px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(180%) !important;
   border: 1px solid #10B981 !important;
-  box-shadow: 0 0 16px rgba(16, 185, 129, 0.25) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(167, 243, 208, 0.35),
+    0 0 20px rgba(16, 185, 129, 0.3) !important;
 }
 
 [data-theme="modendo"] .liquid-glass-cta,
 [data-tenant="tenant-modendo-01"] .liquid-glass-cta,
 [data-tenant="modendo"] .liquid-glass-cta {
-  background: #10B981 !important;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
   color: #06120F !important;
-  border: 1px solid #059669 !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  border: 1px solid #34D399 !important;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.35) !important;
   font-weight: 800;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 [data-theme="modendo"] .liquid-glass-cta:hover,
 [data-tenant="tenant-modendo-01"] .liquid-glass-cta:hover,
 [data-tenant="modendo"] .liquid-glass-cta:hover {
-  background: #059669 !important;
-  color: #ffffff !important;
+  background: linear-gradient(135deg, #34D399 0%, #10B981 100%) !important;
+  color: #040c09 !important;
+  box-shadow: 0 6px 22px rgba(16, 185, 129, 0.45) !important;
+  transform: translateY(-1px);
 }
 
 /* Ambient Spatial Backdrop (Deep Obsidian + Diffused Specular Atmospheres) */

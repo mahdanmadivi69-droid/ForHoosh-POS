@@ -351,8 +351,11 @@ export function renderReceiptTemplateHtml(
 
   const isModendo =
     activeTenant.id === 'modendo' ||
+    activeTenant.id === 'tenant-modendo-01' ||
+    activeTenant.id.includes('modendo') ||
     order.tenantId === 'tenant-modendo-01' ||
     order.tenantId === 'modendo' ||
+    (order.tenantId ? order.tenantId.includes('modendo') : false) ||
     (tenantInfo.name
       ? tenantInfo.name.includes('مودندو') || tenantInfo.name.toUpperCase().includes('MODENDO')
       : false);

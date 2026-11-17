@@ -18,6 +18,9 @@ import { InvoiceSequenceService } from './invoiceSequence';
 import { getDexiePOSDatabase, DecomposedShiftRecord } from '../db/DexiePOSDatabase';
 import { hashPassword, verifyPassword, SecureCredential } from './credentials';
 import { normalizeDigits } from '../utils/digitNormalizer';
+import { MODENDO_TENANT, MODENDO_CATEGORIES, MODENDO_MENU_ITEMS } from '../data/modendoMenu';
+
+export { MODENDO_TENANT, MODENDO_CATEGORIES, MODENDO_MENU_ITEMS };
 
 const STORAGE_KEYS = {
   ACTIVE_TENANT_ID: 'smartorders_active_tenant_id_v2',
@@ -37,15 +40,6 @@ const STORAGE_KEYS = {
   PAYMENTS: 'smartorders_payments_v1',
   EXPENSES: 'smartorders_expenses_v1',
   AUDIT_LOGS: 'smartorders_audit_logs_v1',
-};
-
-// Modendo Cafe (Modendo Boardgame & Gaming Cafe - Primary Tenant)
-export const MODENDO_TENANT: Tenant = {
-  id: 'tenant-modendo-01',
-  name: 'MODENDO — کافه بردگیم و گیمینگ',
-  currency: 'TOMAN',
-  phone: '021-88997766',
-  address: 'تهران، خیابان شریعتی، مجتمع تجاری مودندو، طبقه منفی ۱ و همکف',
 };
 
 export const MODENDO_USERS: User[] = [
@@ -106,1137 +100,8 @@ export const MODENDO_USERS: User[] = [
   },
 ];
 
-export const MODENDO_CATEGORIES: Category[] = [
-  { id: 'cat-mod-breakfast', tenantId: 'tenant-modendo-01', nameFa: 'صبحانه', nameEn: 'Breakfast', sortOrder: 1, isActive: true },
-  { id: 'cat-mod-boardgame', tenantId: 'tenant-modendo-01', nameFa: 'بازی و سرگرمی', nameEn: 'Games & Entertainment', sortOrder: 2, isActive: true },
-  { id: 'cat-mod-drinks', tenantId: 'tenant-modendo-01', nameFa: 'نوشیدنی‌ها', nameEn: 'Beverages', sortOrder: 3, isActive: true },
-  { id: 'cat-mod-hot-drinks', tenantId: 'tenant-modendo-01', nameFa: 'نوشیدنی گرم', nameEn: 'Hot Drinks', sortOrder: 4, isActive: true },
-  { id: 'cat-mod-shakes', tenantId: 'tenant-modendo-01', nameFa: 'شیک', nameEn: 'Shakes', sortOrder: 5, isActive: true },
-  { id: 'cat-mod-coffee', tenantId: 'tenant-modendo-01', nameFa: 'قهوه', nameEn: 'Coffee', sortOrder: 6, isActive: true },
-  { id: 'cat-mod-cold-drinks', tenantId: 'tenant-modendo-01', nameFa: 'نوشیدنی سرد', nameEn: 'Cold Drinks', sortOrder: 7, isActive: true },
-  { id: 'cat-mod-starters', tenantId: 'tenant-modendo-01', nameFa: 'استارتر', nameEn: 'Starters', sortOrder: 8, isActive: true },
-  { id: 'cat-mod-desserts', tenantId: 'tenant-modendo-01', nameFa: 'دسر', nameEn: 'Desserts', sortOrder: 9, isActive: true },
-  { id: 'cat-mod-sandwiches', tenantId: 'tenant-modendo-01', nameFa: 'ساندویچ', nameEn: 'Sandwiches', sortOrder: 10, isActive: true },
-  { id: 'cat-mod-mains', tenantId: 'tenant-modendo-01', nameFa: 'بشقاب و غذاهای اصلی', nameEn: 'Main Dishes', sortOrder: 11, isActive: true },
-  { id: 'cat-mod-pizza', tenantId: 'tenant-modendo-01', nameFa: 'پیتزا', nameEn: 'Pizza', sortOrder: 12, isActive: true },
-  { id: 'cat-mod-burgers', tenantId: 'tenant-modendo-01', nameFa: 'برگر', nameEn: 'Burgers', sortOrder: 13, isActive: true },
-  { id: 'cat-mod-gamenet', tenantId: 'tenant-modendo-01', nameFa: 'گیمنت', nameEn: 'Game Net', sortOrder: 14, isActive: true },
-  { id: 'cat-mod-packaging', tenantId: 'tenant-modendo-01', nameFa: 'ظروف بسته‌بندی و سرویس', nameEn: 'Packaging & Service', sortOrder: 15, isActive: true },
-];
 
-export const MODENDO_MENU_ITEMS: MenuItem[] = [
-  // 1. صبحانه (7)
-  {
-    id: 'item-mod-bf-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-breakfast',
-    nameFa: 'صبحانه انگلیسی',
-    nameEn: 'English Breakfast',
-    priceToman: 690000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-bf-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-breakfast',
-    nameFa: 'املت گوجه',
-    nameEn: 'Tomato Omelette',
-    priceToman: 340000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-bf-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-breakfast',
-    nameFa: 'چوریتسو املت',
-    nameEn: 'Chorizo Omelette',
-    priceToman: 550000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-bf-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-breakfast',
-    nameFa: 'املت ربی',
-    nameEn: 'Tomato Paste Omelette',
-    priceToman: 320000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-bf-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-breakfast',
-    nameFa: 'املت قارچ و زیتون',
-    nameEn: 'Mushroom & Olive Omelette',
-    priceToman: 340000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-bf-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-breakfast',
-    nameFa: 'نیمرو',
-    nameEn: 'Fried Eggs',
-    priceToman: 290000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-bf-7',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-breakfast',
-    nameFa: 'کوکو سیبزمینی',
-    nameEn: 'Potato Kuku',
-    priceToman: 340000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
 
-  // 2. بازی و سرگرمی (7)
-  {
-    id: 'item-mod-ent-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-boardgame',
-    nameFa: 'تماشای مسابقات فوتبال',
-    nameEn: 'Football Match Broadcast',
-    priceToman: 100000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-ent-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-boardgame',
-    nameFa: 'بازی بعد از ۲ ساعت',
-    nameEn: 'Game Overtime (After 2 Hours)',
-    priceToman: 50000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-ent-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-boardgame',
-    nameFa: 'بازی بردگیم (سبک تا ۲ ساعت)',
-    nameEn: 'Light Boardgame (Up to 2 Hours)',
-    priceToman: 200000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-ent-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-boardgame',
-    nameFa: 'بازی سنگین',
-    nameEn: 'Heavy Boardgame Pass',
-    priceToman: 300000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-ent-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-boardgame',
-    nameFa: 'مافیا ریگان (سهشنبه و جمعه)',
-    nameEn: 'Regan Mafia (Tue & Fri)',
-    priceToman: 150000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-ent-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-boardgame',
-    nameFa: 'بازی قبل مافیا',
-    nameEn: 'Pre-Mafia Warmup Game',
-    priceToman: 60000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-ent-7',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-boardgame',
-    nameFa: 'مافیا سالواتوره (دوشنبه و پنجشنبه)',
-    nameEn: 'Salvatore Mafia (Mon & Thu)',
-    priceToman: 100000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-
-  // 3. نوشیدنیها (7)
-  {
-    id: 'item-mod-drk-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-drinks',
-    nameFa: 'انرژیزا',
-    nameEn: 'Energy Drink',
-    priceToman: 140000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-drk-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-drinks',
-    nameFa: 'دلستر نوستالژی',
-    nameEn: 'Nostalgic Malt Drink',
-    priceToman: 160000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-drk-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-drinks',
-    nameFa: 'دوغ',
-    nameEn: 'Traditional Doogh',
-    priceToman: 120000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-drk-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-drinks',
-    nameFa: 'کوکا لیوانی',
-    nameEn: 'Glass Coca-Cola',
-    priceToman: 70000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-drk-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-drinks',
-    nameFa: 'نوشابه قوطی زیرو',
-    nameEn: 'Zero Can Soda',
-    priceToman: 150000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-drk-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-drinks',
-    nameFa: 'نوشابه قوطی',
-    nameEn: 'Can Soda',
-    priceToman: 130000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-drk-7',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-drinks',
-    nameFa: 'آب معدنی',
-    nameEn: 'Mineral Water',
-    priceToman: 35000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-
-  // 4. نوشیدنی گرم (3)
-  {
-    id: 'item-mod-hot-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-hot-drinks',
-    nameFa: 'ماسالا',
-    nameEn: 'Chai Masala',
-    priceToman: 290000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-hot-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-hot-drinks',
-    nameFa: 'هاتچاکلت',
-    nameEn: 'Hot Chocolate',
-    priceToman: 280000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-hot-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-hot-drinks',
-    nameFa: 'چای (با نبات)',
-    nameEn: 'Persian Tea (with Nabat)',
-    priceToman: 125000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-
-  // 5. شیک (5)
-  {
-    id: 'item-mod-shk-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-shakes',
-    nameFa: 'شیک لوتوس',
-    nameEn: 'Lotus Biscoff Shake',
-    priceToman: 420000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-shk-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-shakes',
-    nameFa: 'شیک کرنبری',
-    nameEn: 'Cranberry Shake',
-    priceToman: 390000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-shk-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-shakes',
-    nameFa: 'شیک بلوبری',
-    nameEn: 'Blueberry Shake',
-    priceToman: 390000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-shk-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-shakes',
-    nameFa: 'شیک وانیل',
-    nameEn: 'Vanilla Shake',
-    priceToman: 360000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-shk-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-shakes',
-    nameFa: 'شیک شکلات',
-    nameEn: 'Chocolate Shake',
-    priceToman: 385000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-
-  // 6. قهوه (8)
-  {
-    id: 'item-mod-cof-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-coffee',
-    nameFa: 'آفوگاتو',
-    nameEn: 'Affogato',
-    priceToman: 320000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cof-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-coffee',
-    nameFa: 'اورنج اسپرسو',
-    nameEn: 'Orange Espresso',
-    priceToman: 330000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cof-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-coffee',
-    nameFa: 'کارامل ماکیاتو',
-    nameEn: 'Caramel Macchiato',
-    priceToman: 380000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cof-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-coffee',
-    nameFa: 'لته با سیروپ',
-    nameEn: 'Flavored Latte',
-    priceToman: 370000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cof-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-coffee',
-    nameFa: 'کورتادو',
-    nameEn: 'Cortado',
-    priceToman: 280000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cof-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-coffee',
-    nameFa: 'لته',
-    nameEn: 'Caffe Latte',
-    priceToman: 290000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cof-7',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-coffee',
-    nameFa: 'آمریکانو',
-    nameEn: 'Americano',
-    priceToman: 230000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cof-8',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-coffee',
-    nameFa: 'اسپرسو',
-    nameEn: 'Espresso',
-    priceToman: 230000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-
-  // 7. نوشیدنی سرد (9)
-  {
-    id: 'item-mod-cld-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'وایلد کارت',
-    nameEn: 'Wild Card Mocktail',
-    priceToman: 360000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cld-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'ریسکی',
-    nameEn: 'Risky Mocktail',
-    priceToman: 320000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cld-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'موهیتو',
-    nameEn: 'Classic Mojito',
-    priceToman: 310000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cld-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'لاکی لمون',
-    nameEn: 'Lucky Lemon',
-    priceToman: 330000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cld-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'رد فلگ',
-    nameEn: 'Red Flag Mocktail',
-    priceToman: 340000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cld-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'اکسترا لایف',
-    nameEn: 'Extra Life Mocktail',
-    priceToman: 350000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cld-7',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'هلی رول',
-    nameEn: 'Heli Roll Mocktail',
-    priceToman: 320000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cld-8',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'آب زرشک آلبالو',
-    nameEn: 'Sour Cherry Barberry Juice',
-    priceToman: 285000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-cld-9',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-cold-drinks',
-    nameFa: 'سوییت ویکتوری',
-    nameEn: 'Sweet Victory Mocktail',
-    priceToman: 340000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-
-  // 8. استارتر (6)
-  {
-    id: 'item-mod-str-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-starters',
-    nameFa: 'سالاد سزار استیک',
-    nameEn: 'Steak Caesar Salad',
-    priceToman: 970000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-str-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-starters',
-    nameFa: 'سالاد سزار با مرغ گریل',
-    nameEn: 'Grilled Chicken Caesar Salad',
-    priceToman: 750000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-str-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-starters',
-    nameFa: 'فرنچ فرایز با دیپ آلفردو',
-    nameEn: 'Fries with Alfredo Dip',
-    priceToman: 420000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-str-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-starters',
-    nameFa: 'فرنچ فرایز با دیپ سالسا',
-    nameEn: 'Fries with Salsa Dip',
-    priceToman: 390000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-str-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-starters',
-    nameFa: 'فرنچ فرایز با دیپ گودا',
-    nameEn: 'Fries with Gouda Dip',
-    priceToman: 420000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-str-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-starters',
-    nameFa: 'فرنچ فرایز ساده',
-    nameEn: 'Classic French Fries',
-    priceToman: 320000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-
-  // 9. دسر (6)
-  {
-    id: 'item-mod-dsr-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-desserts',
-    nameFa: 'کیک هویج گردو',
-    nameEn: 'Carrot Walnut Cake',
-    priceToman: 190000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-dsr-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-desserts',
-    nameFa: 'براونی شکلات',
-    nameEn: 'Chocolate Brownie',
-    priceToman: 290000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-dsr-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-desserts',
-    nameFa: 'تارت سیب',
-    nameEn: 'Apple Tart',
-    priceToman: 220000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-dsr-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-desserts',
-    nameFa: 'تارت آلبالو',
-    nameEn: 'Sour Cherry Tart',
-    priceToman: 230000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-dsr-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-desserts',
-    nameFa: 'تارت توتفرنگی',
-    nameEn: 'Strawberry Tart',
-    priceToman: 240000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-  {
-    id: 'item-mod-dsr-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-desserts',
-    nameFa: 'کیک رد ولوت',
-    nameEn: 'Red Velvet Cake',
-    priceToman: 290000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'BAR',
-  },
-
-  // 10. ساندویچ (5)
-  {
-    id: 'item-mod-snd-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-sandwiches',
-    nameFa: 'کوکتل پنیر',
-    nameEn: 'Cheese Cocktail Panini',
-    priceToman: 490000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-snd-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-sandwiches',
-    nameFa: 'ژامبون تنوری',
-    nameEn: 'Baked Ham Sandwich',
-    priceToman: 650000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-snd-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-sandwiches',
-    nameFa: 'ساندویچ چیکن باربیکیو',
-    nameEn: 'BBQ Chicken Sandwich',
-    priceToman: 580000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-snd-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-sandwiches',
-    nameFa: 'ساندویچ رست بیف',
-    nameEn: 'Roast Beef Sandwich',
-    priceToman: 830000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-snd-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-sandwiches',
-    nameFa: 'پاسترامی',
-    nameEn: 'Pastrami Sandwich',
-    priceToman: 930000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-
-  // 11. بشقاب و غذاهای اصلی (5)
-  {
-    id: 'item-mod-main-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-mains',
-    nameFa: 'ساسج لاورز',
-    nameEn: 'Sausage Lovers Platter',
-    priceToman: 885000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-main-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-mains',
-    nameFa: 'پاستا مارگاریتا',
-    nameEn: 'Pasta Margherita',
-    priceToman: 750000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-main-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-mains',
-    nameFa: 'پاستا آلفردو',
-    nameEn: 'Pasta Alfredo',
-    priceToman: 790000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-main-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-mains',
-    nameFa: 'سبزیجات گرم',
-    nameEn: 'Warm Sauteed Vegetables',
-    priceToman: 590000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-main-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-mains',
-    nameFa: 'چیکن استیک',
-    nameEn: 'Grilled Chicken Steak',
-    priceToman: 850000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-
-  // 12. پیتزا (7)
-  {
-    id: 'item-mod-piz-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-pizza',
-    nameFa: 'پپرونی',
-    nameEn: 'Pepperoni Pizza',
-    priceToman: 730000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-piz-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-pizza',
-    nameFa: 'چیکن',
-    nameEn: 'Chicken Pizza',
-    priceToman: 850000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-piz-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-pizza',
-    nameFa: 'پیتزا کلاسیک',
-    nameEn: 'Classic Pizza',
-    priceToman: 940000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-piz-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-pizza',
-    nameFa: 'میت بال',
-    nameEn: 'Meatball Pizza',
-    priceToman: 1035000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-piz-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-pizza',
-    nameFa: 'بیکن',
-    nameEn: 'Bacon Pizza',
-    priceToman: 1050000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-piz-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-pizza',
-    nameFa: 'رست بیف',
-    nameEn: 'Roast Beef Pizza',
-    priceToman: 1130000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-piz-7',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-pizza',
-    nameFa: 'سیر و استیک',
-    nameEn: 'Garlic Steak Pizza',
-    priceToman: 1320000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-
-  // 13. برگر (5)
-  {
-    id: 'item-mod-brg-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-burgers',
-    nameFa: 'بیکن برگر (Bacon Burger)',
-    nameEn: 'Bacon Burger',
-    priceToman: 1170000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-brg-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-burgers',
-    nameFa: 'چوریتسو برگر',
-    nameEn: 'Chorizo Burger',
-    priceToman: 1190000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-brg-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-burgers',
-    nameFa: 'مایتی برگر (Mighty Burger)',
-    nameEn: 'Mighty Burger',
-    priceToman: 1470000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-brg-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-burgers',
-    nameFa: 'چیز برگر',
-    nameEn: 'Cheeseburger',
-    priceToman: 870000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-  {
-    id: 'item-mod-brg-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-burgers',
-    nameFa: 'کلاسیک برگر',
-    nameEn: 'Classic Burger',
-    priceToman: 790000,
-    isAvailable: true,
-    currentStock: 99,
-    lowStockThreshold: 10,
-    station: 'KITCHEN',
-  },
-
-  // 14. گیمنت (7)
-  {
-    id: 'item-mod-gm-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-gamenet',
-    nameFa: 'پی اس ۵ (۳ دسته - ۱۲ شب)',
-    nameEn: 'PS5 (3 Controllers - After 12 AM)',
-    priceToman: 400000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-gm-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-gamenet',
-    nameFa: 'پی اس ۵ (۴ دسته - ۱۲ شب)',
-    nameEn: 'PS5 (4 Controllers - After 12 AM)',
-    priceToman: 470000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-gm-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-gamenet',
-    nameFa: 'پی اس ۵ (۲ دسته - ۱۲ شب)',
-    nameEn: 'PS5 (2 Controllers - After 12 AM)',
-    priceToman: 340000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-gm-4',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-gamenet',
-    nameFa: 'پی اس ۵ (سه دسته)',
-    nameEn: 'PS5 (3 Controllers)',
-    priceToman: 350000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-gm-5',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-gamenet',
-    nameFa: 'پی اس ۵ (چهار دسته)',
-    nameEn: 'PS5 (4 Controllers)',
-    priceToman: 420000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-gm-6',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-gamenet',
-    nameFa: 'پی اس ۵ (یک و دو دسته)',
-    nameEn: 'PS5 (1 or 2 Controllers)',
-    priceToman: 290000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-gm-7',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-gamenet',
-    nameFa: 'پی اس نیم ساعت',
-    nameEn: 'PS5 Half Hour Session',
-    priceToman: 145000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-
-  // 15. ظروف بستهبندی و سرویس (3)
-  {
-    id: 'item-mod-srv-1',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-packaging',
-    nameFa: 'سرویس کیک (پیشدستی، قاشق چنگال و برش کیک)',
-    nameEn: 'Cake Service Set',
-    priceToman: 400000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-srv-2',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-packaging',
-    nameFa: 'ظرف بیرونبر ۱',
-    nameEn: 'Takeaway Box 1',
-    priceToman: 40000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-  {
-    id: 'item-mod-srv-3',
-    tenantId: 'tenant-modendo-01',
-    categoryId: 'cat-mod-packaging',
-    nameFa: 'ظرف بیرونبر ۲',
-    nameEn: 'Takeaway Box 2',
-    priceToman: 30000,
-    isAvailable: true,
-    currentStock: 999,
-    lowStockThreshold: 10,
-    station: 'NO_PREP',
-  },
-];
-
-// Secondary Tenant: قهوه‌فروشی ۱۰۰هیچ (100 Hich Specialty Coffee Roasters)
 const DEFAULT_TENANT: Tenant = {
   id: 'tenant-100hich-01',
   name: 'قهوه‌فروشی صَد هیچ (100 HICH Coffee Roasters)',
@@ -1249,7 +114,7 @@ const DEFAULT_USERS: User[] = [
   {
     id: 'user-01',
     tenantId: 'tenant-100hich-01',
-    fullName: 'مهدان مهدوی',
+    fullName: 'مدیر سیستم',
     phoneNumber: '09120000001',
     username: 'admin',
     mustChangePassword: true,
@@ -2449,6 +1314,11 @@ interface ThrottleState {
 
 const loginThrottles = new Map<string, ThrottleState>();
 
+export function isModendoTenantId(id?: string | null): boolean {
+  if (!id) return false;
+  return id === 'tenant-modendo-01' || id === 'modendo' || id.toLowerCase().includes('modendo');
+}
+
 export class SmartOrdersStore {
   // Tenant-scoped key helper
   static getTenantKey(baseKey: string): string {
@@ -2456,12 +1326,32 @@ export class SmartOrdersStore {
     return `${baseKey}_${activeTenantId}`;
   }
 
+  static isModendoTenantId(id?: string | null): boolean {
+    return isModendoTenantId(id);
+  }
+
   // Active Tenant Management
   static getActiveTenantId(): string {
-    const envTenant = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) || '';
+    // 1. URL search parameters take absolute top priority
+    if (typeof window !== 'undefined' && window.location) {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const urlTenant = params.get('tenant');
+        if (urlTenant) {
+          if (/modendo/i.test(urlTenant)) return 'tenant-modendo-01';
+          if (/100hich/i.test(urlTenant)) return 'tenant-100hich-01';
+          return urlTenant;
+        }
+      } catch {}
+    }
+    // 2. Build-time environment variables
+    const envTenant =
+      (typeof import.meta !== 'undefined' && ((import.meta as any).env?.VITE_TENANT_ID || (import.meta as any).env?.VITE_TENANT)) || '';
+    const envMode = (typeof import.meta !== 'undefined' && (import.meta as any).env?.MODE) || '';
+    if (envMode === 'modendo' || (envTenant && /modendo/i.test(envTenant))) {
+      return 'tenant-modendo-01';
+    }
     if (envTenant) {
-      // Normalize short tenant keys ('modendo') to canonical store IDs ('tenant-modendo-01')
-      if (/modendo/i.test(envTenant)) return 'tenant-modendo-01';
       if (/100hich/i.test(envTenant)) return 'tenant-100hich-01';
       return envTenant;
     }
@@ -2489,20 +1379,20 @@ export class SmartOrdersStore {
   // Tenant
   static getTenant(): Tenant {
     const activeTenantId = this.getActiveTenantId();
-    if (activeTenantId === 'tenant-100hich-01') {
-      return load(STORAGE_KEYS.TENANT, DEFAULT_TENANT);
+    if (isModendoTenantId(activeTenantId)) {
+      return load(STORAGE_KEYS.TENANT_MODENDO, MODENDO_TENANT);
     }
-    return load(STORAGE_KEYS.TENANT_MODENDO, MODENDO_TENANT);
+    return load(STORAGE_KEYS.TENANT, DEFAULT_TENANT);
   }
 
   static updateTenant(updated: Partial<Tenant>): Tenant {
     const current = this.getTenant();
     const merged = { ...current, ...updated };
     const activeTenantId = this.getActiveTenantId();
-    if (activeTenantId === 'tenant-100hich-01') {
-      save(STORAGE_KEYS.TENANT, merged);
-    } else {
+    if (isModendoTenantId(activeTenantId)) {
       save(STORAGE_KEYS.TENANT_MODENDO, merged);
+    } else {
+      save(STORAGE_KEYS.TENANT, merged);
     }
     return merged;
   }
@@ -2510,10 +1400,10 @@ export class SmartOrdersStore {
   // Users & Authentication
   static getUsers(): User[] {
     const activeTenantId = this.getActiveTenantId();
-    if (activeTenantId === 'tenant-100hich-01') {
-      return load(STORAGE_KEYS.USERS, DEFAULT_USERS);
+    if (isModendoTenantId(activeTenantId)) {
+      return load(STORAGE_KEYS.USERS_MODENDO, MODENDO_USERS);
     }
-    return load(STORAGE_KEYS.USERS_MODENDO, MODENDO_USERS);
+    return load(STORAGE_KEYS.USERS, DEFAULT_USERS);
   }
 
   static getActiveUser(): User {
@@ -2542,10 +1432,10 @@ export class SmartOrdersStore {
 
   static saveUsers(users: User[]): void {
     const activeTenantId = this.getActiveTenantId();
-    if (activeTenantId === 'tenant-100hich-01' || !activeTenantId) {
-      save(STORAGE_KEYS.USERS, users);
-    } else {
+    if (isModendoTenantId(activeTenantId)) {
       save(STORAGE_KEYS.USERS_MODENDO, users);
+    } else {
+      save(STORAGE_KEYS.USERS, users);
     }
   }
 
@@ -2769,8 +1659,8 @@ export class SmartOrdersStore {
   // Categories
   static getCategories(): Category[] {
     const activeTenantId = this.getActiveTenantId();
-    if (activeTenantId === 'tenant-modendo-01') {
-      const isV16Seeded = typeof window !== 'undefined' && localStorage?.getItem('smartorders_modendo_v0.16_catalog_seeded');
+    if (isModendoTenantId(activeTenantId)) {
+      const isV16Seeded = typeof window !== 'undefined' && localStorage?.getItem('smartorders_modendo_v0.16.2_catalog_seeded');
       if (!isV16Seeded) {
         this.resetModendoMenuToSeed();
       }
@@ -2781,7 +1671,7 @@ export class SmartOrdersStore {
 
   static saveCategories(cats: Category[]): void {
     const activeTenantId = this.getActiveTenantId();
-    if (activeTenantId === 'tenant-modendo-01') {
+    if (isModendoTenantId(activeTenantId)) {
       save(STORAGE_KEYS.CATEGORIES_MODENDO, cats);
     } else {
       save(STORAGE_KEYS.CATEGORIES, cats);
@@ -2795,7 +1685,7 @@ export class SmartOrdersStore {
     save(STORAGE_KEYS.CATEGORIES_MODENDO, MODENDO_CATEGORIES);
     save(STORAGE_KEYS.MENU_ITEMS_MODENDO, MODENDO_MENU_ITEMS);
     if (typeof window !== 'undefined' && localStorage) {
-      localStorage.setItem('smartorders_modendo_v0.16_catalog_seeded', 'true');
+      localStorage.setItem('smartorders_modendo_v0.16.2_catalog_seeded', 'true');
     }
     return {
       categoriesCount: MODENDO_CATEGORIES.length,
@@ -2806,21 +1696,36 @@ export class SmartOrdersStore {
   // Menu Items
   static getMenuItems(): MenuItem[] {
     const activeTenantId = this.getActiveTenantId();
-    if (activeTenantId === 'tenant-modendo-01') {
-      const isV16Seeded = typeof window !== 'undefined' && localStorage?.getItem('smartorders_modendo_v0.16_catalog_seeded');
+    if (isModendoTenantId(activeTenantId)) {
+      const isV16Seeded = typeof window !== 'undefined' && localStorage?.getItem('smartorders_modendo_v0.16.2_catalog_seeded');
       if (!isV16Seeded) {
         this.resetModendoMenuToSeed();
       }
       const rawItems = load<MenuItem[]>(STORAGE_KEYS.MENU_ITEMS_MODENDO, MODENDO_MENU_ITEMS);
-      const existingIds = new Set(rawItems.map((i) => i.id));
+      // Strictly enforce that 100hich items never leak into Modendo runtime
+      const sanitized = rawItems.filter((i) => i.tenantId === 'tenant-modendo-01' || i.id.startsWith('mod-'));
+      const activeItems = sanitized.length > 0 ? sanitized : MODENDO_MENU_ITEMS;
+      const existingIds = new Set(activeItems.map((i) => i.id));
       const missingDefaults = MODENDO_MENU_ITEMS.filter((d) => !existingIds.has(d.id));
-      const combined = missingDefaults.length > 0 ? [...rawItems, ...missingDefaults] : rawItems;
+      const combined = missingDefaults.length > 0 ? [...activeItems, ...missingDefaults] : activeItems;
 
       return combined.map((item) => {
         const def = MODENDO_MENU_ITEMS.find((d) => d.id === item.id);
-        const stock = item.currentStock !== undefined && item.currentStock !== null ? item.currentStock : (def?.currentStock ?? 99);
-        const threshold = item.lowStockThreshold !== undefined && item.lowStockThreshold !== null ? item.lowStockThreshold : (def?.lowStockThreshold ?? 10);
-        const station = item.station || def?.station || (item.categoryId === 'cat-mod-food' || item.categoryId === 'cat-mod-breakfast' ? 'KITCHEN' : 'BAR');
+        const stock = item.currentStock !== undefined && item.currentStock !== null ? item.currentStock : (def?.currentStock ?? 80);
+        const threshold = item.lowStockThreshold !== undefined && item.lowStockThreshold !== null ? item.lowStockThreshold : (def?.lowStockThreshold ?? 8);
+        const station =
+          item.station ||
+          def?.station ||
+          (item.categoryId.includes('food') ||
+          item.categoryId.includes('burger') ||
+          item.categoryId.includes('pizza') ||
+          item.categoryId.includes('pasta') ||
+          item.categoryId.includes('bakery') ||
+          item.categoryId.includes('appetizer')
+            ? 'KITCHEN'
+            : item.categoryId.includes('gaming') || item.categoryId.includes('lounge')
+            ? 'NO_PREP'
+            : 'BAR');
         return { ...item, currentStock: stock, lowStockThreshold: threshold, station };
       });
     }
@@ -2873,7 +1778,7 @@ export class SmartOrdersStore {
 
   static saveMenuItems(items: MenuItem[]): void {
     const activeTenantId = this.getActiveTenantId();
-    if (activeTenantId === 'tenant-modendo-01') {
+    if (isModendoTenantId(activeTenantId)) {
       save(STORAGE_KEYS.MENU_ITEMS_MODENDO, items);
     } else {
       save(STORAGE_KEYS.MENU_ITEMS, items);
@@ -3435,7 +2340,7 @@ export class SmartOrdersStore {
     if (!localStorage.getItem(STORAGE_KEYS.USERS_MODENDO)) {
       save(STORAGE_KEYS.USERS_MODENDO, MODENDO_USERS);
     }
-    if (!localStorage.getItem('smartorders_modendo_v0.16_catalog_seeded')) {
+    if (!localStorage.getItem('smartorders_modendo_v0.16.2_catalog_seeded')) {
       this.resetModendoMenuToSeed();
     } else {
       if (!localStorage.getItem(STORAGE_KEYS.CATEGORIES_MODENDO)) {

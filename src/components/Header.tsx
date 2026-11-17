@@ -138,7 +138,7 @@ export const Header: React.FC<HeaderProps> = ({
    * ============================================================================ */
   if (isModendo) {
     return (
-      <header className="sticky top-0 md:top-2.5 z-40 md:mx-auto md:w-[calc(100%-2rem)] max-w-[1720px] md:rounded-[22px] bg-[#0B1F1A] border border-[#16382F] shadow-2xl transition-all duration-200 select-none">
+      <header className="sticky top-0 md:top-2.5 z-40 md:mx-auto md:w-[calc(100%-2rem)] max-w-[1720px] md:rounded-[22px] liquid-glass-shell shadow-2xl transition-all duration-200 select-none">
         <div className="px-3 md:px-5 py-2.5 flex items-center justify-between gap-2 md:gap-4 min-w-0">
           {/* Zone 1: Minimal Brand Mark */}
           <div className="flex items-center gap-2 md:gap-2.5 shrink-0 min-w-0">
@@ -152,7 +152,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Zone 2: Clean Segmented Nav Rail */}
-          <nav className="hidden xl:flex items-center bg-[#06120F] border border-[#16382F] rounded-full p-1 text-xs font-bold gap-1 shrink-0">
+          <nav className="hidden xl:flex items-center liquid-glass-rail rounded-full p-1 text-xs font-bold gap-1 shrink-0">
             {/* Hub / Operational Modules launcher button */}
             <button
               onClick={() => {

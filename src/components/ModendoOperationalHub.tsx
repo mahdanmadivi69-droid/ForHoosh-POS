@@ -205,10 +205,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   return (
     <div
       dir="rtl"
-      className="min-h-screen w-full bg-[#06120F] text-white flex flex-col justify-between p-4 md:p-8 select-none overflow-y-auto font-sans relative pb-28"
+      className="min-h-screen w-full bg-[#06120F] text-white flex flex-col justify-between p-4 md:p-8 select-none overflow-y-auto font-sans relative pb-28 liquid-ambient-canvas"
     >
       {/* Top Operational Header */}
-      <header className="relative z-10 max-w-6xl w-full mx-auto rounded-3xl bg-[#0B1F1A] p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 border border-[#16382F] shadow-2xl">
+      <header className="relative z-10 max-w-6xl w-full mx-auto rounded-3xl liquid-glass-shell p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 shadow-2xl">
         {/* Brand & Hub Title */}
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-[#10B981]/20 border border-[#10B981]/40 flex items-center justify-center text-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -287,7 +287,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('floor-plan')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
@@ -336,7 +336,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('takeaway')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-amber-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-amber-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -381,7 +381,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('kds')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -435,7 +435,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('receipts')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-[#10B981] shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -482,7 +482,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('reports')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-sky-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-sky-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -527,7 +527,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('menu')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-purple-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-purple-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -572,7 +572,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('inventory')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-emerald-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-emerald-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -617,7 +617,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('audit')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-violet-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-violet-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
@@ -662,7 +662,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
             whileTap={{ scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 450, damping: 28 }}
             onClick={() => handleCardClick('settings')}
-            className="relative rounded-3xl p-5 bg-[#0B1F1A] border border-[#16382F] hover:border-indigo-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-indigo-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">

@@ -4,7 +4,7 @@
   "version": "0.16.1",
   "identifier": "io.smartorders.karwand.pos",
   "build": {
-    "frontendDist": "../dist/100hich"
+    "frontendDist": "../dist/modendo"
   },
   "app": {
     "windows": [],

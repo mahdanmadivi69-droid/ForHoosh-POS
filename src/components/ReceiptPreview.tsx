@@ -5,6 +5,7 @@ import { Order, Payment } from '../types/domain';
 import { playPosBeep } from '../services/soundEffects';
 import { printThermalReceipt } from '../services/receiptPrinter';
 import { ReceiptPrintTemplate, ReceiptOrderData } from './ReceiptPrintTemplate';
+import { getActiveTenant } from '../config/tenantConfig';
 
 interface ReceiptPreviewProps {
   order: Order;
@@ -29,10 +30,14 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   changeToman,
   onClose,
 }) => {
+  const activeTenant = getActiveTenant();
   const effectiveIsModendo =
     isModendo ||
+    activeTenant.id === 'modendo' ||
+    activeTenant.id === 'tenant-modendo-01' ||
     order.tenantId === 'tenant-modendo-01' ||
-    order.tenantId === 'modendo';
+    order.tenantId === 'modendo' ||
+    (order.tenantId ? order.tenantId.includes('modendo') : false);
   const resolvedTenantName = effectiveIsModendo
     ? 'کافه گیمینگ مودندو'
     : (tenantName || '100 HICH COFFEE ROASTERS');

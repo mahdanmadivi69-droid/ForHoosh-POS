@@ -47,6 +47,7 @@ Name: "autostart"; Description: "اجرای خودکار هنگام بالا آ�
 Source: "..\public\karwand-logo.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\modendo\*"; DestDir: "{app}\ui"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\dist-win\KarWandLauncher.exe"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
+Source: "..\dist-win\venue-config.json"; DestDir: "{app}"; Flags: ignoreversion skipifsourcedoesntexist
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\karwand-logo.ico"

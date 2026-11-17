@@ -73,7 +73,10 @@ function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(SmartOrdersStore.getAuditLogs());
 
   // UI state
-  const isModendoTenant = activeTenant.id === 'modendo';
+  const isModendoTenant =
+    activeTenant.id === 'modendo' ||
+    SmartOrdersStore.getActiveTenantId() === 'tenant-modendo-01' ||
+    (typeof window !== 'undefined' && /modendo/i.test(window.location.search));
   const defaultTab = isModendoTenant ? 'hub' : 'pos';
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
   const [isLocked, setIsLocked] = useState<boolean>(true);
