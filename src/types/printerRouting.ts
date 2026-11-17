@@ -1,7 +1,7 @@
 /**
  * src/types/printerRouting.ts
  * 
- * KarWand POS — Station-Based Printing & Routing Type Definitions
+ * KarWand POS â€” Station-Based Printing & Routing Type Definitions
  * Designed for Multi-Tenant Venues:
  *  - 100 HICH: Zero physical printers (`enabled: false`), silent local bypass.
  *  - Modendo Bistro: Dual-station routing ('bar' and 'kitchen') without financial fields.
@@ -127,7 +127,7 @@ export const DEFAULT_MODENDO_PRINTER_ROUTING: PrinterRoutingConfig = {
   stations: {
     bar: {
       id: 'bar',
-      name: 'چاپگر سفارشات بار (Bar Station LAN)',
+      name: 'چاپگر بار و باریستا مودندو (Modendo Bar)',
       printerId: 'printer-barista-01',
       ip: '192.168.1.101',
       port: 9100,
@@ -137,10 +137,10 @@ export const DEFAULT_MODENDO_PRINTER_ROUTING: PrinterRoutingConfig = {
     },
     kitchen: {
       id: 'kitchen',
-      name: 'چاپگر سفارشات آشپزخانه (Kitchen Station LAN)',
+      name: 'چاپگر آشپزخانه گرم مودندو (Modendo Kitchen)',
       printerId: 'printer-kitchen-02',
       ip: '192.168.1.102',
-      port: 9100,
+      port: 9101,
       paperWidth: 80,
       isThermal: true,
       autoCut: true,

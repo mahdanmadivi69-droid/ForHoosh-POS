@@ -25,7 +25,7 @@ export interface TenantThemeContextType {
 const DEFAULT_100HICH_MANIFEST: TenantManifest = {
   tenantId: 'tenant-100hich-01',
   brandNameEn: '100 HICH Coffee Roasters',
-  brandNameFa: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_VENUE_NAME) || 'قهوهفروشی ۱۰۰هیچ',
+  brandNameFa: 'قهوه‌فروشی ۱۰۰هیچ',
   taglineFa: 'لذت طعم اصیل قهوه تخصصی و برشته‌کاری موج سوم',
   currency: 'IRR',
   taxInclusive: true,
@@ -73,8 +73,8 @@ const DEFAULT_100HICH_MANIFEST: TenantManifest = {
 
 const DEFAULT_MODENDO_MANIFEST: TenantManifest = {
   tenantId: 'tenant-modendo-01',
-  brandNameEn: 'Modendo Gaming Lounge',
-  brandNameFa: 'کافه گیمینگ مودندو',
+  brandNameEn: 'Modendo Boardgame & Gaming Cafe',
+  brandNameFa: 'MODENDO — کافه بردگیم و گیمینگ',
   taglineFa: 'دنیای بردگیم و هیجان کنسول PS5 در لانژ زمردی مودندو',
   currency: 'IRR',
   taxInclusive: true,
@@ -97,11 +97,11 @@ const DEFAULT_MODENDO_MANIFEST: TenantManifest = {
     },
   ],
   theme: {
-    primaryColor: '#005A3E',
-    secondaryColor: '#0F2922',
-    accentColor: '#68A691',
-    surfaceBase: '#081813',
-    surfaceCard: 'rgba(8, 24, 19, 0.72)',
+    primaryColor: '#10B981',
+    secondaryColor: '#12161D',
+    accentColor: '#34D399',
+    surfaceBase: '#0b0e12',
+    surfaceCard: 'rgba(16, 185, 129, 0.16)',
     logoUrl: '/karwand-logo.png',
   },
   hmacSecret: 'modendo-manifest-default-hmac-local-only-v13',
@@ -200,7 +200,6 @@ export const TenantThemeProvider: React.FC<TenantThemeProviderProps> = ({
     // Mission v0.16: build-time tenant switch wins over stale localStorage
     // (dedicated Modendo edition installs must never boot as 100 HICH).
     const envTenantId =
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT) ||
       (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) ||
       (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ACTIVE_TENANT) ||
       '';

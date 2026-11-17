@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Types & Interfaces for Shift Z-Report & Inventory Stock Inward (v2.5.0)
  * Compliant with CafeOS-Shift-ZReport-InventoryInward
  */

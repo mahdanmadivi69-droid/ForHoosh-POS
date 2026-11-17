@@ -1,4 +1,4 @@
-/**
+﻿/**
  * AntiGravity Inventory & Open Tabs Specification Schema
  * Compliant with antigravity_inventory_tab_spec.json (v2.1.0)
  */
@@ -30,7 +30,7 @@ export interface RecipeIngredientItem {
 }
 
 export interface ModifierBOMOverride {
-  modifier_key: string; // e.g. 'Oat Milk (+0.70)' or 'شیر جو دوسر'
+  modifier_key: string; // e.g. 'Oat Milk (+0.70)' or 'Ø´ÛŒØ± Ø¬Ùˆ Ø¯ÙˆØ³Ø±'
   replaces?: string; // ingredient_id to replace (e.g. 'ing_whole_milk')
   with?: {
     ingredient_id: string;
@@ -95,7 +95,7 @@ export interface TableSessionTab {
   tab_id: string; // UUID
   tenantId?: string; // Tenant Context Scoping (e.g. 'tenant-100hich-01', 'tenant-modendo-01')
   table_id: string; // e.g. 'T1', 'T2', 'BAR-1'
-  table_label: string; // e.g. 'میز ۲'
+  table_label: string; // e.g. 'Ù…ÛŒØ² Û²'
   server_name: string;
   guest_count: number;
   status: TableTabStatus;

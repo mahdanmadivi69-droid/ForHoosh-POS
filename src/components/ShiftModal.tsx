@@ -191,8 +191,8 @@ export const ShiftModal: React.FC<ShiftModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:inset-auto">
-      <div className="liquid-glass-panel rounded-2xl max-w-lg w-full p-6 flex flex-col gap-5 print:hidden">
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4 print:p-0 print:bg-white print:static print:inset-auto overflow-y-auto">
+      <div className="liquid-glass-panel rounded-2xl max-w-lg w-full p-6 flex flex-col gap-5 print:hidden max-h-[90vh] overflow-y-auto my-auto">
         <div className="flex items-center justify-between pb-3 border-b border-stone-800">
           <div className="flex items-center gap-2">
             <Clock className="w-5 h-5 text-amber-500" />

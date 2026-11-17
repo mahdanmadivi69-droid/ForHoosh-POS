@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Types & Interfaces for CafeOS RBAC, Settings & Hardware Handoff (v2.4.0)
  * AutoClaw & AntiGravity Elite UI/UX Specification
  */

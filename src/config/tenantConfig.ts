@@ -28,7 +28,7 @@ export interface TenantProfile {
 export const TENANT_PROFILES: Record<string, TenantProfile> = {
   '100hich': {
     id: '100hich',
-    brandNameFa: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_VENUE_NAME) || 'قهوهفروشی ۱۰۰هیچ',
+    brandNameFa: 'قهوه‌فروشی ۱۰۰هیچ',
     brandNameEn: '100 Hich Coffee Roasters',
     palette: {
       primaryBg: '#0A0D11',
@@ -52,18 +52,18 @@ export const TENANT_PROFILES: Record<string, TenantProfile> = {
   },
   'modendo': {
     id: 'modendo',
-    brandNameFa: 'کافه گیمینگ مودندو',
-    brandNameEn: 'Modendo Gaming Lounge',
+    brandNameFa: 'MODENDO — کافه بردگیم و گیمینگ',
+    brandNameEn: 'Modendo Boardgame & Gaming Cafe',
     palette: {
-      primaryBg: '#081813',
-      surfaceBg: '#0F2922',
-      accentColor: '#005A3E',
-      accentHover: '#007A54',
-      mintHighlight: '#68A691',
-      accentGlow: 'rgba(0, 122, 84, 0.45)',
+      primaryBg: '#0b0e12',
+      surfaceBg: '#12161D',
+      accentColor: '#10B981',
+      accentHover: '#059669',
+      mintHighlight: '#34D399',
+      accentGlow: 'rgba(16, 185, 129, 0.45)',
       textPrimary: '#F8EED9',
       textMuted: '#9BB1A8',
-      borderHairline: 'rgba(248, 238, 217, 0.15)',
+      borderHairline: 'rgba(255, 255, 255, 0.11)',
     },
     workflow: {
       defaultOrderType: 'DINE_IN',
@@ -72,7 +72,7 @@ export const TENANT_PROFILES: Record<string, TenantProfile> = {
     },
     receipt: {
       logoPath: '/karwand-logo.png',
-      headerNoteFa: 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو',
+      headerNoteFa: 'لحظاتی خوش و ماندگار در کافه بردگیم و گیمینگ مودندو',
       printKitchenTicket: true,
     },
   },
@@ -90,19 +90,6 @@ export function getActiveTenant(): TenantProfile {
       return TENANT_PROFILES[urlTenant];
     }
   }
-
-  // Build-time environment variable wins over stale localStorage
-  const envTenant =
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT) ||
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) ||
-    (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ACTIVE_TENANT) ||
-    '';
-  if (envTenant) {
-    if (/modendo/i.test(envTenant)) return TENANT_PROFILES['modendo'];
-    if (/100hich/i.test(envTenant)) return TENANT_PROFILES['100hich'];
-    if (TENANT_PROFILES[envTenant]) return TENANT_PROFILES[envTenant];
-  }
-
   if (typeof localStorage !== 'undefined' && localStorage) {
     try {
       const stored = localStorage.getItem('cafeos_active_tenant_id');
@@ -116,7 +103,14 @@ export function getActiveTenant(): TenantProfile {
       // ignore
     }
   }
-
-  // Clean default fallback for 100 HICH
-  return TENANT_PROFILES['100hich'];
+  // Modendo Edition: VITE_TENANT_ID is the primary build-time tenant switch
+  // (mission: default tenant 'modendo'); VITE_ACTIVE_TENANT kept as legacy fallback.
+  const envTenant =
+    (import.meta as any).env?.VITE_TENANT_ID ||
+    (import.meta as any).env?.VITE_ACTIVE_TENANT;
+  if (envTenant && TENANT_PROFILES[envTenant]) {
+    return TENANT_PROFILES[envTenant];
+  }
+  // Default tenant for the Modendo Gaming Lounge Edition build
+  return TENANT_PROFILES['modendo'] || TENANT_PROFILES['100hich'];
 }

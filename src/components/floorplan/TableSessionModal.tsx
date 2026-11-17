@@ -25,6 +25,7 @@ import {
   ArrowLeftRight,
 } from 'lucide-react';
 import { TableEntity } from '../../types/floor-plan';
+import { FloorNode } from './FloorPlanCanvas';
 import { floorPlanService } from '../../services/floorPlanService';
 import { openTabService } from '../../services/openTabService';
 import { SmartOrdersStore } from '../../services/storage';
@@ -41,6 +42,9 @@ interface TableSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectForPosOrder: (tableLabel: string) => void;
+  onMoveTableSession?: (sourceNodeId: string, targetNodeId: string) => void;
+  availableNodes?: FloorNode[];
+  occupiedNodeIds?: string[];
 }
 
 export const TableSessionModal: React.FC<TableSessionModalProps> = ({
@@ -48,6 +52,9 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
   isOpen,
   onClose,
   onSelectForPosOrder,
+  onMoveTableSession,
+  availableNodes,
+  occupiedNodeIds,
 }) => {
   // Hooks run unconditionally — the previous early-return-before-hooks
   // violated React rules-of-hooks and could crash on modal close.
@@ -228,22 +235,49 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
   };
 
   // Transfer destinations: any AVAILABLE station/table other than this one
-  const freeTargets = floorPlanService
-    .getTables()
-    .filter((t) => t.id !== table.id && t.status === 'AVAILABLE');
+  const freeTargets = useMemo(() => {
+    if (availableNodes && availableNodes.length > 0) {
+      const occupiedSet = new Set(occupiedNodeIds || []);
+      return availableNodes
+        .filter(
+          (n) => n.id !== table.id && n.label !== table.display_name && !occupiedSet.has(n.id)
+        )
+        .map((n) => ({
+          id: n.id,
+          display_name: n.label,
+          kind: n.kind,
+          zone: n.zone,
+          seats: n.seats,
+          hourlyRateToman: n.hourlyRateToman,
+        }));
+    }
+    return floorPlanService
+      .getTables()
+      .filter((t) => t.id !== table.id && t.status === 'AVAILABLE')
+      .map((t) => ({
+        id: t.id,
+        display_name: t.display_name,
+        kind: t.billing_mode === 'hourly_timer' ? 'PS5' : 'TABLE',
+        zone: t.zone_id,
+        seats: t.capacity.nominal,
+        hourlyRateToman: floorPlanService.getHourlyRateForTable(t),
+      }));
+  }, [availableNodes, occupiedNodeIds, table?.id, table?.display_name]);
 
   const handleTransfer = (targetId: string) => {
-    const target = floorPlanService.getTableById(targetId);
-    if (!target) return;
+    if (onMoveTableSession) {
+      onMoveTableSession(table.id, targetId);
+    } else {
+      const target = floorPlanService.getTableById(targetId);
+      if (!target) return;
+      floorPlanService.transferSession(table.id, target.id);
+    }
     const tab =
       openTabService.getTabForTable(table.id) || openTabService.getTabForTable(table.display_name);
-    const okSession = floorPlanService.transferSession(table.id, target.id);
-    if (!okSession) {
-      alert('انتقال سشن ممکن نشد — مقصد باید آزاد باشد.');
-      return;
-    }
     if (tab) {
-      openTabService.transferTab(tab.tab_id, target.id, target.display_name);
+      const matchedNode = availableNodes?.find((n) => n.id === targetId || n.label === targetId);
+      const targetLabel = matchedNode?.label || targetId;
+      openTabService.transferTab(tab.tab_id, targetId, targetLabel);
     }
     playPosBeep('success');
     setIsTransferOpen(false);
@@ -417,24 +451,42 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
                 {freeTargets.length === 0 && (
                   <p className="text-[11px] text-amber-300">هیچ مقصد آزادی برای انتقال وجود ندارد.</p>
                 )}
-                {freeTargets.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => handleTransfer(t.id)}
-                    className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-[#12161D] hover:bg-[#1E293B] text-xs text-white transition-colors cursor-pointer"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      {t.billing_mode === 'hourly_timer' && <Gamepad2 className="w-3 h-3 text-sky-400" />}
-                      <span>{t.display_name}</span>
-                    </span>
-                    <span className="text-[10px] text-[#9EACB8] font-mono">
-                      {t.billing_mode === 'hourly_timer'
-                        ? `${formatToman(floorPlanService.getHourlyRateForTable(t))} ت/ساعت`
-                        : 'آزاد'}
-                    </span>
-                  </button>
-                ))}
+                {freeTargets.map((t) => {
+                  const isPs5 = t.kind === 'PS5';
+                  const zoneFa =
+                    t.zone === 'MAIN_HALL'
+                      ? 'سالن اصلی'
+                      : t.zone === 'LOUNGE'
+                      ? 'لانژ'
+                      : t.zone === 'TERRACE'
+                      ? 'تراس'
+                      : '';
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleTransfer(t.id)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#1B222C]/80 hover:bg-[#252E3B] text-xs text-white border border-white/5 hover:border-emerald-400/40 transition-all cursor-pointer"
+                    >
+                      <span className="flex items-center gap-2">
+                        {isPs5 ? (
+                          <Gamepad2 className="w-3.5 h-3.5 text-sky-400" />
+                        ) : (
+                          <Coffee className="w-3.5 h-3.5 text-emerald-400" />
+                        )}
+                        <span className="font-bold">{t.display_name}</span>
+                        {zoneFa && (
+                          <span className="text-[10px] text-[#94A3B8]">({zoneFa})</span>
+                        )}
+                      </span>
+                      <span className="text-[10px] text-emerald-400 font-mono">
+                        {isPs5 && t.hourlyRateToman
+                          ? `${formatToman(t.hourlyRateToman)} ت/س`
+                          : 'آماده پذیرش'}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -1,789 +1,1651 @@
-/**
- * Modendo POS — Interactive Floor Plan Canvas Component (v6.4-Architectural Exact)
- * Compliant with Specification v6.4
- *
- * Exact Architectural Zones:
- * - Terrace (تراس فضای باز): Exactly 5 clickable tables (2 x 6-seaters, 3 x 2-seaters)
- * - Main Hall (سالن اصلی - تراز بالا): 4 x 6-seaters side-by-side + 1 Central 6-seater next to Counter & Kitchen fixtures
- * - Lounge & PS5 (تراز ۰): U-Shape sofa area with 4 lounge tables (L-01..L-04) + 4 PS5 Gaming Booths side-by-side
- * - Status Badges: آماده پذیرش (Emerald), سفارش باز / مشغول (Amber/Gold with running total & item count), or انتخاب‌شده
- */
-
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import React, { useRef, useState, useLayoutEffect, useCallback, useEffect } from 'react';
+import { motion, AnimatePresence, MotionConfig } from 'motion/react';
 import {
   Gamepad2,
   Users,
   Clock,
-  Sparkles,
-  Layers,
-  RotateCw,
-  Copy,
-  Trash2,
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
   Coffee,
-  ShoppingCart,
-  CheckCircle2,
+  Sofa,
+  Trees,
+  Utensils,
+  CreditCard,
+  Plus,
+  Settings2,
+  Link2,
+  Check,
+  Sparkles,
+  Unlink,
+  X,
 } from 'lucide-react';
-import { TableEntity, TableGeometry } from '../../types/floor-plan';
-import { floorPlanService } from '../../services/floorPlanService';
-import { CatalogService } from '../../services/catalog/catalogService';
-import { calculateSessionElapsedSeconds, formatToman } from '../../services/financialMath';
+import { OrderItem } from '../../types/domain';
+import { formatToman, calculateOrderTotals } from '../../services/financialMath';
 import { playPosBeep } from '../../services/soundEffects';
-import { ZERO_G_PHYSICS, MotionConfig } from '../../modules/smart-orders/utils/zeroGMotionTokens';
 
-interface FloorPlanCanvasProps {
-  levelFilter: 0 | 1 | 'all';
-  isEditMode: boolean;
-  selectedTableId: string | null;
-  onSelectTable: (table: TableEntity | null) => void;
-  onOpenSessionModal?: (table: TableEntity) => void;
-  onConfirmTableOrder?: (table: TableEntity) => void;
+export type FloorZone = 'MAIN_HALL' | 'LOUNGE' | 'TERRACE' | 'PS_ROOM';
+export type FloorNodeKind = 'TABLE' | 'PS5';
+export type FloorNodeStatus = 'FREE' | 'OCCUPIED' | 'PAYMENT_PENDING';
+
+export interface FloorNode {
+  id: string;
+  tableId?: string;
+  stationId?: string;
+  label: string;
+  titleFa: string;
+  zone: FloorZone;
+  kind: FloorNodeKind;
+  seats: number;
+  hourlyRateToman?: number;
 }
 
+export interface Ps5SessionState {
+  startedAt: string;
+  hourlyRateToman: number;
+  controllersCount: number;
+  isPaused?: boolean;
+  pausedAt?: string;
+  accumulatedMs: number;
+}
+
+export interface TableSession {
+  nodeId: string;
+  tableLabel: string;
+  kind: FloorNodeKind;
+  status: FloorNodeStatus;
+  guestCount: number;
+  customerName: string;
+  notes: string;
+  openedAt: string;
+  cartItems: OrderItem[];
+  discountToman: number;
+  discountPercent: number;
+  ps5Session?: Ps5SessionState;
+  /** Stored on primary host table: child node IDs absorbed into this table */
+  mergedNodeIds?: string[];
+  /** Stored on absorbed child table: points to primary host node ID */
+  mergedIntoNodeId?: string;
+}
+
+/**
+ * Photo-accurate Modendo floor nodes (23 nodes total).
+ * - 8 Lounge tables (L-01 to L-08)
+ * - 4 PS5 booths (PS5-1 to PS5-4)
+ * - 6 Main Hall tables (M-01 to M-04, M-07, BAR-01)
+ * - 5 Terrace tables (M-05, M-06, T-01 to T-03)
+ */
+export const MODENDO_FLOOR_NODES: FloorNode[] = [
+  // =========================================================================
+  // 1. Main Hall (سالن اصلی - تراز بالا)
+  // =========================================================================
+  {
+    id: 'M-01',
+    tableId: 'M-01',
+    label: 'M-01',
+    titleFa: 'میز M-01 سالن اصلی',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'M-02',
+    tableId: 'M-02',
+    label: 'M-02',
+    titleFa: 'میز M-02 سالن اصلی',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'M-03',
+    tableId: 'M-03',
+    label: 'M-03',
+    titleFa: 'میز M-03 سالن اصلی',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'M-04',
+    tableId: 'M-04',
+    label: 'M-04',
+    titleFa: 'میز M-04 سالن اصلی',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'M-07',
+    tableId: 'M-07',
+    label: 'میز ۶ نفره',
+    titleFa: 'میز ۶ نفره سالن اصلی',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 6,
+  },
+  {
+    id: 'BAR-01',
+    tableId: 'BAR-01',
+    label: 'کانتر بار',
+    titleFa: 'صندلی‌های کانتر بار',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 6,
+  },
+
+  // =========================================================================
+  // 2. Terrace (تراس فضای باز)
+  // =========================================================================
+  {
+    id: 'M-05',
+    tableId: 'M-05',
+    label: 'M-05',
+    titleFa: 'میز M-05 تراس (۶ نفر)',
+    zone: 'TERRACE',
+    kind: 'TABLE',
+    seats: 6,
+  },
+  {
+    id: 'M-06',
+    tableId: 'M-06',
+    label: 'M-06',
+    titleFa: 'میز M-06 تراس (۶ نفر)',
+    zone: 'TERRACE',
+    kind: 'TABLE',
+    seats: 6,
+  },
+  {
+    id: 'T-01',
+    tableId: 'T-01',
+    label: 'T-01 (۲ نفر)',
+    titleFa: 'میز دونفره تراس ۱',
+    zone: 'TERRACE',
+    kind: 'TABLE',
+    seats: 2,
+  },
+  {
+    id: 'T-02',
+    tableId: 'T-02',
+    label: 'T-02 (۲ نفر)',
+    titleFa: 'میز دونفره تراس ۲',
+    zone: 'TERRACE',
+    kind: 'TABLE',
+    seats: 2,
+  },
+  {
+    id: 'T-03',
+    tableId: 'T-03',
+    label: 'T-03 (۳ نفر)',
+    titleFa: 'میز سه‌نفره تراس',
+    zone: 'TERRACE',
+    kind: 'TABLE',
+    seats: 3,
+  },
+
+  // =========================================================================
+  // 3. Lounge (سفارش ژتونی - ۸ میز)
+  // =========================================================================
+  {
+    id: 'L-01',
+    tableId: 'L-01',
+    label: 'کانتر چپ لانژ',
+    titleFa: 'کانتر لانژ ۱ (مبل ال)',
+    zone: 'LOUNGE',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'L-02',
+    tableId: 'L-02',
+    label: 'L-02',
+    titleFa: 'میز لانژ چپ بالا',
+    zone: 'LOUNGE',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'L-03',
+    tableId: 'L-03',
+    label: 'L-03',
+    titleFa: 'میز لانژ راست بالا',
+    zone: 'LOUNGE',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'L-04',
+    tableId: 'L-04',
+    label: 'L-04',
+    titleFa: 'میز لانژ چپ پایین',
+    zone: 'LOUNGE',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'L-05',
+    tableId: 'L-05',
+    label: 'مبل و میز',
+    titleFa: 'مبل و میز لانژ (۲ الی ۳ نفر)',
+    zone: 'LOUNGE',
+    kind: 'TABLE',
+    seats: 3,
+  },
+  {
+    id: 'L-06',
+    tableId: 'L-06',
+    label: 'L-06',
+    titleFa: 'میز لانژ راست پایین',
+    zone: 'LOUNGE',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'L-07',
+    tableId: 'L-07',
+    label: 'کانتر راست لانژ',
+    titleFa: 'کانتر لانژ ۲ (مبل ال)',
+    zone: 'LOUNGE',
+    kind: 'TABLE',
+    seats: 4,
+  },
+  {
+    id: 'L-08',
+    tableId: 'L-08',
+    label: 'L-08',
+    titleFa: 'میز لانژ ورودی (۲ نفر)',
+    zone: 'LOUNGE',
+    kind: 'TABLE',
+    seats: 2,
+  },
+
+  // =========================================================================
+  // 4. PS5 Gaming Room (اتاق ۴ کابین اختصاصی PS5)
+  // =========================================================================
+  {
+    id: 'PS5-1',
+    stationId: 'PS5-1',
+    label: 'PS5 #1',
+    titleFa: 'کابین ۱ - PS5',
+    zone: 'PS_ROOM',
+    kind: 'PS5',
+    seats: 2,
+    hourlyRateToman: 180000,
+  },
+  {
+    id: 'PS5-2',
+    stationId: 'PS5-2',
+    label: 'PS5 #2',
+    titleFa: 'کابین ۲ - PS5',
+    zone: 'PS_ROOM',
+    kind: 'PS5',
+    seats: 2,
+    hourlyRateToman: 180000,
+  },
+  {
+    id: 'PS5-3',
+    stationId: 'PS5-3',
+    label: 'PS5 #3',
+    titleFa: 'کابین ۳ - PS5',
+    zone: 'PS_ROOM',
+    kind: 'PS5',
+    seats: 2,
+    hourlyRateToman: 180000,
+  },
+  {
+    id: 'PS5-4',
+    stationId: 'PS5-4',
+    label: 'PS5 #4',
+    titleFa: 'کابین ۴ - PS5',
+    zone: 'PS_ROOM',
+    kind: 'PS5',
+    seats: 2,
+    hourlyRateToman: 180000,
+  },
+];
+
+export function getPs5ElapsedMs(ps5?: Ps5SessionState, nowMs = Date.now()): number {
+  if (!ps5) return 0;
+  if (ps5.isPaused) return ps5.accumulatedMs;
+  const startedMs = new Date(ps5.startedAt).getTime();
+  if (Number.isNaN(startedMs)) return ps5.accumulatedMs;
+  return ps5.accumulatedMs + Math.max(0, nowMs - startedMs);
+}
+
+export function formatElapsedTimer(ms: number): string {
+  const totalSec = Math.max(0, Math.floor(ms / 1000));
+  const hrs = Math.floor(totalSec / 3600);
+  const mins = Math.floor((totalSec % 3600) / 60);
+  const secs = totalSec % 60;
+  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+export function calculatePs5ChargeToman(ps5?: Ps5SessionState, nowMs = Date.now()): number {
+  if (!ps5) return 0;
+  const elapsedMs = getPs5ElapsedMs(ps5, nowMs);
+  const minutes = Math.max(1, Math.ceil(elapsedMs / 60000));
+  const extraControllers = Math.max(0, (ps5.controllersCount || 2) - 2);
+  const effectiveHourly = ps5.hourlyRateToman + extraControllers * 40000;
+  const raw = Math.round((minutes * effectiveHourly) / 60);
+  return Math.round(raw / 1000) * 1000;
+}
+
+export function getSessionTotalToman(session?: TableSession, nowMs = Date.now()): number {
+  if (!session) return 0;
+  const { netTotalToman } = calculateOrderTotals(session.cartItems || [], session.discountToman || 0);
+  const ps5Fee = session.ps5Session ? calculatePs5ChargeToman(session.ps5Session, nowMs) : 0;
+  return netTotalToman + ps5Fee;
+}
+
+export function resolvePrimaryNodeId(
+  sessions: Record<string, TableSession>,
+  nodeId: string
+): string {
+  let current = nodeId;
+  const visited = new Set<string>([current]);
+  while (sessions[current]?.mergedIntoNodeId) {
+    const nextId = sessions[current].mergedIntoNodeId!;
+    if (!nextId || visited.has(nextId) || !sessions[nextId]) break;
+    visited.add(nextId);
+    current = nextId;
+  }
+  return current;
+}
+
+export function getMergedGroupNodeIds(
+  sessions: Record<string, TableSession>,
+  nodeId: string
+): string[] {
+  const primaryId = resolvePrimaryNodeId(sessions, nodeId);
+  const hostSession = sessions[primaryId];
+  if (!hostSession?.mergedNodeIds || hostSession.mergedNodeIds.length === 0) {
+    return [primaryId];
+  }
+  const seen = new Set<string>([primaryId]);
+  const group: string[] = [primaryId];
+  for (const childId of hostSession.mergedNodeIds) {
+    if (!seen.has(childId) && sessions[childId]?.mergedIntoNodeId === primaryId) {
+      seen.add(childId);
+      group.push(childId);
+    }
+  }
+  return group;
+}
+
+export function getMergedGroupLabel(
+  sessions: Record<string, TableSession>,
+  nodeId: string,
+  nodes: FloorNode[] = MODENDO_FLOOR_NODES
+): string {
+  const groupIds = getMergedGroupNodeIds(sessions, nodeId);
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  return groupIds.map((id) => nodeMap.get(id)?.label || id).join(' + ');
+}
+
+export function getMergedGroupSeats(
+  sessions: Record<string, TableSession>,
+  nodeId: string,
+  nodes: FloorNode[] = MODENDO_FLOOR_NODES
+): number {
+  const groupIds = getMergedGroupNodeIds(sessions, nodeId);
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  return groupIds.reduce((sum, id) => sum + (nodeMap.get(id)?.seats ?? 0), 0);
+}
+
+export interface FloorPlanCanvasProps {
+  nodes?: FloorNode[];
+  sessions?: Record<string, TableSession>;
+  activeZone?: FloorZone | 'ALL';
+  levelFilter?: 0 | 1 | 'all';
+  isEditMode?: boolean;
+  selectedNodeId?: string | null;
+  selectedTableId?: string | null;
+  nowMs?: number;
+  mergeMode?: boolean;
+  mergeSelectedIds?: string[];
+  moveMode?: boolean;
+  moveSourceId?: string | null;
+  onToggleMergeSelect?: (node: FloorNode) => void;
+  onDragMergeTables?: (sourceNodeId: string, targetNodeId: string) => void;
+  onUnmergeGroup?: (primaryNodeId: string, childToDetach?: string) => void;
+  onSelectNode?: (node: FloorNode) => void;
+  onInspectNode?: (node: FloorNode) => void;
+  onSelectTable?: (table: any) => void;
+  onOpenSessionModal?: (table: any) => void;
+  onConfirmTableOrder?: (table: any) => void;
+}
+
+interface MergeLinkLine {
+  key: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+}
+
+interface ActiveDragState {
+  sourceId: string;
+  sourceLabel: string;
+  sourcePrimaryId: string;
+  isSourceMerged: boolean;
+  isSourceChild: boolean;
+  startX: number;
+  startY: number;
+  clientX: number;
+  clientY: number;
+  sourceCenterX: number;
+  sourceCenterY: number;
+  pointerBpX: number;
+  pointerBpY: number;
+  hoverTargetId: string | null;
+  hoverTargetCenterX: number | null;
+  hoverTargetCenterY: number | null;
+  hoverSeparateZone: boolean;
+  isOutsideSameGroup: boolean;
+}
+
+const CHAIR_DOT_CLS =
+  'rounded-full bg-white/[0.08] border border-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]';
+
+const MERGE_ACCENTS = [
+  { ring: 'ring-cyan-400/75', border: 'border-cyan-400/65', text: 'text-cyan-300', stroke: '#22d3ee' },
+  { ring: 'ring-emerald-400/75', border: 'border-emerald-400/65', text: 'text-emerald-300', stroke: '#34d399' },
+  { ring: 'ring-violet-400/75', border: 'border-violet-400/65', text: 'text-violet-300', stroke: '#a78bfa' },
+];
+
 export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
+  nodes = MODENDO_FLOOR_NODES,
+  sessions = {},
+  activeZone = 'ALL',
   levelFilter,
-  isEditMode,
+  selectedNodeId,
   selectedTableId,
+  nowMs = Date.now(),
+  mergeMode = false,
+  mergeSelectedIds = [],
+  moveMode = false,
+  moveSourceId = null,
+  onToggleMergeSelect,
+  onDragMergeTables,
+  onUnmergeGroup,
+  onSelectNode,
+  onInspectNode,
   onSelectTable,
   onOpenSessionModal,
   onConfirmTableOrder,
 }) => {
-  const [tables, setTables] = useState<TableEntity[]>([]);
-  const [zoom, setZoom] = useState<number>(1);
-  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const [draggedTableId, setDraggedTableId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [nowTime, setNowTime] = useState<number>(Date.now());
-  const [activeTabs, setActiveTabs] = useState<any[]>([]);
+  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
+  const blueprintRef = useRef<HTMLDivElement | null>(null);
+  const [mergeLines, setMergeLines] = useState<MergeLinkLine[]>([]);
+  const [dragState, setDragState] = useState<ActiveDragState | null>(null);
+  const pendingDragRef = useRef<{
+    sourceId: string;
+    sourceLabel: string;
+    sourcePrimaryId: string;
+    isSourceMerged: boolean;
+    isSourceChild: boolean;
+    startX: number;
+    startY: number;
+    sourceCenterX: number;
+    sourceCenterY: number;
+    activated: boolean;
+  } | null>(null);
+  const dragStateRef = useRef<ActiveDragState | null>(null);
+  const suppressNextClickRef = useRef(false);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Map levelFilter to zone if provided
+  const effectiveZone: FloorZone | 'ALL' = (() => {
+    if (activeZone && activeZone !== 'ALL') return activeZone;
+    if (levelFilter === 0) return 'LOUNGE';
+    if (levelFilter === 1) return 'MAIN_HALL';
+    return 'ALL';
+  })();
 
-  // Subscribe to real-time service updates
-  useEffect(() => {
-    const unsub = floorPlanService.subscribe((schema) => {
-      setTables(schema.tables);
-    });
-    return () => unsub();
-  }, []);
+  const isZoneDimmed = (zone: FloorZone) => {
+    if (effectiveZone === 'ALL') return false;
+    if (effectiveZone === 'LOUNGE' && (zone === 'LOUNGE' || zone === 'PS_ROOM')) return false;
+    if (effectiveZone === 'MAIN_HALL' && (zone === 'MAIN_HALL' || zone === 'TERRACE')) return false;
+    return effectiveZone !== zone;
+  };
 
-  // Poll open tabs to keep running totals and item counts honest
-  useEffect(() => {
-    const updateTabs = () => {
-      try {
-        const tabs = CatalogService.getOpenTabs();
-        setActiveTabs(tabs);
-      } catch {
-        setActiveTabs([]);
-      }
-    };
-    updateTabs();
-    const interval = setInterval(updateTabs, 1500);
-    return () => clearInterval(interval);
-  }, []);
+  const activeSelectedId = selectedNodeId || selectedTableId;
 
-  // Live timer tick every second for active gaming / boardgame sessions
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNowTime(Date.now());
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Keyboard Shortcuts Engine
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
-
-      if (e.key === 'Escape') {
-        onSelectTable(null);
-        return;
-      }
-
-      if (!selectedTableId) return;
-
-      if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
-        e.preventDefault();
-        const cloned = floorPlanService.cloneTable(selectedTableId);
-        if (cloned) onSelectTable(cloned);
-      }
-
-      if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault();
-        floorPlanService.rotateTable(selectedTableId);
-      }
-
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
-        floorPlanService.deleteTable(selectedTableId);
-        onSelectTable(null);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedTableId, onSelectTable]);
-
-  // Filter tables by current level
-  const displayedTables = tables.filter((t) => {
-    if (levelFilter === 'all') return true;
-    return t.level === levelFilter;
+  // Compute group index map for deterministic color accents across multiple merged groups
+  const mergedHosts = Object.values(sessions)
+    .filter((s) => !s.mergedIntoNodeId && (s.mergedNodeIds?.length || 0) > 0)
+    .map((s) => s.nodeId);
+  const hostAccentMap = new Map<string, (typeof MERGE_ACCENTS)[number]>();
+  mergedHosts.forEach((hostId, idx) => {
+    hostAccentMap.set(hostId, MERGE_ACCENTS[idx % MERGE_ACCENTS.length]);
   });
 
-  const selectedTable = tables.find((t) => t.id === selectedTableId);
+  // Measure node centers inside blueprint for connector bridges
+  const recomputeConnectorLines = useCallback(() => {
+    const container = blueprintRef.current;
+    if (!container) return;
 
-  // Helper: Open Tab / Order State Inspector per table
-  const getTableTabInfo = (table: TableEntity) => {
-    const matchingTab = activeTabs.find((t) => {
-      const label = t.table_or_customer || t.tableOrCustomer || '';
-      return (
-        label === table.display_name ||
-        label === table.id ||
-        label.includes(table.display_name) ||
-        (table.display_name.startsWith('M-') && label.includes(table.display_name.split(' ')[0])) ||
-        (table.display_name.startsWith('PS5-') && label.includes(table.display_name)) ||
-        (table.display_name.startsWith('L-') && label.includes(table.display_name.split(' ')[0]))
-      );
-    });
+    const cRect = container.getBoundingClientRect();
+    const lines: MergeLinkLine[] = [];
 
-    let itemCount = 0;
-    let totalToman = table.currentBillAmount || 0;
+    for (const hostId of mergedHosts) {
+      const hostEl = container.querySelector<HTMLElement>(`[data-floor-node="${hostId}"]`);
+      if (!hostEl) continue;
+      const hRect = hostEl.getBoundingClientRect();
+      const x1 = hRect.left - cRect.left + hRect.width / 2;
+      const y1 = hRect.top - cRect.top + hRect.height / 2;
 
-    if (matchingTab) {
-      totalToman = matchingTab.total_toman || matchingTab.total_due || totalToman;
-      if (matchingTab.raw_cart_json) {
-        try {
-          const parsed = JSON.parse(matchingTab.raw_cart_json);
-          if (Array.isArray(parsed)) {
-            itemCount = parsed.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 1), 0);
-          }
-        } catch {}
+      const children = sessions[hostId]?.mergedNodeIds || [];
+      for (const childId of children) {
+        if (sessions[childId]?.mergedIntoNodeId !== hostId) continue;
+        const childEl = container.querySelector<HTMLElement>(`[data-floor-node="${childId}"]`);
+        if (!childEl) continue;
+        const chRect = childEl.getBoundingClientRect();
+        const x2 = chRect.left - cRect.left + chRect.width / 2;
+        const y2 = chRect.top - cRect.top + chRect.height / 2;
+        lines.push({ key: `${hostId}__${childId}`, x1, y1, x2, y2 });
       }
     }
 
-    const hasOpenOrder =
-      Boolean(matchingTab) ||
-      table.status === 'OCCUPIED' ||
-      table.status === 'GAMING_ACTIVE' ||
-      table.status === 'AWAITING_BILL' ||
-      (table.currentBillAmount !== undefined && table.currentBillAmount > 0);
+    // Preview links in Merge Mode
+    if (mergeMode && mergeSelectedIds.length >= 2) {
+      const anchorEl = container.querySelector<HTMLElement>(
+        `[data-floor-node="${mergeSelectedIds[0]}"]`
+      );
+      if (anchorEl) {
+        const aRect = anchorEl.getBoundingClientRect();
+        const ax = aRect.left - cRect.left + aRect.width / 2;
+        const ay = aRect.top - cRect.top + aRect.height / 2;
+        for (let i = 1; i < mergeSelectedIds.length; i++) {
+          const targetEl = container.querySelector<HTMLElement>(
+            `[data-floor-node="${mergeSelectedIds[i]}"]`
+          );
+          if (!targetEl) continue;
+          const tRect = targetEl.getBoundingClientRect();
+          lines.push({
+            key: `preview__${mergeSelectedIds[0]}__${mergeSelectedIds[i]}`,
+            x1: ax,
+            y1: ay,
+            x2: tRect.left - cRect.left + tRect.width / 2,
+            y2: tRect.top - cRect.top + tRect.height / 2,
+          });
+        }
+      }
+    }
 
-    return {
-      hasOpenOrder,
-      matchingTab,
-      itemCount,
-      totalToman,
+    setMergeLines(lines);
+  }, [mergedHosts.join(','), mergeMode, mergeSelectedIds.join(',')]);
+
+  useLayoutEffect(() => {
+    recomputeConnectorLines();
+    const el = blueprintRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => recomputeConnectorLines());
+    ro.observe(el);
+    window.addEventListener('resize', recomputeConnectorLines);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', recomputeConnectorLines);
+    };
+  }, [recomputeConnectorLines]);
+
+  // Pointer-based Drag-to-Merge listeners
+  useEffect(() => {
+    const handlePointerMove = (e: PointerEvent) => {
+      const pending = pendingDragRef.current;
+      if (!pending) return;
+
+      const dist = Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY);
+      if (!pending.activated) {
+        if (dist < 10) return;
+        pending.activated = true;
+        suppressNextClickRef.current = true;
+      }
+
+      const container = blueprintRef.current;
+      if (!container) return;
+      const cRect = container.getBoundingClientRect();
+      const pointerBpX = e.clientX - cRect.left;
+      const pointerBpY = e.clientY - cRect.top;
+
+      let hoverTargetId: string | null = null;
+      let hoverTargetCenterX: number | null = null;
+      let hoverTargetCenterY: number | null = null;
+      let hoverSeparateZone = false;
+      let overSameGroupNode = false;
+
+      if (typeof document !== 'undefined' && document.elementsFromPoint) {
+        const els = document.elementsFromPoint(e.clientX, e.clientY);
+        for (const el of els) {
+          if (el instanceof HTMLElement) {
+            if (el.dataset.separateDropzone === 'true') {
+              hoverSeparateZone = true;
+            }
+            const candidateId = el.dataset.floorNode;
+            if (candidateId) {
+              const candNode = nodeMap.get(candidateId);
+              if (candNode && candNode.kind === 'TABLE') {
+                const candPrimary = resolvePrimaryNodeId(sessions, candidateId);
+                if (candPrimary === pending.sourcePrimaryId) {
+                  overSameGroupNode = true;
+                } else if (!hoverTargetId) {
+                  hoverTargetId = candidateId;
+                  const tRect = el.getBoundingClientRect();
+                  hoverTargetCenterX = tRect.left - cRect.left + tRect.width / 2;
+                  hoverTargetCenterY = tRect.top - cRect.top + tRect.height / 2;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const nextDrag: ActiveDragState = {
+        sourceId: pending.sourceId,
+        sourceLabel: pending.sourceLabel,
+        sourcePrimaryId: pending.sourcePrimaryId,
+        isSourceMerged: pending.isSourceMerged,
+        isSourceChild: pending.isSourceChild,
+        startX: pending.startX,
+        startY: pending.startY,
+        clientX: e.clientX,
+        clientY: e.clientY,
+        sourceCenterX: pending.sourceCenterX,
+        sourceCenterY: pending.sourceCenterY,
+        pointerBpX,
+        pointerBpY,
+        hoverTargetId,
+        hoverTargetCenterX,
+        hoverTargetCenterY,
+        hoverSeparateZone,
+        isOutsideSameGroup: !overSameGroupNode && dist >= 44,
+      };
+      dragStateRef.current = nextDrag;
+      setDragState(nextDrag);
+    };
+
+    const handlePointerUp = () => {
+      const pending = pendingDragRef.current;
+      const active = dragStateRef.current;
+      pendingDragRef.current = null;
+      dragStateRef.current = null;
+      setDragState(null);
+
+      if (pending?.activated && active) {
+        if (active.hoverTargetId && onDragMergeTables) {
+          onDragMergeTables(active.sourceId, active.hoverTargetId);
+        } else if (
+          active.isSourceMerged &&
+          onUnmergeGroup &&
+          (active.hoverSeparateZone || (active.isSourceChild && active.isOutsideSameGroup))
+        ) {
+          onUnmergeGroup(
+            active.sourcePrimaryId,
+            active.isSourceChild ? active.sourceId : undefined
+          );
+        }
+      }
+
+      if (typeof window !== 'undefined') {
+        window.requestAnimationFrame(() => {
+          suppressNextClickRef.current = false;
+        });
+      } else {
+        suppressNextClickRef.current = false;
+      }
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [nodes, sessions, onDragMergeTables, onUnmergeGroup]);
+
+  const handleTablePointerDown = (
+    e: React.PointerEvent<HTMLDivElement>,
+    node: FloorNode,
+    primaryId: string,
+    isMerged: boolean,
+    isChildMerged: boolean
+  ) => {
+    if (mergeMode || node.kind !== 'TABLE') return;
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const targetEl = e.target as HTMLElement;
+    if (targetEl.closest('button')) return;
+
+    const container = blueprintRef.current;
+    const cardEl = e.currentTarget;
+    if (!container) return;
+    const cRect = container.getBoundingClientRect();
+    const cardRect = cardEl.getBoundingClientRect();
+
+    pendingDragRef.current = {
+      sourceId: node.id,
+      sourceLabel: node.label,
+      sourcePrimaryId: primaryId,
+      isSourceMerged: isMerged,
+      isSourceChild: isChildMerged,
+      startX: e.clientX,
+      startY: e.clientY,
+      sourceCenterX: cardRect.left - cRect.left + cardRect.width / 2,
+      sourceCenterY: cardRect.top - cRect.top + cardRect.height / 2,
+      activated: false,
     };
   };
 
-  // Format active session elapsed time (HH:MM:SS)
-  const formatElapsedTime = (table?: TableEntity) => {
-    if (!table?.sessionStartTime) return '00:00:00';
-    const elapsed = calculateSessionElapsedSeconds(
-      table.sessionStartTime,
-      table.pausedAt ? new Date(table.pausedAt).getTime() : nowTime,
-      table.pausedMs || 0
-    );
-    const h = String(Math.floor(elapsed / 3600)).padStart(2, '0');
-    const m = String(Math.floor((elapsed % 3600) / 60)).padStart(2, '0');
-    const s = String(elapsed % 60).padStart(2, '0');
-    return `${h}:${m}:${s}`;
-  };
-
-  // Drag handlers in Edit Mode
-  const handleMouseDownTable = (e: React.MouseEvent, table: TableEntity) => {
-    e.stopPropagation();
-    onSelectTable(table);
-
-    if (isEditMode) {
-      setIsDragging(true);
-      setDraggedTableId(table.id);
-      setDragOffset({
-        x: e.clientX - table.geometry.x * zoom,
-        y: e.clientY - table.geometry.y * zoom,
-      });
-    }
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging || !draggedTableId || !isEditMode) return;
-    const newX = (e.clientX - dragOffset.x) / zoom;
-    const newY = (e.clientY - dragOffset.y) / zoom;
-    floorPlanService.updateTableGeometry(draggedTableId, { x: newX, y: newY }, true);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setDraggedTableId(null);
-  };
-
-  // Status Badge and Color Logic (Section 4 Compliance)
-  const getTableColorConfig = (table: TableEntity, isSelected: boolean) => {
-    const { hasOpenOrder } = getTableTabInfo(table);
-    const status = table.status || 'AVAILABLE';
-
-    if (isSelected) {
-      return {
-        bg: hasOpenOrder ? 'rgba(245, 158, 11, 0.35)' : 'rgba(16, 185, 129, 0.25)',
-        border: '#FFFFFF',
-        glow: '0 0 16px rgba(255, 255, 255, 0.85)',
-        badgeBg: '#0284C7',
-        badgeBorder: '#38BDF8',
-        label: 'انتخاب‌شده',
-      };
+  const handleCardClick = (node: FloorNode) => {
+    if (suppressNextClickRef.current) return;
+    if (mergeMode) {
+      if (node.kind === 'TABLE') {
+        onToggleMergeSelect?.(node);
+      }
+      return;
     }
 
-    if (status === 'PAUSED') {
-      return {
-        bg: 'rgba(245, 158, 11, 0.25)',
-        border: '#F59E0B',
-        glow: '0 0 12px rgba(245, 158, 11, 0.5)',
-        badgeBg: '#B45309',
-        badgeBorder: '#F59E0B',
-        label: 'توقف موقت',
-      };
-    }
-
-    if (hasOpenOrder || status === 'OCCUPIED' || status === 'GAMING_ACTIVE' || status === 'AWAITING_BILL') {
-      return {
-        bg: 'rgba(245, 158, 11, 0.22)',
-        border: '#F59E0B', // Amber / Gold
-        glow: '0 0 14px rgba(245, 158, 11, 0.5)',
-        badgeBg: '#B45309',
-        badgeBorder: '#F59E0B',
-        label: 'سفارش باز / مشغول',
-      };
-    }
-
-    // Default AVAILABLE (Emerald / Mint)
-    return {
-      bg: 'rgba(16, 185, 129, 0.15)',
-      border: '#10B981', // Emerald Highlight
-      glow: 'none',
-      badgeBg: '#065F46',
-      badgeBorder: '#10B981',
-      label: 'آماده پذیرش',
-    };
+    playPosBeep('click');
+    onSelectNode?.(node);
+    onSelectTable?.({
+      id: node.id,
+      display_name: node.label,
+      ...node,
+    });
   };
 
-  return (
-    <div
-      ref={containerRef}
-      className="relative w-full h-[660px] bg-[#0B0D11] border border-[#27313F] rounded-2xl overflow-hidden select-none flex flex-col justify-between shadow-2xl"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      onClick={() => onSelectTable(null)}
-    >
-      {/* Canvas Top Bar Overlay */}
-      <div className="absolute top-3 left-3 right-3 z-20 flex items-center justify-between pointer-events-none">
-        <div className="flex items-center gap-2 pointer-events-auto bg-[#12161D]/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-[#27313F]">
-          <span className="text-xs font-black text-white flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-[#10B981]" />
-            {levelFilter === 'all'
-              ? 'کل فضا (تراز ۰ و ۱)'
-              : levelFilter === 0
-              ? 'تراز ۰: سالن لانژ و اتاق PS5'
-              : 'تراز ۱: سالن اصلی، بار و تراس'}
-          </span>
-          <div className="h-3 w-px bg-[#27313F] mx-1"></div>
-          <span className="text-[11px] text-[#9EACB8] font-medium">
-            {displayedTables.length} بخش فعال
-          </span>
-        </div>
+  /**
+   * Renders an architectural table node with clean Liquid Glass styling:
+   * - FREE: dark glass (bg-[#1B222C]/70 border-white/10) - NO green borders!
+   * - OCCUPIED: emerald glow (bg-[#10B981]/15 border-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.35)])
+   */
+  const renderArchitecturalTable = (
+    nodeId: string,
+    variant: 'vertical-4' | 'vertical-6' | 'square-2' | 'square-3' | 'bar-counter' | 'lounge-counter' | 'sofa-table',
+    className = ''
+  ) => {
+    const node = nodeMap.get(nodeId);
+    if (!node) return null;
 
-        {/* Zoom & Canvas Actions */}
-        <div className="flex items-center gap-1.5 pointer-events-auto bg-[#12161D]/90 backdrop-blur-md p-1 rounded-xl border border-[#27313F]">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setZoom((prev) => Math.min(prev + 0.1, 1.8));
-            }}
-            className="p-1.5 text-[#CBD5E1] hover:text-white hover:bg-[#27313F] rounded-lg transition-colors cursor-pointer"
-            title="بزرگنمایی"
-          >
-            <ZoomIn className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setZoom((prev) => Math.max(prev - 0.1, 0.6));
-            }}
-            className="p-1.5 text-[#CBD5E1] hover:text-white hover:bg-[#27313F] rounded-lg transition-colors cursor-pointer"
-            title="کوچک‌نمایی"
-          >
-            <ZoomOut className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setZoom(1);
-              setPan({ x: 0, y: 0 });
-            }}
-            className="p-1.5 text-[#CBD5E1] hover:text-white hover:bg-[#27313F] rounded-lg transition-colors cursor-pointer"
-            title="بازنشانی زاویه دید"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+    const primaryId = resolvePrimaryNodeId(sessions, node.id);
+    const rawSession = sessions[node.id];
+    const effectiveSession = sessions[primaryId];
+    const isChildMerged = Boolean(rawSession?.mergedIntoNodeId);
+    const groupIds = getMergedGroupNodeIds(sessions, node.id);
+    const isMerged = groupIds.length > 1;
+    const isHost = isMerged && primaryId === node.id;
 
-      {/* Main Interactive SVG Space */}
-      <div className="relative w-full h-full cursor-grab active:cursor-grabbing overflow-hidden">
-        <svg
-          className="w-full h-full"
-          viewBox="0 0 1000 680"
-          preserveAspectRatio="xMidYMid meet"
-          style={{
-            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-            transformOrigin: 'center center',
-            transition: isDragging ? 'none' : 'transform 0.15s ease-out',
-          }}
-        >
-          <defs>
-            {/* Magnetic Grid Pattern 10px */}
-            <pattern
-              id="magneticGrid10"
-              width="10"
-              height="10"
-              patternUnits="userSpaceOnUse"
-            >
-              <circle cx="5" cy="5" r="0.75" fill="#27313F" opacity="0.6" />
-            </pattern>
+    const isOccupied = Boolean(effectiveSession);
+    const isPaymentPending = effectiveSession?.status === 'PAYMENT_PENDING';
+    const isSelected = activeSelectedId === primaryId || activeSelectedId === node.id;
+    const isMergeChecked = mergeSelectedIds.includes(node.id);
+    const mergeOrderIndex = mergeSelectedIds.indexOf(node.id);
+    const accent = isMerged ? hostAccentMap.get(primaryId) : undefined;
 
-            {/* Level 0 Velvet Lounge Texture */}
-            <pattern
-              id="velvetStripe"
-              width="20"
-              height="20"
-              patternUnits="userSpaceOnUse"
-              patternTransform="rotate(45)"
-            >
-              <line x1="0" y1="0" x2="0" y2="20" stroke="#059669" strokeWidth="2" opacity="0.15" />
-            </pattern>
-          </defs>
+    const itemsCount = effectiveSession
+      ? (effectiveSession.cartItems || []).reduce((acc, i) => acc + (i.quantity || 1), 0)
+      : 0;
+    const totalToman = getSessionTotalToman(effectiveSession, nowMs);
+    const elapsedText = effectiveSession?.openedAt
+      ? formatElapsedTimer(Math.max(0, nowMs - new Date(effectiveSession.openedAt).getTime()))
+      : null;
 
-          {/* Canvas Background Grid */}
-          <rect width="1000" height="680" fill="#0B0D11" />
-          <rect width="1000" height="680" fill="url(#magneticGrid10)" />
+    const isDragSource = dragState?.sourceId === node.id;
+    const isDragMergeTarget = dragState?.hoverTargetId === node.id;
 
-          {/* ======================================================== */}
-          {/* ARCHITECTURAL ZONING CONTAINERS                           */}
-          {/* ======================================================== */}
+    const isMoveSource = moveMode && moveSourceId === node.id;
+    const isMoveTargetCandidate = moveMode && Boolean(moveSourceId) && !isOccupied;
+    const isMoveSourceCandidate = moveMode && !moveSourceId && isOccupied;
 
-          {/* --- LEVEL 0 BOUNDARY (Left Column) --- */}
-          {(levelFilter === 'all' || levelFilter === 0) && (
-            <g id="zone_level_0" opacity={levelFilter === 'all' ? 0.95 : 1}>
-              {/* Level 0 Main Panel */}
-              <rect
-                x="30"
-                y="50"
-                width="380"
-                height="590"
-                rx="16"
-                fill="#12161D"
-                stroke="#27313F"
-                strokeWidth="2"
-              />
-              <text x="50" y="85" fill="#10B981" fontSize="14" fontWeight="800" fontFamily="Vazirmatn, sans-serif">
-                تراز ۰: سالن لانژ و اتاق PS5
-              </text>
+    // Strict styling discipline:
+    // FREE: pure dark glass (bg-[#1B222C]/70 border-white/10 hover:border-white/20 text-[#E2E8F0]) - strictly NO green borders.
+    // OCCUPIED: emerald glow (bg-[#10B981]/15 border-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.35)] text-white).
+    const surfaceStyle = isMoveSource
+      ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.6)] scale-[1.02]'
+      : isMoveTargetCandidate
+      ? 'bg-[#1B222C]/90 border-emerald-400/80 hover:border-emerald-300 ring-2 ring-emerald-400/50 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(16,185,129,0.3)]'
+      : isMoveSourceCandidate
+      ? 'bg-[#10B981]/25 border-amber-400/80 hover:border-amber-300 ring-2 ring-amber-400/60 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(245,158,11,0.3)]'
+      : isDragMergeTarget
+      ? 'bg-cyan-500/25 border-cyan-300 ring-2 ring-cyan-300 shadow-[0_0_30px_-4px_rgba(34,211,238,0.7)] scale-[1.03]'
+      : isDragSource
+      ? 'bg-cyan-500/15 border-cyan-400/70 ring-2 ring-cyan-400/50 opacity-80'
+      : isMergeChecked
+      ? 'bg-cyan-500/20 border-cyan-300/80 ring-2 ring-cyan-400/60 shadow-[0_0_26px_-6px_rgba(34,211,238,0.55)]'
+      : isSelected
+      ? 'bg-[#10B981]/25 border-white ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.4)] text-white'
+      : isPaymentPending
+      ? 'bg-amber-500/15 border-amber-400/60 shadow-[0_0_16px_rgba(245,158,11,0.35)] text-amber-200'
+      : isOccupied
+      ? `bg-[#10B981]/15 border border-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.35)] text-white ${
+          accent ? `${accent.border} ring-1 ${accent.ring}` : ''
+        }`
+      : 'bg-[#1B222C]/70 border border-white/10 hover:border-white/20 text-[#E2E8F0] shadow-sm';
 
-              {/* Lounge U-Sofa Visual Contour ($color-emerald-velvet: #059669) */}
-              <path
-                d="M 60 165 L 370 165 L 370 375 L 325 375 L 325 210 L 105 210 L 105 375 L 60 375 Z"
-                fill="url(#velvetStripe)"
-                stroke="#059669"
-                strokeWidth="2.5"
-              />
-              <text x="215" y="145" fill="#34D399" fontSize="12" fontWeight="bold" textAnchor="middle" fontFamily="Vazirmatn">
-                سالن لانژ - مبل U-Shape
-              </text>
+    const isWide = variant === 'lounge-counter' || variant === 'bar-counter';
+    const showSideChairs = variant === 'vertical-4' || variant === 'vertical-6';
+    const sideChairCount = variant === 'vertical-6' ? 3 : 2;
 
-              {/* PS Room Zone Frame (Bottom-Left) */}
-              <rect
-                x="45"
-                y="465"
-                width="350"
-                height="145"
-                rx="12"
-                fill="#0F172A"
-                stroke="#3B82F6"
-                strokeWidth="1.5"
-                strokeDasharray="4 4"
-              />
-              <text x="65" y="492" fill="#60A5FA" fontSize="12" fontWeight="bold" fontFamily="Vazirmatn">
-                اتاق PS5 (ایستگاه‌های گیمینگ)
-              </text>
+    return (
+      <div className={`flex flex-col items-stretch justify-center ${className}`}>
+        {variant === 'square-2' && (
+          <div className="flex justify-center mb-1">
+            <span className={`w-4 h-1.5 ${CHAIR_DOT_CLS}`} />
+          </div>
+        )}
 
-              {/* Entrance Archway */}
-              <g id="entrance_door">
-                <rect x="140" y="625" width="160" height="18" rx="4" fill="#1E293B" stroke="#059669" strokeWidth="1.5" />
-                <text x="220" y="638" fill="#10B981" fontSize="10" fontWeight="bold" textAnchor="middle" fontFamily="Vazirmatn">
-                  ▼ ورودی اصلی کافه ▼
-                </text>
-              </g>
-            </g>
+        <div className="flex items-center gap-1 flex-1 min-h-0">
+          {showSideChairs && (
+            <div className="flex flex-col justify-around h-full py-2 shrink-0">
+              {Array.from({ length: sideChairCount }).map((_, idx) => (
+                <span key={idx} className={`w-1.5 h-3 ${CHAIR_DOT_CLS}`} />
+              ))}
+            </div>
           )}
 
-          {/* --- SPIRAL STAIRCASE 1/4 CIRCLE (Connecting L0 to L1) --- */}
-          {levelFilter === 'all' && (
-            <g id="spiral_stairs" transform="translate(418, 310)">
-              <path
-                d="M 0 0 A 60 60 0 0 1 60 60 L 60 30 A 30 30 0 0 0 0 0 Z"
-                fill="#1E293B"
-                stroke="#64748B"
-                strokeWidth="2"
-              />
-              <line x1="15" y1="5" x2="30" y2="15" stroke="#94A3B8" strokeWidth="1.5" />
-              <line x1="30" y1="18" x2="45" y2="35" stroke="#94A3B8" strokeWidth="1.5" />
-              <line x1="45" y1="38" x2="55" y2="55" stroke="#94A3B8" strokeWidth="1.5" />
-              <text x="25" y="-10" fill="#94A3B8" fontSize="10" fontWeight="bold" textAnchor="middle" fontFamily="Vazirmatn">
-                پلکان دوار تراز بالا ▲
-              </text>
-            </g>
-          )}
-
-          {/* --- LEVEL 1 BOUNDARY (Center Column: Main Hall & Right Column: Terrace) --- */}
-          {(levelFilter === 'all' || levelFilter === 1) && (
-            <g id="zone_level_1" opacity={levelFilter === 'all' ? 0.95 : 1}>
-              {/* Level 1 Main Boardgame Hall (Center Column) */}
-              <rect
-                x="460"
-                y="50"
-                width="300"
-                height="590"
-                rx="16"
-                fill="#12161D"
-                stroke="#27313F"
-                strokeWidth="2"
-              />
-              <text x="480" y="85" fill="#F59E0B" fontSize="14" fontWeight="800" fontFamily="Vazirmatn, sans-serif">
-                سالن اصلی - تراز بالا
-              </text>
-
-              {/* Non-Clickable Fixture: کانتر بار و صندوق */}
-              <rect
-                x="475"
-                y="240"
-                width="155"
-                height="55"
-                rx="8"
-                fill="#1E293B"
-                stroke="#64748B"
-                strokeWidth="1.5"
-              />
-              <text x="552" y="273" fill="#CBD5E1" fontSize="11" fontWeight="bold" textAnchor="middle" fontFamily="Vazirmatn">
-                کانتر بار و صندوق
-              </text>
-
-              {/* Non-Clickable Fixture: آشپزخانه گرم و باریستا */}
-              <rect
-                x="475"
-                y="310"
-                width="155"
-                height="110"
-                rx="8"
-                fill="#1C1917"
-                stroke="#E11D48"
-                strokeWidth="1.5"
-                strokeDasharray="3 3"
-              />
-              <text x="552" y="365" fill="#FB7185" fontSize="11" fontWeight="bold" textAnchor="middle" fontFamily="Vazirmatn">
-                آشپزخانه گرم و باریستا
-              </text>
-
-              {/* Terrace Space (Right Column) */}
-              <rect
-                x="785"
-                y="50"
-                width="185"
-                height="590"
-                rx="16"
-                fill="#06251C"
-                stroke="#059669"
-                strokeWidth="2.5"
-              />
-              <text x="877" y="85" fill="#34D399" fontSize="13" fontWeight="800" textAnchor="middle" fontFamily="Vazirmatn">
-                تراس فضای باز (سیگار آزاد)
-              </text>
-            </g>
-          )}
-
-          {/* ======================================================== */}
-          {/* TABLES & INTERACTIVE POS ENTITIES                        */}
-          {/* ======================================================== */}
-          {displayedTables.map((table) => {
-            const { x, y, width, height, rotation } = table.geometry;
-            const isSelected = selectedTableId === table.id;
-            const colors = getTableColorConfig(table, isSelected);
-            const isPS5 = table.billing_mode === 'hourly_timer';
-            const { hasOpenOrder, itemCount, totalToman } = getTableTabInfo(table);
-
-            // Center for SVG rotation
-            const cx = x + width / 2;
-            const cy = y + height / 2;
-
-            return (
-              <g
-                key={table.id}
-                transform={`rotate(${rotation || 0} ${cx} ${cy})`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelectTable(table);
-                }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  onSelectTable(table);
-                  if (onConfirmTableOrder) {
-                    onConfirmTableOrder(table);
-                  }
-                }}
-                onMouseDown={(e) => handleMouseDownTable(e, table)}
-                className="cursor-pointer transition-all duration-200"
-              >
-                {/* Table Surface Geometry */}
-                <rect
-                  x={x}
-                  y={y}
-                  width={width}
-                  height={height}
-                  rx={8}
-                  fill={colors.bg}
-                  stroke={colors.border}
-                  strokeWidth={isSelected ? 3 : 2}
-                  filter={isSelected ? 'drop-shadow(0 0 10px #FFFFFF)' : undefined}
-                />
-
-                {/* Table Name Label */}
-                <text
-                  x={cx}
-                  y={cy - (height > 55 ? 12 : 2)}
-                  fill="#FFFFFF"
-                  fontSize={Math.min(12, Math.max(9, width / 6.2))}
-                  fontWeight="bold"
-                  textAnchor="middle"
-                  dominantBaseline="middle"
-                  fontFamily="Vazirmatn, sans-serif"
-                >
-                  {table.display_name}
-                </text>
-
-                {/* PS5 Active Timer Badge */}
-                {isPS5 && (table.status === 'GAMING_ACTIVE' || table.status === 'PAUSED') && (
-                  <g transform={`translate(${cx - 30}, ${cy + 2})`}>
-                    <rect width="60" height="14" rx="4" fill="#1E3A8A" stroke="#3B82F6" strokeWidth="1" />
-                    <text
-                      x="30"
-                      y="10"
-                      fill="#93C5FD"
-                      fontSize="9"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                      fontFamily="monospace"
-                    >
-                      {formatElapsedTime(table)}
-                    </text>
-                  </g>
-                )}
-
-                {/* Status Badges: آماده پذیرش (Emerald) / سفارش باز (Amber/Gold) / انتخاب‌شده */}
-                {height > 50 && (
-                  <g transform={`translate(${cx - 36}, ${cy + (isPS5 ? 18 : 6)})`}>
-                    <rect
-                      width="72"
-                      height="15"
-                      rx="4"
-                      fill={colors.badgeBg}
-                      stroke={colors.badgeBorder}
-                      strokeWidth="1"
-                    />
-                    <text
-                      x="36"
-                      y="11"
-                      fill="#FFFFFF"
-                      fontSize="7.5"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                      fontFamily="Vazirmatn"
-                    >
-                      {colors.label}
-                    </text>
-                  </g>
-                )}
-
-                {/* Running Total & Item Count for Open Tab */}
-                {hasOpenOrder && height > 65 && totalToman > 0 && (
-                  <text
-                    x={cx}
-                    y={cy + 32}
-                    fill="#FDE68A"
-                    fontSize="8"
-                    fontWeight="bold"
-                    textAnchor="middle"
-                    fontFamily="Vazirmatn"
-                  >
-                    {itemCount > 0 ? `${itemCount} قلم • ` : ''}{formatToman(totalToman)} ت
-                  </text>
-                )}
-
-                {/* Capacity Icon Badge */}
-                <circle
-                  cx={x + width - 6}
-                  cy={y + 6}
-                  r="4"
-                  fill={colors.border}
-                />
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Selected Entity Action HUD Overlay */}
-      <AnimatePresence>
-        {selectedTable && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.98 }}
-            transition={ZERO_G_PHYSICS.buoyant}
-            className="absolute bottom-4 left-4 right-4 z-20 bg-[#12161D]/95 backdrop-blur-xl border border-white/[0.12] rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-2xl"
+            data-floor-node={node.id}
+            data-table-id={node.tableId}
+            data-station-id={node.stationId}
+            dir="rtl"
+            role="button"
+            tabIndex={0}
+            whileHover={dragState ? undefined : { y: -2, scale: 1.015 }}
+            whileTap={dragState ? undefined : { scale: 0.975 }}
+            transition={{ type: 'spring', stiffness: 460, damping: 32 }}
+            onPointerDown={(e) =>
+              handleTablePointerDown(e, node, primaryId, isMerged, isChildMerged)
+            }
+            onClick={() => handleCardClick(node)}
+            onDoubleClick={() => {
+              if (onConfirmTableOrder) {
+                onConfirmTableOrder(node);
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleCardClick(node);
+              }
+            }}
+            className={`group relative flex-1 h-full rounded-[15px] backdrop-blur-xl select-none flex flex-col justify-between overflow-hidden ${
+              dragState ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing'
+            } ${
+              isWide ? 'px-3.5 py-2' : 'p-2.5'
+            } ${surfaceStyle} transition-all duration-200`}
           >
-            {/* Info pill */}
-            <div className="flex items-center gap-3">
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-md border border-white/[0.1]"
-                style={{ backgroundColor: getTableColorConfig(selectedTable, true).badgeBg }}
-              >
-                {selectedTable.billing_mode === 'hourly_timer' ? (
-                  <Gamepad2 className="w-5 h-5 text-white" />
-                ) : (
-                  <Coffee className="w-5 h-5 text-white" />
-                )}
+            {/* Specular hairline sheen */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"
+            />
+
+            {/* Header row: Label + Status / Gear */}
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                {mergeMode ? (
+                  <span
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 border ${
+                      isMergeChecked
+                        ? 'bg-cyan-400 text-slate-950 border-cyan-200'
+                        : 'bg-white/10 text-white/60 border-white/25'
+                    }`}
+                  >
+                    {isMergeChecked ? (
+                      mergeOrderIndex === 0 ? '★' : <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    ) : (
+                      '+'
+                    )}
+                  </span>
+                ) : isMerged ? (
+                  <Link2 className={`w-3.5 h-3.5 shrink-0 ${accent?.text || 'text-cyan-300'}`} />
+                ) : null}
+
+                <span className="font-black text-xs text-white truncate tracking-tight">
+                  {node.label}
+                </span>
               </div>
 
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-black text-white tracking-heading">
-                    {selectedTable.display_name}
-                  </span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#1E293B] text-[#CBD5E1] border border-white/[0.06]">
-                    {selectedTable.level === 0 ? 'تراز ۰ (پایین)' : 'تراز ۱ (بالا)'}
-                  </span>
-                  <span
-                    className="text-[10px] px-2 py-0.5 rounded-full font-black text-white shadow-sm"
-                    style={{ backgroundColor: getTableColorConfig(selectedTable, false).badgeBg }}
-                  >
-                    {getTableColorConfig(selectedTable, false).label}
-                  </span>
-                </div>
-                <div className="text-xs text-[#9EACB8] mt-0.5 flex items-center gap-3">
-                  <span>ظرفیت: {selectedTable.capacity.nominal} نفر</span>
-                  {selectedTable.billing_mode === 'hourly_timer' && (
-                    <span className="text-blue-400 font-mono tracking-mono flex items-center gap-1 font-bold">
-                      <Clock className="w-3 h-3" />
-                      {formatElapsedTime(selectedTable)}
-                    </span>
-                  )}
-                  {getTableTabInfo(selectedTable).hasOpenOrder && (
-                    <span className="text-amber-400 font-bold">
-                      مبلغ سفارش: {formatToman(getTableTabInfo(selectedTable).totalToman)} تومان ({getTableTabInfo(selectedTable).itemCount} قلم)
-                    </span>
-                  )}
-                </div>
-              </div>
+              {!mergeMode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onInspectNode) {
+                      onInspectNode(node);
+                    } else if (onOpenSessionModal) {
+                      onOpenSessionModal(node);
+                    } else {
+                      handleCardClick(node);
+                    }
+                  }}
+                  title="تنظیمات میز و فاکتور"
+                  className="w-5 h-5 rounded-full bg-white/5 hover:bg-white/20 flex items-center justify-center text-[#94A3B8] hover:text-white transition cursor-pointer"
+                >
+                  <Settings2 className="w-2.5 h-2.5" />
+                </button>
+              )}
             </div>
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2">
-              {/* Primary Waiter Flow Action: Select table & Route to POS */}
-              {onConfirmTableOrder && (
-                <motion.button
-                  whileTap={MotionConfig.tactileTap}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    playPosBeep('click');
-                    onConfirmTableOrder(selectedTable);
-                  }}
-                  className="px-4 py-2 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 shadow-md transition-colors cursor-pointer"
-                >
-                  <ShoppingCart className="w-4 h-4" />
-                  <span>
-                    {getTableTabInfo(selectedTable).hasOpenOrder
-                      ? 'مشاهده و تکمیل تب باز'
-                      : 'تأیید و انتخاب میز'}
+            {/* Center Area: Seats / Order status / Elapsed */}
+            <div className="my-auto py-1">
+              {isOccupied ? (
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="font-bold text-emerald-300 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] animate-pulse" />
+                      <span>{isMerged ? (isHost ? 'میز ادغامی' : 'پیوست') : 'مشغول'}</span>
+                    </span>
+                    {elapsedText && (
+                      <span className="font-mono text-[10px] text-emerald-200/90 tabular-nums">
+                        {elapsedText}
+                      </span>
+                    )}
+                  </div>
+                  {itemsCount > 0 && (
+                    <span className="text-[10px] text-[#cbd5e1] font-medium">
+                      {itemsCount} آیتم سفارش
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
+                  <span className="flex items-center gap-1">
+                    <Users className="w-3 h-3 text-[#94A3B8]" />
+                    <span>{node.seats} نفره</span>
                   </span>
-                </motion.button>
+                  <span className="text-[10px] text-slate-400">آزاد</span>
+                </div>
               )}
+            </div>
 
-              {/* Session & Bill Modal Trigger */}
-              {onOpenSessionModal && (
-                <motion.button
-                  whileTap={MotionConfig.tactileTap}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    playPosBeep('click');
-                    onOpenSessionModal(selectedTable);
-                  }}
-                  className="px-3 py-2 rounded-xl text-xs font-bold bg-[#1E293B] hover:bg-[#334155] text-white flex items-center gap-1.5 border border-white/[0.08] transition-colors cursor-pointer"
-                >
-                  <Clock className="w-3.5 h-3.5 text-blue-400" />
-                  <span>مدیریت سشن و صورتحساب</span>
-                </motion.button>
-              )}
-
-              {isEditMode && (
-                <>
-                  <motion.button
-                    whileTap={MotionConfig.tactileTap}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      playPosBeep('click');
-                      floorPlanService.rotateTable(selectedTable.id);
-                    }}
-                    className="p-2 bg-[#1E293B] hover:bg-[#334155] text-[#E2E8F0] rounded-xl text-xs flex items-center gap-1 border border-white/[0.06] cursor-pointer"
-                    title="چرخش ۹۰ درجه (R)"
-                  >
-                    <RotateCw className="w-4 h-4" />
-                  </motion.button>
-                  <motion.button
-                    whileTap={MotionConfig.tactileTap}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      playPosBeep('click');
-                      const cl = floorPlanService.cloneTable(selectedTable.id);
-                      if (cl) onSelectTable(cl);
-                    }}
-                    className="p-2 bg-[#1E293B] hover:bg-[#334155] text-[#E2E8F0] rounded-xl text-xs flex items-center gap-1 border border-white/[0.06] cursor-pointer"
-                    title="کلون (Ctrl+D)"
-                  >
-                    <Copy className="w-4 h-4" />
-                  </motion.button>
-                  <motion.button
-                    whileTap={MotionConfig.tactileTap}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      playPosBeep('delete');
-                      floorPlanService.deleteTable(selectedTable.id);
-                      onSelectTable(null);
-                    }}
-                    className="p-2 bg-red-900/40 hover:bg-red-800 text-red-200 rounded-xl text-xs flex items-center gap-1 border border-red-700/40 cursor-pointer"
-                    title="حذف (Delete)"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </motion.button>
-                </>
+            {/* Footer: Running Bill or Rate */}
+            <div className="pt-1 border-t border-white/[0.08] flex items-center justify-between text-[10px]">
+              {isOccupied && totalToman > 0 ? (
+                <span className="font-black text-[#10B981] font-mono tabular-nums w-full text-left">
+                  {formatToman(totalToman)} ت
+                </span>
+              ) : (
+                <span className="text-[#64748b] text-[9.5px] w-full text-left">
+                  {node.zone === 'LOUNGE' ? 'سفارش ژتونی' : 'آماده پذیرش'}
+                </span>
               )}
             </div>
           </motion.div>
+
+          {showSideChairs && (
+            <div className="flex flex-col justify-around h-full py-2 shrink-0">
+              {Array.from({ length: sideChairCount }).map((_, idx) => (
+                <span key={idx} className={`w-1.5 h-3 ${CHAIR_DOT_CLS}`} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {variant === 'square-2' && (
+          <div className="flex justify-center mt-1">
+            <span className={`w-4 h-1.5 ${CHAIR_DOT_CLS}`} />
+          </div>
         )}
-      </AnimatePresence>
-    </div>
+      </div>
+    );
+  };
+
+  /**
+   * Renders a PS5 Gaming Pod booth:
+   * - FREE: dark glass (bg-[#1B222C]/70 border-white/10) with sky icon & ready badge
+   * - OCCUPIED: emerald glow (bg-[#10B981]/15 border-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.35)]) with live ticking HH:MM:SS
+   */
+  const renderPs5Booth = (nodeId: string, boothNumber: number) => {
+    const node = nodeMap.get(nodeId);
+    if (!node) return null;
+
+    const session = sessions[node.id];
+    const isOccupied = Boolean(session && (session.status === 'OCCUPIED' || session.ps5Session));
+    const isPaymentPending = session?.status === 'PAYMENT_PENDING';
+    const isSelected = activeSelectedId === node.id;
+    const ps5 = session?.ps5Session;
+
+    const elapsedMs = ps5 ? getPs5ElapsedMs(ps5, nowMs) : 0;
+    const elapsedText = isOccupied ? formatElapsedTimer(elapsedMs) : null;
+    const totalToman = isOccupied ? getSessionTotalToman(session, nowMs) : 0;
+
+    const isMoveSource = moveMode && moveSourceId === node.id;
+    const isMoveTargetCandidate = moveMode && Boolean(moveSourceId) && !isOccupied;
+    const isMoveSourceCandidate = moveMode && !moveSourceId && isOccupied;
+
+    // Free PS5: dark glass without green borders.
+    // Occupied PS5: emerald glow with live timer.
+    const boothStyle = isMoveSource
+      ? 'cursor-pointer bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.6)] scale-[1.02]'
+      : isMoveTargetCandidate
+      ? 'cursor-pointer bg-[#1B222C]/90 border-emerald-400/80 hover:border-emerald-300 ring-2 ring-emerald-400/50 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(16,185,129,0.3)]'
+      : isMoveSourceCandidate
+      ? 'cursor-pointer bg-[#10B981]/25 border-amber-400/80 hover:border-amber-300 ring-2 ring-amber-400/60 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(245,158,11,0.3)]'
+      : mergeMode
+      ? 'opacity-45 cursor-not-allowed border-white/10 bg-[#1B222C]/70 text-[#94A3B8]'
+      : isSelected
+      ? 'cursor-pointer bg-[#10B981]/25 border-white ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.4)] text-white'
+      : isPaymentPending
+      ? 'cursor-pointer bg-amber-500/15 border-amber-400/60 shadow-[0_0_16px_rgba(245,158,11,0.35)] text-amber-200'
+      : isOccupied
+      ? 'cursor-pointer bg-[#10B981]/15 border border-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.35)] text-white'
+      : 'cursor-pointer bg-[#1B222C]/70 border border-white/10 hover:border-white/20 text-[#E2E8F0] shadow-sm';
+
+    return (
+      <motion.div
+        key={node.id}
+        data-floor-node={node.id}
+        data-station-id={node.stationId}
+        dir="rtl"
+        role="button"
+        tabIndex={0}
+        whileHover={{ y: -2, scale: 1.015 }}
+        whileTap={{ scale: 0.975 }}
+        transition={{ type: 'spring', stiffness: 460, damping: 32 }}
+        onClick={() => !mergeMode && handleCardClick(node)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (!mergeMode) handleCardClick(node);
+          }
+        }}
+        className={`relative rounded-[14px] p-2.5 flex flex-col justify-between min-h-[126px] select-none transition-colors duration-200 backdrop-blur-xl overflow-hidden ${boothStyle}`}
+      >
+        {/* Ambient Top Glow Line */}
+        <div
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-x-2 top-0 h-[2px] rounded-full ${
+            isOccupied
+              ? 'bg-gradient-to-r from-emerald-400/80 via-emerald-300 to-emerald-400/80'
+              : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'
+          }`}
+        />
+
+        {/* Top row: Station ID + Settings Gear */}
+        <div className="flex items-center justify-between gap-1">
+          <span className="font-mono font-black text-[11px] text-white tracking-tight">
+            {node.label}
+          </span>
+          {!mergeMode && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onInspectNode) {
+                  onInspectNode(node);
+                } else if (onOpenSessionModal) {
+                  onOpenSessionModal(node);
+                } else {
+                  handleCardClick(node);
+                }
+              }}
+              title="کنترل تایمر و دسته‌های PS5"
+              className="w-5 h-5 rounded-full bg-white/5 hover:bg-white/20 flex items-center justify-center text-[#94A3B8] hover:text-white transition cursor-pointer"
+            >
+              <Settings2 className="w-2.5 h-2.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Center Screen + Gamepad Icon */}
+        <div className="my-auto flex flex-col items-center justify-center text-center py-1">
+          <div
+            className={`w-full py-1.5 rounded-lg border flex items-center justify-center gap-1 ${
+              isOccupied
+                ? 'bg-[#10B981]/20 border-[#10B981]/40 text-emerald-200'
+                : 'bg-white/[0.04] border-white/10 text-slate-300'
+            }`}
+          >
+            <Gamepad2 className="w-3.5 h-3.5" />
+            <span className="font-mono text-[10px] font-bold">
+              {isOccupied ? `کابین ${boothNumber}` : 'PS5'}
+            </span>
+          </div>
+
+          {isOccupied && elapsedText ? (
+            <span className="mt-1.5 font-mono text-[11px] font-black text-[#10B981] tabular-nums flex items-center gap-1">
+              <Clock className="w-2.5 h-2.5" />
+              {elapsedText}
+            </span>
+          ) : (
+            <span className="mt-1.5 text-[10px] text-slate-400">آماده بازی</span>
+          )}
+        </div>
+
+        {/* Footer price/rate */}
+        <div className="pt-1 border-t border-white/[0.08] flex items-center justify-between text-[10px]">
+          {isOccupied ? (
+            <span className="font-black text-[#10B981] font-mono tabular-nums w-full text-center">
+              {formatToman(totalToman)} ت
+            </span>
+          ) : (
+            <span className="text-[#94A3B8] font-mono tabular-nums w-full text-center">
+              {formatToman(node.hourlyRateToman || 180000)}/س
+            </span>
+          )}
+        </div>
+      </motion.div>
+    );
+  };
+
+  return (
+    <MotionConfig reducedMotion="user">
+      <div className="w-full space-y-2.5">
+        {/* Horizontal scroll container preserves 1:1 architectural blueprint proportions */}
+        <div className="overflow-x-auto select-none pb-2">
+          <div
+            ref={blueprintRef}
+            dir="ltr"
+            className="relative min-w-[980px] rounded-[30px] liquid-glass-shell p-4 md:p-5 overflow-hidden border border-white/10 shadow-[0_32px_90px_-20px_rgba(0,0,0,0.88)]"
+          >
+            {/* North Window Mullions Accent */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute top-0 left-6 right-6 h-1.5 flex gap-3 z-20"
+            >
+              <div className="flex-1 bg-white/10 rounded-b-full" />
+              <div className="w-24 bg-black/70" />
+              <div className="flex-1 bg-white/10 rounded-b-full" />
+              <div className="w-2 bg-black/70" />
+              <div className="flex-[1.1] bg-white/10 rounded-b-full" />
+              <div className="w-2 bg-black/70" />
+              <div className="w-[16%] bg-white/10 rounded-b-full" />
+            </div>
+
+            {/* Dynamic SVG Link Bridges connecting merged tables + live Drag Tether */}
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 w-full h-full z-20"
+            >
+              <defs>
+                <filter id="mergeGlow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feGaussianBlur stdDeviation="3" result="blur" />
+                  <feMerge>
+                    <feMergeNode in="blur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+              </defs>
+              <AnimatePresence>
+                {mergeLines.map((line) => {
+                  const mx = (line.x1 + line.x2) / 2;
+                  const my = (line.y1 + line.y2) / 2 - 22;
+                  const pathD = `M ${line.x1} ${line.y1} Q ${mx} ${my} ${line.x2} ${line.y2}`;
+                  return (
+                    <motion.g
+                      key={line.key}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <path
+                        d={pathD}
+                        fill="none"
+                        stroke="#22d3ee"
+                        strokeWidth={3}
+                        strokeDasharray="7 6"
+                        strokeLinecap="round"
+                        filter="url(#mergeGlow)"
+                        opacity={0.8}
+                      />
+                      <circle cx={line.x1} cy={line.y1} r={4.5} fill="#22d3ee" />
+                      <circle cx={line.x2} cy={line.y2} r={4.5} fill="#10B981" />
+                    </motion.g>
+                  );
+                })}
+              </AnimatePresence>
+
+              {/* Live Drag Tether Line */}
+              {dragState && (
+                <g>
+                  {(() => {
+                    const endX = dragState.hoverTargetCenterX ?? dragState.pointerBpX;
+                    const endY = dragState.hoverTargetCenterY ?? dragState.pointerBpY;
+                    const mx = (dragState.sourceCenterX + endX) / 2;
+                    const my = (dragState.sourceCenterY + endY) / 2 - 26;
+                    const isSep =
+                      dragState.isSourceMerged &&
+                      !dragState.hoverTargetId &&
+                      (dragState.hoverSeparateZone ||
+                        (dragState.isSourceChild && dragState.isOutsideSameGroup));
+                    const strokeColor = isSep ? '#fb7185' : '#22d3ee';
+                    return (
+                      <>
+                        <path
+                          d={`M ${dragState.sourceCenterX} ${dragState.sourceCenterY} Q ${mx} ${my} ${endX} ${endY}`}
+                          fill="none"
+                          stroke={strokeColor}
+                          strokeWidth={3.5}
+                          strokeDasharray="6 5"
+                          strokeLinecap="round"
+                          filter="url(#mergeGlow)"
+                        />
+                        <circle cx={dragState.sourceCenterX} cy={dragState.sourceCenterY} r={5} fill={strokeColor} />
+                        <circle cx={endX} cy={endY} r={6} fill={dragState.hoverTargetId ? '#10B981' : strokeColor} />
+                      </>
+                    );
+                  })()}
+                </g>
+              )}
+            </svg>
+
+            {/* Floating Drag-to-Separate Drop Zone */}
+            <AnimatePresence>
+              {dragState?.isSourceMerged && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                  transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                  data-separate-dropzone="true"
+                  dir="rtl"
+                  className={`absolute top-4 left-1/2 -translate-x-1/2 z-30 px-5 py-2.5 rounded-full border backdrop-blur-2xl flex items-center gap-2 text-xs font-black transition-all ${
+                    dragState.hoverSeparateZone ||
+                    (dragState.isSourceChild && dragState.isOutsideSameGroup && !dragState.hoverTargetId)
+                      ? 'bg-rose-500/30 border-rose-300 text-rose-100 shadow-[0_0_28px_-4px_rgba(244,63,94,0.7)] scale-105'
+                      : 'bg-[#12161d]/90 border-rose-400/45 text-rose-200 shadow-2xl'
+                  }`}
+                >
+                  <Unlink className="w-4 h-4 text-rose-300" />
+                  <span>
+                    {dragState.isSourceChild
+                      ? `رها کنید برای جداسازی ${dragState.sourceLabel}`
+                      : `رها کنید برای جداسازی کامل گروه`}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/*
+              3-Wing CSS Grid Architecture:
+              - Left (37fr): Lounge (top) + PS Room (bottom)
+              - Center (44fr): Main Hall, Buffet, Stairs, Bar, Cashier, Entrance, Kitchen
+              - Right (19fr): Terrace vertical stack with greenery planter
+            */}
+            <div className="relative z-10 grid grid-cols-[37fr_44fr_19fr] gap-3 min-h-[730px]">
+              {/* ================================================================= */}
+              {/* WING 1 (37fr): LOUNGE (TOP) + PS ROOM (BOTTOM)                    */}
+              {/* ================================================================= */}
+              <div className="flex flex-col gap-3">
+                {/* Lounge (سفارش ژتونی - ۸ میز L-01..L-08) */}
+                <section
+                  className={`relative flex-[72] rounded-[22px] border border-white/[0.11] p-3.5 flex flex-col justify-between overflow-hidden transition-opacity duration-300 ${
+                    isZoneDimmed('LOUNGE') ? 'opacity-25' : 'opacity-100'
+                  }`}
+                  style={{
+                    background:
+                      'linear-gradient(165deg, rgba(255, 255, 255, 0.03) 0%, rgba(20, 24, 33, 0.75) 55%, rgba(11, 14, 18, 0.9) 100%)',
+                  }}
+                >
+                  {/* U-Shape Wall Banquette silhouette */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute top-2 left-2 right-2 h-9 rounded-t-[18px] bg-gradient-to-b from-[#1e3a2b]/60 to-transparent border-t border-x border-white/10"
+                  />
+
+                  {/* Top Banquette Counters: L-01 + L-07 */}
+                  <div className="relative z-10 pt-6 px-4 grid grid-cols-2 gap-2.5">
+                    {renderArchitecturalTable('L-01', 'lounge-counter', 'h-[58px]')}
+                    {renderArchitecturalTable('L-07', 'lounge-counter', 'h-[58px]')}
+                  </div>
+
+                  {/* Center Lounge Floor: Left (L-02, L-04) | Title | Right (L-03, L-06) */}
+                  <div className="relative z-10 flex-1 grid grid-cols-[1fr_auto_1fr] gap-2.5 px-4 py-2 items-center">
+                    {/* Left Stacked Tables: L-02, L-04 */}
+                    <div className="flex flex-col gap-2.5 h-full justify-center">
+                      <div className="h-[88px]">
+                        {renderArchitecturalTable('L-02', 'vertical-4', 'h-full')}
+                      </div>
+                      <div className="h-[88px]">
+                        {renderArchitecturalTable('L-04', 'vertical-4', 'h-full')}
+                      </div>
+                    </div>
+
+                    {/* Center Zone Title */}
+                    <div dir="rtl" className="text-center px-1 select-none">
+                      <div className="font-extrabold text-sm text-white tracking-wide">
+                        Lounge
+                      </div>
+                      <div className="text-xs font-bold text-[#94A3B8] mt-0.5">
+                        (سفارش ژتونی)
+                      </div>
+                    </div>
+
+                    {/* Right Stacked Tables: L-03, L-06 */}
+                    <div className="flex flex-col gap-2.5 h-full justify-center">
+                      <div className="h-[88px]">
+                        {renderArchitecturalTable('L-03', 'vertical-4', 'h-full')}
+                      </div>
+                      <div className="h-[88px]">
+                        {renderArchitecturalTable('L-06', 'vertical-4', 'h-full')}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Lounge: Plush Sofa (مبل) + L-05 + L-08 */}
+                  <div className="relative z-10 pt-2 border-t border-white/[0.08] grid grid-cols-[auto_1fr_1fr] items-end gap-2">
+                    {/* Plush Sofa (مبل) */}
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-16 h-11 rounded-xl bg-white/[0.05] border border-white/10 flex flex-col items-center justify-center text-center shadow-inner">
+                        <Sofa className="w-3.5 h-3.5 text-[#94A3B8]" />
+                        <span className="text-[10px] font-bold text-[#cbd5e1]">مبل</span>
+                      </div>
+                    </div>
+
+                    {/* L-05 (مبل و میز / ۲ الی ۳ نفر) */}
+                    <div className="h-[78px] min-w-0">
+                      {renderArchitecturalTable('L-05', 'sofa-table', 'h-full')}
+                    </div>
+
+                    {/* L-08 (میز لانژ ورودی / ۲ نفر) */}
+                    <div className="h-[78px] min-w-0">
+                      {renderArchitecturalTable('L-08', 'sofa-table', 'h-full')}
+                    </div>
+                  </div>
+                </section>
+
+                {/* PS ROOM (4 ایستگاه PS5-1..PS5-4 در یک ردیف) */}
+                <section
+                  className={`flex-[28] rounded-[22px] border border-sky-400/20 p-3 flex flex-col justify-between transition-opacity duration-300 ${
+                    isZoneDimmed('PS_ROOM') ? 'opacity-25' : 'opacity-100'
+                  }`}
+                  style={{
+                    background:
+                      'linear-gradient(180deg, rgba(17, 24, 39, 0.85) 0%, rgba(11, 15, 25, 0.95) 100%)',
+                  }}
+                >
+                  <div className="grid grid-cols-4 gap-2 flex-1">
+                    {renderPs5Booth('PS5-1', 1)}
+                    {renderPs5Booth('PS5-2', 2)}
+                    {renderPs5Booth('PS5-3', 3)}
+                    {renderPs5Booth('PS5-4', 4)}
+                  </div>
+                  <div className="pt-2 text-center flex items-center justify-center gap-2 text-[11px]">
+                    <Gamepad2 className="w-3.5 h-3.5 text-sky-400" />
+                    <span className="font-extrabold text-white tracking-wide">
+                      PS Room
+                    </span>
+                    <span className="text-[#94A3B8]">· اتاق ۴ کابین اختصاصی</span>
+                  </div>
+                </section>
+              </div>
+
+              {/* ================================================================= */}
+              {/* WING 2 (44fr): BUFFET + MAIN HALL + BAR + ENTRANCE + KITCHEN       */}
+              {/* ================================================================= */}
+              <div className="flex flex-col gap-3">
+                {/* Upper Main Hall Section */}
+                <section
+                  className={`relative flex-[73] rounded-[22px] border border-white/[0.11] p-3.5 flex flex-col justify-between gap-2.5 overflow-hidden transition-opacity duration-300 ${
+                    isZoneDimmed('MAIN_HALL') ? 'opacity-25' : 'opacity-100'
+                  }`}
+                  style={{
+                    background:
+                      'linear-gradient(170deg, rgba(255, 255, 255, 0.03) 0%, rgba(20, 24, 33, 0.75) 55%, rgba(11, 14, 18, 0.92) 100%)',
+                  }}
+                >
+                  {/* Top Row: Buffet/Stairs + M-01..M-04 + M-07 */}
+                  <div className="flex-1 grid grid-cols-[28fr_72fr] gap-3 min-h-0">
+                    {/* Left Strip: Buffet + Main Hall Title + Spiral Stairs */}
+                    <div className="flex flex-col justify-between border-r border-white/[0.08] pr-2.5">
+                      {/* Buffet (بوفه) */}
+                      <div
+                        dir="rtl"
+                        className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-2 flex flex-col items-center text-center gap-1"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          <Coffee className="w-3.5 h-3.5 text-[#10B981]" />
+                          <span className="text-xs font-black text-white">بوفه</span>
+                        </div>
+                        <span className="text-[10px] text-[#94A3B8]">سرویس</span>
+                      </div>
+
+                      {/* Main Hall Level Label */}
+                      <div dir="rtl" className="text-center my-auto py-2">
+                        <div className="text-xs font-black text-white">سالن اصلی</div>
+                        <div className="text-[11px] font-bold text-[#10B981] mt-0.5">
+                          (تراز بالا)
+                        </div>
+                      </div>
+
+                      {/* Stairs (پله) */}
+                      <div
+                        dir="rtl"
+                        className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-2 flex items-center justify-between gap-2 overflow-hidden relative"
+                      >
+                        <div className="flex items-end gap-0.5 h-6 opacity-60">
+                          {[20, 35, 50, 68, 85, 100].map((h, i) => (
+                            <div
+                              key={i}
+                              className="w-1 rounded-t-sm bg-white/40"
+                              style={{ height: `${h}%` }}
+                            />
+                          ))}
+                        </div>
+                        <div className="text-left">
+                          <span className="text-xs font-black text-white block">پله ↺</span>
+                          <span className="text-[9px] text-[#94A3B8]">از ورودی</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Area: M-01..M-04 + M-07 */}
+                    <div className="flex flex-col justify-between gap-2.5 min-h-0">
+                      {/* 1x4 Horizontal Row of M-01 to M-04 */}
+                      <div className="grid grid-cols-4 gap-2 h-[126px]">
+                        {renderArchitecturalTable('M-01', 'vertical-4', 'h-full')}
+                        {renderArchitecturalTable('M-02', 'vertical-4', 'h-full')}
+                        {renderArchitecturalTable('M-03', 'vertical-4', 'h-full')}
+                        {renderArchitecturalTable('M-04', 'vertical-4', 'h-full')}
+                      </div>
+
+                      {/* Central 6-Seater Table: M-07 */}
+                      <div className="flex-1 grid grid-cols-12 gap-2.5 items-center">
+                        <div dir="rtl" className="col-span-5 flex flex-col justify-end h-full pb-1">
+                          <div className="text-[10px] text-[#94A3B8] leading-relaxed">
+                            <span className="text-white font-semibold block">
+                              میز بزرگ میانی
+                            </span>
+                            <span className="text-[9px] text-[#64748b]">
+                              هم‌سطح سالن اصلی
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="col-span-7 h-[132px]">
+                          {renderArchitecturalTable('M-07', 'vertical-6', 'h-full')}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Horizontal Bar Spine: BAR-01 + Cashier (صندوق) */}
+                  <div className="grid grid-cols-12 gap-2.5 items-stretch pt-2 border-t border-white/[0.08]">
+                    <div className="col-span-8 h-[68px]">
+                      {renderArchitecturalTable('BAR-01', 'bar-counter', 'h-full')}
+                    </div>
+
+                    <div
+                      dir="rtl"
+                      className="col-span-4 rounded-2xl bg-white/[0.04] border border-white/[0.08] px-3 py-2 flex flex-col items-center justify-center text-center shadow-inner"
+                    >
+                      <CreditCard className="w-4 h-4 text-[#10B981] mb-1" />
+                      <span className="text-xs font-black text-white">صندوق</span>
+                      <span className="text-[9.5px] text-[#94A3B8]">POS & صدور فیش</span>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Lower Section: Entrance (ورودی) + Kitchen (آشپزخانه) */}
+                <div className="flex-[27] grid grid-cols-[33fr_67fr] gap-2.5">
+                  {/* Entrance (ورودی) */}
+                  <div
+                    dir="rtl"
+                    className="rounded-[22px] border border-white/[0.11] p-3 flex flex-col items-center justify-between text-center relative overflow-hidden bg-white/[0.03]"
+                  >
+                    <span className="text-[10px] text-[#94A3B8]">درب ورود به سالن</span>
+                    <div className="flex flex-col items-center">
+                      <span className="text-xl text-[#10B981] font-black leading-none">↑</span>
+                      <span className="text-xs font-black text-white mt-1">ورودی</span>
+                    </div>
+                    <div className="w-16 h-1.5 rounded-t-full bg-emerald-400/30 border-t border-emerald-300/50" />
+                  </div>
+
+                  {/* Kitchen (آشپزخانه) */}
+                  <div
+                    dir="rtl"
+                    className="rounded-[22px] border border-white/[0.11] p-3 flex flex-col justify-between relative overflow-hidden bg-white/[0.03]"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-white flex items-center gap-1.5">
+                        <Utensils className="w-3.5 h-3.5 text-[#10B981]" />
+                        آشپزخانه
+                      </span>
+                      <span className="text-[10px] text-[#94A3B8]">خط آماده و بار گرم</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-1.5 text-[10px] text-[#cbd5e1] text-center mt-2">
+                      <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] py-1.5">
+                        پاس سفارش
+                      </div>
+                      <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] py-1.5">
+                        گریل و پخت
+                      </div>
+                      <div className="rounded-lg bg-white/[0.04] border border-white/[0.06] py-1.5">
+                        سینک و آماده‌سازی
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ================================================================= */}
+              {/* WING 3 (19fr): TERRACE (تراس فضای باز)                              */}
+              {/* ================================================================= */}
+              <section
+                className={`relative rounded-[22px] border border-white/[0.11] p-3 pr-4 flex flex-col justify-between gap-2 overflow-hidden transition-opacity duration-300 ${
+                  isZoneDimmed('TERRACE') ? 'opacity-25' : 'opacity-100'
+                }`}
+                style={{
+                  background:
+                    'linear-gradient(175deg, rgba(255, 255, 255, 0.03) 0%, rgba(20, 24, 33, 0.75) 60%, rgba(11, 14, 18, 0.92) 100%)',
+                }}
+              >
+                {/* Greenery Planter Vertical Strip */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute top-2 bottom-2 right-1.5 w-1.5 rounded-full bg-gradient-to-b from-emerald-600/70 via-emerald-700/60 to-emerald-900/70 border border-emerald-400/25"
+                />
+
+                <div dir="rtl" className="flex items-center justify-between gap-1 pb-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <Trees className="w-3.5 h-3.5 text-[#10B981]" />
+                    <h3 className="font-black text-xs text-white">تراس</h3>
+                  </div>
+                  <span className="text-[10px] text-[#94A3B8]">فضای باز</span>
+                </div>
+
+                {/* Vertical Stack of Terrace Tables: M-05, M-06, T-01, T-02, T-03 */}
+                <div className="flex-1 flex flex-col justify-between gap-2 min-h-0">
+                  <div className="h-[106px]">
+                    {renderArchitecturalTable('M-05', 'vertical-6', 'h-full')}
+                  </div>
+                  <div className="h-[106px]">
+                    {renderArchitecturalTable('M-06', 'vertical-6', 'h-full')}
+                  </div>
+                  <div className="h-[88px]">
+                    {renderArchitecturalTable('T-01', 'square-2', 'h-full')}
+                  </div>
+                  <div className="h-[88px]">
+                    {renderArchitecturalTable('T-02', 'square-2', 'h-full')}
+                  </div>
+                  <div className="h-[92px] pt-1 border-t border-white/[0.08]">
+                    {renderArchitecturalTable('T-03', 'square-3', 'h-full')}
+                  </div>
+                </div>
+
+                {/* Utility Corner Box */}
+                <div className="flex items-center justify-between text-[10px] text-[#94A3B8] pt-1 border-t border-white/[0.08]">
+                  <span>انباری / ۳</span>
+                  <span className="w-5 h-5 rounded bg-white/[0.05] border border-white/10 font-mono font-bold text-white flex items-center justify-center">
+                    3
+                  </span>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+
+        {/* Inline Legend / Key */}
+        <div
+          dir="rtl"
+          className="flex flex-wrap items-center justify-between gap-2 px-2 text-[11px] text-[#94A3B8]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-[#1B222C] border border-white/20" />
+              <span>آزاد</span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-[#10B981] shadow-[0_0_8px_rgba(16,185,129,0.7)]" />
+              <span className="text-[#10B981] font-bold">فعال / مشغول</span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-cyan-400" />
+              <span className="text-cyan-300">ادغام‌شده</span>
+            </span>
+            <span aria-hidden="true">·</span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="text-amber-300">در انتظار تسویه</span>
+            </span>
+          </div>
+          <span>لمس میز: ثبت سفارش · کشیدن میز روی میز دیگر: ادغام · کشیدن به بیرون: جداسازی</span>
+        </div>
+
+        {/* Floating Liquid Glass Drag Ghost Pill */}
+        {dragState && (
+          <div
+            dir="rtl"
+            style={{
+              left: dragState.clientX + 14,
+              top: dragState.clientY + 14,
+            }}
+            className={`fixed z-50 pointer-events-none px-3.5 py-2 rounded-full border backdrop-blur-2xl text-xs font-black flex items-center gap-2 shadow-2xl ${
+              dragState.hoverTargetId
+                ? 'bg-emerald-950/90 border-[#10B981] text-emerald-200'
+                : dragState.isSourceMerged &&
+                  (dragState.hoverSeparateZone ||
+                    (dragState.isSourceChild && dragState.isOutsideSameGroup))
+                ? 'bg-rose-950/90 border-rose-400 text-rose-100'
+                : 'bg-[#12161d]/90 border-cyan-400/60 text-cyan-100'
+            }`}
+          >
+            {dragState.hoverTargetId ? (
+              <>
+                <Link2 className="w-3.5 h-3.5 text-[#10B981]" />
+                <span>
+                  ادغام {dragState.sourceLabel} ← {nodeMap.get(dragState.hoverTargetId)?.label}
+                </span>
+              </>
+            ) : dragState.isSourceMerged &&
+              (dragState.hoverSeparateZone ||
+                (dragState.isSourceChild && dragState.isOutsideSameGroup)) ? (
+              <>
+                <Unlink className="w-3.5 h-3.5 text-rose-300" />
+                <span>رها کنید برای جداسازی {dragState.sourceLabel}</span>
+              </>
+            ) : (
+              <>
+                <Link2 className="w-3.5 h-3.5 text-cyan-300" />
+                <span>
+                  {dragState.sourceLabel} · روی میز مقصد رها کنید
+                </span>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    </MotionConfig>
   );
 };

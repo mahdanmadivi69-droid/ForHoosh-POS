@@ -1,4 +1,4 @@
-export type OrderStatus = 'open' | 'sent_to_bar' | 'settled' | 'voided';
+﻿export type OrderStatus = 'open' | 'sent_to_bar' | 'settled' | 'voided';
 export type PaymentMethod = 'cash' | 'pos_terminal' | 'card_to_card' | 'split';
 
 export interface InventoryItem {

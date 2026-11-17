@@ -1,4 +1,4 @@
-declare module 'ws' {
+﻿declare module 'ws' {
   import { Server as HttpServer } from 'http';
   import { EventEmitter } from 'events';
 

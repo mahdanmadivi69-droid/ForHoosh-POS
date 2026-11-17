@@ -1,3 +1,4 @@
+﻿import { SecureCredential } from '../services/credentials';
 /**
  * Domain entities and types for SmartOrders
  * All monetary amounts are in Toman as exact integers (BigInt or number without fractional decimals)
@@ -9,7 +10,6 @@ export function isManagerOrOwner(role: UserRole): boolean {
   return role === 'OWNER' || role === 'MANAGER';
 }
 
-import { SecureCredential } from '../services/credentials';
 
 export interface User {
   id: string;
@@ -54,8 +54,8 @@ export interface MenuItem {
   isAvailable: boolean;
   station?: PrepStation;
   description?: string;
-  currentStock?: number; // موجودی فعلی انبار/کافه به عدد
-  lowStockThreshold?: number; // آستانه هشدار کسری موجودی اختصاصی آیتم
+  currentStock?: number; // Ù…ÙˆØ¬ÙˆØ¯ÛŒ ÙØ¹Ù„ÛŒ Ø§Ù†Ø¨Ø§Ø±/Ú©Ø§ÙÙ‡ Ø¨Ù‡ Ø¹Ø¯Ø¯
+  lowStockThreshold?: number; // Ø¢Ø³ØªØ§Ù†Ù‡ Ù‡Ø´Ø¯Ø§Ø± Ú©Ø³Ø±ÛŒ Ù…ÙˆØ¬ÙˆØ¯ÛŒ Ø§Ø®ØªØµØ§ØµÛŒ Ø¢ÛŒØªÙ…
   roast?: 'all' | 'medium' | 'dark' | 'light';
   roastLevelText?: string;
   weight?: string;
@@ -82,14 +82,14 @@ export interface Shift {
   closedByUserName?: string;
   openedAt: string; // ISO string
   closedAt?: string; // ISO string
-  openingCashToman: number; // موجودی اولیه صندوق نقد
-  expectedClosingCashToman: number; // موجودی نقد محاسبه‌شده توسط سیستم
-  actualCountedCashToman?: number; // نقد شمرده‌شده فیزیکی در پایان شیفت
-  cashDiscrepancyToman?: number; // actual - expected (منفی یعنی کسری، مثبت یعنی مازاد)
+  openingCashToman: number; // Ù…ÙˆØ¬ÙˆØ¯ÛŒ Ø§ÙˆÙ„ÛŒÙ‡ ØµÙ†Ø¯ÙˆÙ‚ Ù†Ù‚Ø¯
+  expectedClosingCashToman: number; // Ù…ÙˆØ¬ÙˆØ¯ÛŒ Ù†Ù‚Ø¯ Ù…Ø­Ø§Ø³Ø¨Ù‡â€ŒØ´Ø¯Ù‡ ØªÙˆØ³Ø· Ø³ÛŒØ³ØªÙ…
+  actualCountedCashToman?: number; // Ù†Ù‚Ø¯ Ø´Ù…Ø±Ø¯Ù‡â€ŒØ´Ø¯Ù‡ ÙÛŒØ²ÛŒÚ©ÛŒ Ø¯Ø± Ù¾Ø§ÛŒØ§Ù† Ø´ÛŒÙØª
+  cashDiscrepancyToman?: number; // actual - expected (Ù…Ù†ÙÛŒ ÛŒØ¹Ù†ÛŒ Ú©Ø³Ø±ÛŒØŒ Ù…Ø«Ø¨Øª ÛŒØ¹Ù†ÛŒ Ù…Ø§Ø²Ø§Ø¯)
   discrepancyReason?: string;
   status: ShiftStatus;
   notes?: string;
-  /** Immutable lock — set on close; a closed shift's numbers must never be mutated retroactively. */
+  /** Immutable lock â€” set on close; a closed shift's numbers must never be mutated retroactively. */
   locked?: boolean;
 }
 
@@ -117,7 +117,7 @@ export interface Order {
   createdByUserId: string;
   createdByUserName: string;
   orderNumber: number;
-  /** Daily receipt sequence number (per tenant + local day, 1-based → #001). Allocated inside the atomic checkout Dexie transaction. */
+  /** Daily receipt sequence number (per tenant + local day, 1-based â†’ #001). Allocated inside the atomic checkout Dexie transaction. */
   dailyReceiptNumber?: number;
   orderType: OrderType;
   tableLabel?: string;
@@ -125,8 +125,8 @@ export interface Order {
   notes?: string;
   status: OrderStatus;
   items: OrderItem[];
-  grossAmountToman: number; // مجموع قیمت آیتم‌ها قبل از تخفیف
-  discountAmountToman: number; // تخفیف
+  grossAmountToman: number; // Ù…Ø¬Ù…ÙˆØ¹ Ù‚ÛŒÙ…Øª Ø¢ÛŒØªÙ…â€ŒÙ‡Ø§ Ù‚Ø¨Ù„ Ø§Ø² ØªØ®ÙÛŒÙ
+  discountAmountToman: number; // ØªØ®ÙÛŒÙ
   netTotalToman: number; // grossAmountToman - discountAmountToman
   cancellationReason?: string;
   createdAt: string;
@@ -144,8 +144,8 @@ export interface Payment {
   receivedByUserId: string;
   amountToman: number;
   paymentMethod: PaymentMethod;
-  referenceCode?: string; // شماره پیگیری کارتخوان
-  terminalName?: string; // نام دستگاه کارتخوان مثلاً "به‌پرداخت ملت"
+  referenceCode?: string; // Ø´Ù…Ø§Ø±Ù‡ Ù¾ÛŒÚ¯ÛŒØ±ÛŒ Ú©Ø§Ø±ØªØ®ÙˆØ§Ù†
+  terminalName?: string; // Ù†Ø§Ù… Ø¯Ø³ØªÚ¯Ø§Ù‡ Ú©Ø§Ø±ØªØ®ÙˆØ§Ù† Ù…Ø«Ù„Ø§Ù‹ "Ø¨Ù‡â€ŒÙ¾Ø±Ø¯Ø§Ø®Øª Ù…Ù„Øª"
   status: PaymentStatus;
   createdAt: string;
 }
@@ -156,9 +156,9 @@ export interface Expense {
   shiftId: string;
   recordedByUserId: string;
   recordedByUserName: string;
-  category: string; // مثلاً: شیر و لبنیات، میوه، ظروف یکبارمصرف، کرایه پیک، متفرقه
+  category: string; // Ù…Ø«Ù„Ø§Ù‹: Ø´ÛŒØ± Ùˆ Ù„Ø¨Ù†ÛŒØ§ØªØŒ Ù…ÛŒÙˆÙ‡ØŒ Ø¸Ø±ÙˆÙ ÛŒÚ©Ø¨Ø§Ø±Ù…ØµØ±ÙØŒ Ú©Ø±Ø§ÛŒÙ‡ Ù¾ÛŒÚ©ØŒ Ù…ØªÙØ±Ù‚Ù‡
   amountToman: number;
-  isPaidFromCashDrawer: boolean; // آیا از کشوی نقد پرداخت شد؟ (روی محاسبه موجودی پایانی اثر دارد)
+  isPaidFromCashDrawer: boolean; // Ø¢ÛŒØ§ Ø§Ø² Ú©Ø´ÙˆÛŒ Ù†Ù‚Ø¯ Ù¾Ø±Ø¯Ø§Ø®Øª Ø´Ø¯ØŸ (Ø±ÙˆÛŒ Ù…Ø­Ø§Ø³Ø¨Ù‡ Ù…ÙˆØ¬ÙˆØ¯ÛŒ Ù¾Ø§ÛŒØ§Ù†ÛŒ Ø§Ø«Ø± Ø¯Ø§Ø±Ø¯)
   description: string;
   createdAt: string;
 }
@@ -183,33 +183,33 @@ export interface ShiftReportSummary {
   openedBy: string;
   closedBy?: string;
   
-  // آمار سفارشات
+  // Ø¢Ù…Ø§Ø± Ø³ÙØ§Ø±Ø´Ø§Øª
   orderCount: number;
   completedOrderCount: number;
   cancelledOrderCount: number;
-  // ارزش خالص سفارشات ابطال‌شده در پنجره شیفت
+  // Ø§Ø±Ø²Ø´ Ø®Ø§Ù„Øµ Ø³ÙØ§Ø±Ø´Ø§Øª Ø§Ø¨Ø·Ø§Ù„â€ŒØ´Ø¯Ù‡ Ø¯Ø± Ù¾Ù†Ø¬Ø±Ù‡ Ø´ÛŒÙØª
   cancelledAmountToman: number;
 
-  // گزارش مالی فروش
+  // Ú¯Ø²Ø§Ø±Ø´ Ù…Ø§Ù„ÛŒ ÙØ±ÙˆØ´
   grossSalesToman: number;
   discountsToman: number;
   netRevenueToman: number;
 
-  // تفکیک دریافت‌ها
+  // ØªÙÚ©ÛŒÚ© Ø¯Ø±ÛŒØ§ÙØªâ€ŒÙ‡Ø§
   cashReceivedToman: number;
   cardReceivedToman: number;
   otherReceivedToman: number;
   totalCollectedToman: number;
 
-  // بازگشت وجه نقد (پرداخت‌های نقدی ابطال‌شده در پنجره شیفت)
+  // Ø¨Ø§Ø²Ú¯Ø´Øª ÙˆØ¬Ù‡ Ù†Ù‚Ø¯ (Ù¾Ø±Ø¯Ø§Ø®Øªâ€ŒÙ‡Ø§ÛŒ Ù†Ù‚Ø¯ÛŒ Ø§Ø¨Ø·Ø§Ù„â€ŒØ´Ø¯Ù‡ Ø¯Ø± Ù¾Ù†Ø¬Ø±Ù‡ Ø´ÛŒÙØª)
   cashRefundsToman: number;
 
-  // هزینه‌ها
+  // Ù‡Ø²ÛŒÙ†Ù‡â€ŒÙ‡Ø§
   cashDrawerExpensesToman: number;
   otherExpensesToman: number;
   totalExpensesToman: number;
 
-  // کشوی نقد فیزیکی
+  // Ú©Ø´ÙˆÛŒ Ù†Ù‚Ø¯ ÙÛŒØ²ÛŒÚ©ÛŒ
   openingCashToman: number;
   expectedCashToman: number;
   actualCashToman?: number;

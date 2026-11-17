@@ -16,6 +16,7 @@ import { playPosBeep } from '../services/soundEffects';
 interface ModifierModalProps {
   item: MenuItem | null;
   isOpen: boolean;
+  isModendo?: boolean;
   onClose: () => void;
   onConfirm: (item: MenuItem, selectedModifiers: ModifierOption[], notes: string) => void;
 }
@@ -38,6 +39,7 @@ const WEIGHT_OPTIONS: { id: string; nameFa: string; multiplier: number }[] = [
 export const ModifierModal: React.FC<ModifierModalProps> = ({
   item,
   isOpen,
+  isModendo = false,
   onClose,
   onConfirm,
 }) => {
@@ -131,11 +133,21 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
             <div className="flex items-start justify-between pb-3 border-b border-[#293444]">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-[10px] bg-[#0F223D] border border-[#293444] text-[#F3E9DD] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-                    {item.roastLevelText || '100 HICH SPECS'}
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider ${
+                      isModendo
+                        ? 'bg-[#10B981]/15 border border-[#10B981]/30 text-emerald-300'
+                        : 'bg-[#0F223D] border border-[#293444] text-[#F3E9DD]'
+                    }`}
+                  >
+                    {item.roastLevelText || (isModendo ? 'MODENDO CUSTOMIZATION' : '100 HICH SPECS')}
                   </span>
                   {item.badge && (
-                    <span className="text-[10px] bg-[#D71921] text-white px-2 py-0.5 rounded font-black uppercase">
+                    <span
+                      className={`text-[10px] text-white px-2 py-0.5 rounded font-black uppercase ${
+                        isModendo ? 'bg-emerald-600' : 'bg-[#D71921]'
+                      }`}
+                    >
                       {item.badge}
                     </span>
                   )}
@@ -230,7 +242,11 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
                         onClick={() => toggleModifier(mod)}
                         className={`p-2.5 rounded-lg border flex items-center justify-between transition cursor-pointer text-right text-xs ${
                           isSelected
-                            ? 'bg-[#0F223D] border-[#D71921] text-white font-bold shadow-sm'
+                            ? isModendo
+                              ? 'bg-[#10B981]/20 border-[#10B981] text-white font-bold shadow-sm'
+                              : 'bg-[#0F223D] border-[#D71921] text-white font-bold shadow-sm'
+                            : isModendo
+                            ? 'bg-[#1B222C]/70 border-white/10 text-[#CBD5E1] hover:border-white/20 hover:text-white'
                             : 'bg-[#121417] border-[#293444] text-[#9EACB8] hover:border-[#9EACB8] hover:text-white'
                         }`}
                       >
@@ -238,7 +254,9 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
                           <span
                             className={`w-3.5 h-3.5 rounded flex items-center justify-center text-[9px] shrink-0 ${
                               isSelected
-                                ? 'bg-[#D71921] text-white'
+                                ? isModendo
+                                  ? 'bg-[#10B981] text-slate-950 font-black'
+                                  : 'bg-[#D71921] text-white'
                                 : 'border border-[#293444] bg-[#1B222C]'
                             }`}
                           >
@@ -247,7 +265,7 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
                           <span className="truncate">{mod.nameFa}</span>
                         </div>
                         {mod.priceDeltaToman > 0 && (
-                          <span className="font-mono text-[#F3E9DD] font-bold text-[11px] shrink-0 num-heavy">
+                          <span className={`font-mono font-bold text-[11px] shrink-0 num-heavy ${isModendo ? 'text-emerald-300' : 'text-[#F3E9DD]'}`}>
                             +{formatToman(mod.priceDeltaToman)}
                           </span>
                         )}
@@ -268,7 +286,9 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
                 placeholder="مثلاً: فوق‌العاده داغ، لیوان دوجداره، کم‌یخ..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                className="w-full bg-[#121417] border border-[#293444] rounded-lg p-2 text-xs text-white placeholder:text-[#9EACB8]/60 focus:outline-none focus:border-[#D71921]"
+                className={`w-full bg-[#121417] border rounded-lg p-2 text-xs text-white placeholder:text-[#9EACB8]/60 focus:outline-none ${
+                  isModendo ? 'border-white/15 focus:border-[#10B981]' : 'border-[#293444] focus:border-[#D71921]'
+                }`}
               />
             </div>
 
@@ -276,7 +296,7 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
             <div className="pt-3 border-t border-[#293444] flex items-center justify-between">
               <div>
                 <span className="text-[10px] text-[#9EACB8] block">قیمت با مودیفایر:</span>
-                <span className="text-base font-black text-[#D71921] num-heavy">
+                <span className={`text-base font-black num-heavy ${isModendo ? 'text-emerald-300' : 'text-[#D71921]'}`}>
                   {formatToman(totalUnitPriceToman)} تومان
                 </span>
               </div>
@@ -292,7 +312,11 @@ export const ModifierModal: React.FC<ModifierModalProps> = ({
                 <button
                   type="button"
                   onClick={handleAdd}
-                  className="vision-checkout-cta text-white font-black px-6 py-2.5 rounded-xl text-xs cursor-pointer"
+                  className={`font-black px-6 py-2.5 rounded-xl text-xs cursor-pointer shadow-lg transition ${
+                    isModendo
+                      ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                      : 'vision-checkout-cta text-white'
+                  }`}
                 >
                   افزودن به فاکتور
                 </button>

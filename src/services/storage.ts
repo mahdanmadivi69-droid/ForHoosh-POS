@@ -42,7 +42,7 @@ const STORAGE_KEYS = {
 // Modendo Cafe (Modendo Boardgame & Gaming Cafe - Primary Tenant)
 export const MODENDO_TENANT: Tenant = {
   id: 'tenant-modendo-01',
-  name: 'کافه بردگیم و گیمینگ مودندو (Modendo Cafe)',
+  name: 'MODENDO — کافه بردگیم و گیمینگ',
   currency: 'TOMAN',
   phone: '021-88997766',
   address: 'تهران، خیابان شریعتی، مجتمع تجاری مودندو، طبقه منفی ۱ و همکف',
@@ -2458,18 +2458,14 @@ export class SmartOrdersStore {
 
   // Active Tenant Management
   static getActiveTenantId(): string {
-    const envTenant =
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT) ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) ||
-      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_ACTIVE_TENANT) ||
-      '';
+    const envTenant = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_TENANT_ID) || '';
     if (envTenant) {
       // Normalize short tenant keys ('modendo') to canonical store IDs ('tenant-modendo-01')
       if (/modendo/i.test(envTenant)) return 'tenant-modendo-01';
       if (/100hich/i.test(envTenant)) return 'tenant-100hich-01';
       return envTenant;
     }
-    return load<string>(STORAGE_KEYS.ACTIVE_TENANT_ID, 'tenant-100hich-01');
+    return load<string>(STORAGE_KEYS.ACTIVE_TENANT_ID, 'tenant-modendo-01');
   }
 
   static setActiveTenantId(tenantId: string): void {
@@ -2477,7 +2473,7 @@ export class SmartOrdersStore {
   }
 
   static getAvailableTenants(): Tenant[] {
-    return [DEFAULT_TENANT, MODENDO_TENANT];
+    return [MODENDO_TENANT, DEFAULT_TENANT];
   }
 
   static switchTenant(tenantId: string): Tenant {

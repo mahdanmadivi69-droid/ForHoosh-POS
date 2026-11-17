@@ -1,5 +1,7 @@
 import { PinLockScreen } from './components/auth/PinLockScreen';
 import { AppLauncherHub } from './components/hub/AppLauncherHub';
+import { ModendoOperationalHub } from './components/ModendoOperationalHub';
+import { ModendoReceiptHistoryModal } from './components/ModendoReceiptHistoryModal';
 import { SensoryLabView } from './components/SensoryLabView';
 import { HichSettingsControlDeck } from './views/settings/HichSettingsControlDeck';
 import { AuthUserRecord } from './types/rbac-settings';
@@ -70,12 +72,12 @@ function App() {
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>(SmartOrdersStore.getAuditLogs());
 
   // UI state
+  const isModendoTenant = activeTenant.id === 'modendo';
+  const defaultTab = isModendoTenant ? 'hub' : 'pos';
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [pendingSwitchUserId, setPendingSwitchUserId] = useState<string | null>(null);
-  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>(
-    activeTenant.id === 'modendo' ? 'hub' : 'pos'
-  );
+  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>(defaultTab);
   const [isTenantConfigOpen, setIsTenantConfigOpen] = useState(false);
   const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -83,6 +85,7 @@ function App() {
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isBaristaKdsOpen, setIsBaristaKdsOpen] = useState(false);
+  const [isReceiptHistoryOpen, setIsReceiptHistoryOpen] = useState<boolean>(false);
   const [baristaActiveCount, setBaristaActiveCount] = useState<number>(0);
   const [feedbackToast, setFeedbackToast] = useState<string | null>(null);
 
@@ -110,14 +113,28 @@ function App() {
     return () => unsub();
   }, []);
 
-  // Initialize seed data on startup
+  // Initialize seed data on startup, then recover the order ledger from the
+  // P0-2 Dexie mirror (IndexedDB) so orders survive a localStorage loss/refresh.
   useEffect(() => {
+    let cancelled = false;
     SmartOrdersStore.initSeedData();
     SmartOrdersStore.migrateLegacyUserPasswords().catch(() => {});
     RBACService.initDefaultUsers();
     SettingsService.initDefaults();
     dailyBackupScheduler.init();
     refreshState();
+
+    SmartOrdersStore.hydrateOrdersFromDexie()
+      .then((recoveredOrders) => {
+        if (!cancelled) setOrders(recoveredOrders);
+      })
+      .catch((err) => {
+        console.error('[App] Dexie order recovery failed', err);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Sync active tenant from tenantConfig runtime
@@ -165,6 +182,14 @@ function App() {
     }
   }, [currentTab, activeTenant.id]);
 
+
+  // P0-1: hard lockdown — if the Zero-G flag is off, force the real POS view
+  // even for a stale tab value in memory/storage.
+  useEffect(() => {
+    if (!FEATURES.ENABLE_ZERO_G_SMART_ORDERS && currentTab === 'zero-g') {
+      setCurrentTab('pos');
+    }
+  }, [currentTab]);
 
   // User Authentication Handlers
   const handleLockTerminal = () => {
@@ -357,8 +382,61 @@ function App() {
     );
   }
 
-  // 2. 4-Way App Launcher Hub
+  // 2. Operational Module Hub Launcher
   if (currentTab === 'hub') {
+    if (activeTenant.id === 'modendo') {
+      return (
+        <>
+          <ModendoOperationalHub
+            activeUser={activeUser}
+            activeShift={activeShift}
+            onSelectModule={(tab: string) => {
+              if (tab === 'takeaway') {
+                setPreselectedTableLabel('بیرون‌بر');
+                setCurrentTab('pos');
+              } else if (tab === 'kds') {
+                setIsBaristaKdsOpen(true);
+              } else {
+                setCurrentTab(tab as any);
+              }
+            }}
+            onLock={handleLockTerminal}
+            onOpenShiftModal={() => setIsShiftModalOpen(true)}
+            onOpenKds={() => setIsBaristaKdsOpen(true)}
+            onOpenReceiptHistory={() => setIsReceiptHistoryOpen(true)}
+            baristaActiveCount={baristaActiveCount}
+          />
+
+          {/* Hub-Accessible Modals */}
+          <ModendoReceiptHistoryModal
+            isOpen={isReceiptHistoryOpen}
+            onClose={() => setIsReceiptHistoryOpen(false)}
+            activeUser={activeUser}
+            onOrderCancelled={handleCancelOrder}
+          />
+
+          <ShiftModal
+            isOpen={isShiftModalOpen}
+            onClose={() => setIsShiftModalOpen(false)}
+            tenant={tenant}
+            activeShift={activeShift}
+            activeUser={activeUser}
+            orders={orders}
+            payments={payments}
+            expenses={expenses}
+            onOpenShift={handleOpenShift}
+            onCloseShift={handleCloseShift}
+          />
+
+          <BaristaKdsModal
+            isOpen={isBaristaKdsOpen}
+            onClose={() => setIsBaristaKdsOpen(false)}
+            tenantName={tenant.name}
+          />
+        </>
+      );
+    }
+
     return (
       <AppLauncherHub
         activeUser={activeUser}
@@ -413,6 +491,7 @@ function App() {
       {/* Main Header */}
       <Header
         tenant={tenant}
+        activeTenantKey={activeTenant.id as 'modendo' | '100hich'}
         activeShift={activeShift}
         activeUser={activeUser}
         allUsers={allUsers}
@@ -423,6 +502,7 @@ function App() {
         onOpenExpenseModal={() => setIsExpenseModalOpen(true)}
         onOpenBackupModal={() => setIsBackupModalOpen(true)}
         onOpenBaristaKds={() => setIsBaristaKdsOpen(true)}
+        onOpenReceiptHistory={() => setIsReceiptHistoryOpen(true)}
         baristaActiveCount={baristaActiveCount}
         onUserChange={handleUserChange}
         onUserSwitchRequest={handleUserSwitchRequest}
@@ -450,6 +530,7 @@ function App() {
             onOpenShiftRequired={() => setIsShiftModalOpen(true)}
             onOpenZReport={() => setIsZReportModalOpen(true)}
             preselectedTableLabel={preselectedTableLabel}
+            onBackToFloorPlan={() => setCurrentTab('floor-plan')}
           />
         )}
 
@@ -457,7 +538,8 @@ function App() {
 
         {currentTab === 'floor-plan' && (
           <FloorPlanView
-            onBackToPos={() => setCurrentTab('hub')}
+            onBackToPos={() => setCurrentTab('pos')}
+            onBackToHub={() => setCurrentTab('hub')}
             onSelectTableForOrder={(tableLabel: string) => {
               setPreselectedTableLabel(tableLabel);
               setCurrentTab('pos');
@@ -580,6 +662,16 @@ function App() {
         onClose={() => setIsBaristaKdsOpen(false)}
         tenantName={tenant.name}
       />
+
+      {/* Modendo Receipt History, Reprint & PIN-Gated Void Modal */}
+      {activeTenant.id === 'modendo' && (
+        <ModendoReceiptHistoryModal
+          isOpen={isReceiptHistoryOpen}
+          onClose={() => setIsReceiptHistoryOpen(false)}
+          activeUser={activeUser}
+          onOrderCancelled={handleCancelOrder}
+        />
+      )}
 
       {/* Offline Status Connectivity Badge */}
       <OfflineIndicator />

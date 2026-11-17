@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ShoppingBag,
   Plus,
@@ -24,12 +24,11 @@ import {
   Layers,
   ArrowRight,
   Lock,
-  FileText,
-  LayoutGrid,
-  RotateCcw,
+  Gamepad2,
+  Settings2,
+  Map as MapIcon,
+  Clock,
 } from 'lucide-react';
-import { TablePickerModal } from './floorplan/TablePickerModal';
-import { floorPlanService } from '../services/floorPlanService';
 import {
   Category,
   MenuItem,
@@ -52,7 +51,8 @@ import {
 } from '../services/financialMath';
 import { ReceiptPreview } from './ReceiptPreview';
 import { ModifierModal } from './ModifierModal';
-import { ModifierOption, OrderAggregate, OrderItemAggregate } from '../types/order-domain';
+import { ModifierOption } from '../types/order-domain';
+import { toOrderAggregate } from '../types/order-adapter';
 import { globalOfflineSyncQueue, QueueStats } from '../services/offlineSyncQueue';
 import { baristaDispatcher } from '../services/baristaDispatcher';
 import {
@@ -63,22 +63,8 @@ import {
 } from '../services/escposThermalPrinter';
 import { playPosBeep } from '../services/soundEffects';
 import { printThermalReceipt } from '../services/receiptPrinter';
-import { inventoryBomService } from '../services/inventoryBomService';
+import { MODENDO_FLOOR_NODES, TableSession } from './FloorPlanCanvas';
 import { openTabService } from '../services/openTabService';
-import { getActiveTenant } from '../config/tenantConfig';
-import { CatalogCard } from './CatalogCard';
-import { CatalogMenuItem, SelectedBean, CatalogCartItem } from '../types/catalog';
-import { OpenTabsModal } from './OpenTabsModal';
-import { LiquidGlassPaymentSheet, SettlementResult } from './LiquidGlassPaymentSheet';
-import { CatalogService } from '../services/catalog/catalogService';
-import { OpenTabRecord } from '../db/schema';
-import { getCafeDatabase } from '../db/cafeDb';
-import { getDexiePOSDatabase } from '../db/DexiePOSDatabase';
-import { SmartOrdersStore } from '../services/storage';
-import { printQueueService } from '../services/printQueueService';
-import { usePrinterStore } from '../stores/usePrinterStore';
-import { PosMainLayout, PosCartPanel } from './pos';
-import { getProductWallpaper, getProductWallpaperStyle } from '../utils/productWallpapers';
 
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
@@ -90,95 +76,14 @@ const IRANIAN_BANKNOTES_TOMAN = [
   2000000,
 ];
 
-/**
- * Catalog Item Priority Hierarchy (Directive KW-DIR-ALPHA-2026-11-10-023)
- * Prioritizes:
- * 1. اسپرسو (Espresso)
- * 2-3. آمریکانو (Americano / Brewed Coffee)
- * 4-6. فلت وایت (Flat White / Cold Drinks)
- * 7-8. کلد برو (Cold Brew / Brewed Coffee / Cold Drinks)
- * 9-10. لاته (Latte)
- * 11. چای / دمنوش (Teas / Infusions)
- * 12. کرواسان (Croissants / Pastries)
- */
-export const getItemPriorityRank = (item: MenuItem): number => {
-  const id = (item.id || '').toLowerCase();
-  const nameFa = (item.nameFa || '').toLowerCase();
-  const nameEn = (item.nameEn || '').toLowerCase();
-  const cat = (item.categoryId || '').toLowerCase();
-
-  // 1. اسپرسو (Espresso)
-  if (id === 'item-esp-50' || id === '100hich-esp-single') return 1;
-  if (id === 'item-esp-100' || id === '100hich-esp-double-yirgacheffe') return 2;
-  if (
-    (nameFa.includes('اسپرسو') || nameEn.includes('espresso')) &&
-    !nameFa.includes('ماکیاتو') &&
-    !nameFa.includes('آیس') &&
-    !nameFa.includes('آمریکانو') &&
-    !nameFa.includes('بلند') &&
-    !nameFa.includes('تونیک')
-  ) {
-    return 3;
-  }
-
-  // 2-3. آمریکانو (Americano / Brewed Coffee)
-  if (id === 'item-ame-50' || id === '100hich-esp-americano') return 4;
-  if (id === 'item-ame-100') return 5;
-  if (
-    (nameFa.includes('آمریکانو') || nameEn.includes('americano') || nameFa.includes('اسریکانو')) &&
-    !nameFa.includes('آیس')
-  ) {
-    return 6;
-  }
-
-  // 4-6. فلت وایت (Flat White / Cold Drinks)
-  if (id === 'item-flw-50' || id === '100hich-esp-flat-white') return 7;
-  if (id === 'item-flw-100') return 8;
-  if (nameFa.includes('فلت وایت') || nameEn.includes('flat white')) return 9;
-
-  // 7-8. کلد برو (Cold Brew / Brewed Coffee / Cold Drinks)
-  if (
-    id.includes('coldbrew') ||
-    nameFa.includes('کلد برو') ||
-    nameEn.includes('cold brew') ||
-    nameEn.includes('coldbrew')
-  ) {
-    return 10;
-  }
-  if (id === 'item-ice-ame-50') return 11;
-  if (id === 'item-ice-ame-100') return 12;
-
-  // 9-10. لاته (Latte)
-  if (id === 'item-lat-50' || id === '100hich-esp-latte-oat') return 13;
-  if (id === 'item-lat-100') return 14;
-
-  // 11. چای / دمنوش (Tea / Infusion)
-  if (
-    id === 'item-tea-lahijan' ||
-    id.includes('tea-lahijan') ||
-    nameFa.includes('چای تخصصی')
-  ) {
-    return 15;
-  }
-
-  // 12. کرواسان (Croissant / Pastries)
-  if (
-    id === 'item-bakery-croissant' ||
-    id.includes('croissant') ||
-    nameFa.includes('کروسان') ||
-    nameFa.includes('کرواسان') ||
-    nameEn.includes('croissant')
-  ) {
-    return 16;
-  }
-
-  // Secondary categories
-  if ((nameFa.includes('لاته') || nameEn.includes('latte')) && !nameFa.includes('آیس')) return 20;
-  if (nameFa.includes('چای') || nameFa.includes('دمنوش')) return 21;
-  if (cat.includes('pastry') || cat.includes('bakery') || nameFa.includes('کیک')) return 22;
-
-  return 100;
-};
+export interface PosBoundTableInfo {
+  nodeId: string;
+  label: string;
+  titleFa: string;
+  kind: 'TABLE' | 'PS5';
+  guestCount?: number;
+  ps5FeeToman?: number;
+}
 
 interface PosViewProps {
   tenant: Tenant;
@@ -194,7 +99,37 @@ interface PosViewProps {
   ) => { order: Order; payment: Payment } | null;
   onOpenShiftRequired: () => void;
   onOpenZReport?: () => void;
+  // Optional Modendo Table-First Drill-Down props (100hich leaves these undefined)
   preselectedTableLabel?: string | null;
+  boundTable?: PosBoundTableInfo | null;
+  initialCartItems?: OrderItem[];
+  initialCustomerName?: string;
+  initialOrderNotes?: string;
+  initialDiscountToman?: number;
+  initialDiscountPercent?: number;
+  onCartSessionChange?: (
+    nodeId: string,
+    snapshot: {
+      cartItems: OrderItem[];
+      customerName: string;
+      orderNotes: string;
+      discountToman: number;
+      discountPercent: number;
+    }
+  ) => void;
+  onBackToFloorPlan?: () => void;
+  onStartTakeaway?: () => void;
+  onInspectBoundTable?: (nodeId: string) => void;
+  onTableOrderSettled?: (nodeId: string, order: Order) => void;
+  onSaveOpenTableTab?: (payload: {
+    nodeId?: string;
+    tableLabel: string;
+    cartItems: OrderItem[];
+    customerName: string;
+    orderNotes: string;
+    discountToman: number;
+    discountPercent: number;
+  }) => void;
 }
 
 export const PosView: React.FC<PosViewProps> = ({
@@ -205,13 +140,39 @@ export const PosView: React.FC<PosViewProps> = ({
   activeUser,
   onOrderCompleted,
   onOpenShiftRequired,
-  onOpenZReport,
   preselectedTableLabel,
+  boundTable,
+  initialCartItems,
+  initialCustomerName,
+  initialOrderNotes,
+  initialDiscountToman,
+  initialDiscountPercent,
+  onCartSessionChange,
+  onBackToFloorPlan,
+  onStartTakeaway,
+  onInspectBoundTable,
+  onTableOrderSettled,
+  onSaveOpenTableTab,
 }) => {
+  const isModendo =
+    tenant.id === 'tenant-modendo-01' ||
+    tenant.id === 'modendo' ||
+    (typeof document !== 'undefined' && document.documentElement.dataset.theme === 'modendo');
   const canEditFinancials = isManagerOrOwner(activeUser.role);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
+  const [roastFilter, setRoastFilter] = useState<'all' | 'medium' | 'dark' | 'light'>('all');
+  const [modendoGroupFilter, setModendoGroupFilter] = useState<'all' | 'gaming' | 'drinks' | 'food'>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [stockFilter, setStockFilter] = useState<'ALL' | 'ALERTS_ONLY'>('ALL');
+
+  // Reset catalog filters on tenant change
+  useEffect(() => {
+    setSelectedCategoryId('all');
+    setRoastFilter('all');
+    setModendoGroupFilter('all');
+    setSearchQuery('');
+    setStockFilter('ALL');
+  }, [tenant.id]);
 
   // Configurable default threshold for low stock alert
   const [globalThreshold] = useState<number>(() => {
@@ -223,93 +184,117 @@ export const PosView: React.FC<PosViewProps> = ({
     }
   });
 
-  const activeTenant = getActiveTenant();
-  const currentTenantId = activeShift?.tenantId || tenant?.id || activeTenant?.id || 'tenant-100hich-01';
-  const prevTenantIdRef = React.useRef<string>(currentTenantId);
-
-  // Per-tenant cart memory cache to prevent cross-tenant memory leaks while preserving operator state
-  const tenantCartsRef = React.useRef<Map<string, {
-    cartItems: OrderItem[];
-    orderType: OrderType;
-    tableLabel: string;
-    customerName: string;
-    customerPhone: string;
-    orderNotes: string;
-    discountPercent: number;
-    discountToman: number;
-    activeTabId: string | null;
-  }>>(new Map());
-
-  const [tableToast, setTableToast] = useState<string | null>(null);
-  const showTableToast = (msg: string) => {
-    setTableToast(msg);
-    setTimeout(() => setTableToast(null), 3500);
-  };
-
   // Current Order / Cart State
-  const [cartItems, setCartItems] = useState<OrderItem[]>([]);
-  const [orderType, setOrderType] = useState<OrderType>(activeTenant.workflow.defaultOrderType);
-  const [tableLabel, setTableLabel] = useState<string>(
-    preselectedTableLabel || (activeTenant.workflow.requireTableNumber ? '' : 'میز ۱')
+  const [cartItems, setCartItems] = useState<OrderItem[]>(() => initialCartItems ?? []);
+  const [orderType, setOrderType] = useState<OrderType>(() =>
+    boundTable ? 'DINE_IN' : 'TAKEAWAY'
   );
-  const [isTablePickerOpen, setIsTablePickerOpen] = useState<boolean>(false);
+  const [tableLabel, setTableLabel] = useState<string>(
+    () => boundTable?.label || (isModendo ? 'M-01' : 'میز ۱')
+  );
+  const [customerName, setCustomerName] = useState<string>(() => initialCustomerName ?? '');
+  const [orderNotes, setOrderNotes] = useState<string>(() => initialOrderNotes ?? '');
+  const [discountToman, setDiscountToman] = useState<number>(() => initialDiscountToman ?? 0);
+  const [discountPercent, setDiscountPercent] = useState<number>(() => initialDiscountPercent ?? 0);
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
+  const skipSessionSyncRef = useRef<boolean>(false);
 
-  const loadTabForTableIfOpen = (selectedLabel: string) => {
-    if (!selectedLabel) return;
-    setTableLabel(selectedLabel);
-    setOrderType('DINE_IN');
-
-    const tenantId = activeShift?.tenantId || currentTenantId;
-    const openTabs = CatalogService.getOpenTabs(tenantId);
-    const existingTab = openTabs.find((t) => {
-      const label = t.table_or_customer || t.tableOrCustomer || '';
-      return (
-        label === selectedLabel ||
-        (label && selectedLabel && (label.includes(selectedLabel) || selectedLabel.includes(label)))
-      );
-    });
-
-    if (existingTab) {
-      handleRecallTabForEditing(existingTab);
-      showTableToast(`تب باز میز "${selectedLabel}" با موفقیت بارگذاری شد`);
-    } else {
-      setActiveTabId(null);
+  // Hydrate cart when switching bound table or entering Takeaway mode
+  const boundNodeKey = boundTable ? boundTable.nodeId : 'TAKEAWAY';
+  useEffect(() => {
+    skipSessionSyncRef.current = true;
+    if (boundTable) {
+      setOrderType('DINE_IN');
+      setTableLabel(boundTable.label);
+      setCartItems(initialCartItems ?? []);
+      setCustomerName(initialCustomerName ?? '');
+      setOrderNotes(initialOrderNotes ?? '');
+      setDiscountToman(initialDiscountToman ?? 0);
+      setDiscountPercent(initialDiscountPercent ?? 0);
+    } else if (onBackToFloorPlan) {
+      setOrderType('TAKEAWAY');
+      setCartItems([]);
+      setCustomerName('');
+      setOrderNotes('');
+      setDiscountToman(0);
+      setDiscountPercent(0);
     }
-  };
+  }, [boundNodeKey]);
+
+  useEffect(() => {
+    if (boundTable?.label) {
+      setTableLabel(boundTable.label);
+    }
+  }, [boundTable?.label]);
 
   useEffect(() => {
     if (preselectedTableLabel) {
-      loadTabForTableIfOpen(preselectedTableLabel);
+      setTableLabel(preselectedTableLabel);
+      setOrderType('DINE_IN');
+      if (isModendo) {
+        try {
+          const raw = localStorage.getItem('modendo_floor_sessions_v1');
+          if (raw) {
+            const sessions: Record<string, TableSession> = JSON.parse(raw);
+            const node = MODENDO_FLOOR_NODES.find(
+              (n) => n.label === preselectedTableLabel || n.id === preselectedTableLabel
+            );
+            const session = node
+              ? sessions[node.id]
+              : Object.values(sessions).find((s) => s.tableLabel === preselectedTableLabel);
+            if (session && session.cartItems && session.cartItems.length > 0) {
+              setCartItems(session.cartItems);
+              setCustomerName(session.customerName || '');
+              setOrderNotes(session.notes || '');
+              setDiscountToman(session.discountToman || 0);
+              setDiscountPercent(session.discountPercent || 0);
+            } else if (session) {
+              setCustomerName(session.customerName || '');
+              setOrderNotes(session.notes || '');
+              setDiscountToman(session.discountToman || 0);
+              setDiscountPercent(session.discountPercent || 0);
+            }
+          }
+        } catch (e) {
+          console.warn('Failed loading session for preselected table:', e);
+        }
+      }
     }
-  }, [preselectedTableLabel]);
-  const [customerName, setCustomerName] = useState<string>('');
-  const [customerPhone, setCustomerPhone] = useState<string>('');
-  const [orderNotes, setOrderNotes] = useState<string>('');
-  const [discountToman, setDiscountToman] = useState<number>(0);
-  const [discountPercent, setDiscountPercent] = useState<number>(0);
-  const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
-  const [isSubmittingOrder, setIsSubmittingOrder] = useState<boolean>(false);
-  const [failedPrintCount, setFailedPrintCount] = useState<number>(0);
+  }, [preselectedTableLabel, isModendo]);
+
+  // Persist open-tab edits live back to FloorPlan session
+  useEffect(() => {
+    if (skipSessionSyncRef.current) {
+      skipSessionSyncRef.current = false;
+      return;
+    }
+    if (boundTable && onCartSessionChange) {
+      onCartSessionChange(boundTable.nodeId, {
+        cartItems,
+        customerName,
+        orderNotes,
+        discountToman,
+        discountPercent,
+      });
+    }
+  }, [cartItems, customerName, orderNotes, discountToman, discountPercent, boundTable?.nodeId]);
 
   // Modifier sheet modal state
   const [modifierItem, setModifierItem] = useState<MenuItem | null>(null);
   const [isModifierOpen, setIsModifierOpen] = useState<boolean>(false);
 
   // Offline Sync Queue state
-  const [queueStats, setQueueStats] = useState<QueueStats>({ total: 0, pending: 0, failed: 0, paused: 0, quarantined: 0 });
+  const [queueStats, setQueueStats] = useState<QueueStats>({
+    total: 0,
+    pending: 0,
+    failed: 0,
+    paused: 0,
+    quarantined: 0,
+  });
   const [isManualSyncing, setIsManualSyncing] = useState<boolean>(false);
 
   // Checkout Modal State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isOpenTabsModalOpen, setIsOpenTabsModalOpen] = useState(false);
-  const [activeTabId, setActiveTabId] = useState<string | null>(null);
-  const [openTabsCount, setOpenTabsCount] = useState<number>(() => {
-    try {
-      return CatalogService.getOpenTabs(currentTenantId).length;
-    } catch {
-      return 0;
-    }
-  });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD_MANUAL');
   const [terminalName, setTerminalName] = useState<string>('پوز ۱ (بانک سامان)');
   const [referenceCode, setReferenceCode] = useState<string>('');
@@ -319,76 +304,16 @@ export const PosView: React.FC<PosViewProps> = ({
   const [completedCashTendered, setCompletedCashTendered] = useState<number | undefined>(undefined);
   const [completedChange, setCompletedChange] = useState<number | undefined>(undefined);
   const [hardwarePrintStatus, setHardwarePrintStatus] = useState<string | null>(null);
+  // P0-2: settling + persistence failure state. While `paymentError` is set the
+  // payment buttons stay disabled — the receipt modal is never reached.
+  const [isSettling, setIsSettling] = useState<boolean>(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
 
   // Financial totals calculation
   const { grossAmountToman, discountAmountToman, netTotalToman } = calculateOrderTotals(
     cartItems,
     discountToman
   );
-
-  // Strict Conditional Tenant Cart Isolation
-  useEffect(() => {
-    if (prevTenantIdRef.current !== currentTenantId) {
-      const prevTid = prevTenantIdRef.current;
-      // 1. Snapshot previous tenant's cart state
-      tenantCartsRef.current.set(prevTid, {
-        cartItems: [...cartItems],
-        orderType,
-        tableLabel,
-        customerName,
-        customerPhone,
-        orderNotes,
-        discountPercent,
-        discountToman,
-        activeTabId,
-      });
-
-      // 2. Restore target tenant's cart state or reset to isolated defaults
-      const saved = tenantCartsRef.current.get(currentTenantId);
-      if (saved) {
-        setCartItems(saved.cartItems);
-        setOrderType(saved.orderType);
-        setTableLabel(saved.tableLabel);
-        setCustomerName(saved.customerName);
-        setCustomerPhone(saved.customerPhone);
-        setOrderNotes(saved.orderNotes);
-        setDiscountPercent(saved.discountPercent);
-        setDiscountToman(saved.discountToman);
-        setActiveTabId(saved.activeTabId);
-      } else {
-        setCartItems([]);
-        setOrderType(activeTenant.workflow.defaultOrderType);
-        setTableLabel(preselectedTableLabel || (activeTenant.workflow.requireTableNumber ? '' : 'میز ۱'));
-        setCustomerName('');
-        setCustomerPhone('');
-        setOrderNotes('');
-        setDiscountPercent(0);
-        setDiscountToman(0);
-        setActiveTabId(null);
-      }
-
-      // 3. Clear transient modals and receipts to prevent cross-tenant UI bleed
-      setCompletedReceiptOrder(null);
-      setCompletedReceiptPayment(null);
-      setIsCheckoutOpen(false);
-      setIsOpenTabsModalOpen(false);
-      setSelectedCategoryId('all');
-      setSearchQuery('');
-      setOpenTabsCount(CatalogService.getOpenTabs(currentTenantId).length);
-
-      prevTenantIdRef.current = currentTenantId;
-    }
-  }, [currentTenantId]);
-
-  // Keep discount amount synchronized with discount percent when cart items change
-  useEffect(() => {
-    if (discountPercent > 0) {
-      const calculatedDiscount = Math.round((grossAmountToman * discountPercent) / 100);
-      setDiscountToman(calculatedDiscount);
-    } else if (grossAmountToman === 0 && discountToman > 0) {
-      setDiscountToman(0);
-    }
-  }, [grossAmountToman, discountPercent]);
 
   // Subscribe to offline sync queue stats
   useEffect(() => {
@@ -398,45 +323,67 @@ export const PosView: React.FC<PosViewProps> = ({
     return () => unsubscribe();
   }, []);
 
-  // Subscribe to persistent print queue stats + start the background auto-retry processor
-  useEffect(() => {
-    const unsubscribe = printQueueService.subscribe((stats) => {
-      setFailedPrintCount(stats.failed);
-    });
-    printQueueService.start(activeShift?.tenantId || currentTenantId);
-    return () => unsubscribe();
-  }, [activeShift?.tenantId, currentTenantId]);
-
-  // Initialize station printer routing configuration for active tenant
-  useEffect(() => {
-    if (activeShift?.tenantId) {
-      usePrinterStore.getState().initialize(activeShift.tenantId).catch(() => {});
-    }
-  }, [activeShift?.tenantId]);
-
   const stockAlertStats = countStockAlerts(menuItems, globalThreshold);
 
-  // Filter and sort menu items according to prioritized catalog hierarchy
-  const filteredItems = menuItems
-    .filter((item) => {
-      if (!item.isAvailable) return false;
-      const matchesCat = selectedCategoryId === 'all' || item.categoryId === selectedCategoryId;
-      const matchesSearch =
-        !searchQuery.trim() ||
-        item.nameFa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (item.nameEn && item.nameEn.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (item.origin && item.origin.toLowerCase().includes(searchQuery.toLowerCase())) ||
-        (item.notes && item.notes.some((n) => n.toLowerCase().includes(searchQuery.toLowerCase())));
+  // P0-2: while a persistence error is unresolved (or a save is in flight) the
+  // checkout buttons stay disabled; only an explicit retry clears the error.
+  const isPaymentBlocked = isSettling || paymentError !== null;
 
-      if (!matchesCat || !matchesSearch) return false;
+  const MODENDO_GROUP_CATEGORIES: Record<'gaming' | 'drinks' | 'food', string[]> = {
+    gaming: ['mod-cat-gaming', 'mod-cat-lounge'],
+    drinks: [
+      'mod-cat-espresso',
+      'mod-cat-mocha',
+      'mod-cat-tea',
+      'mod-cat-iced',
+      'mod-cat-mocktails',
+      'mod-cat-shakes',
+    ],
+    food: [
+      'mod-cat-bakery',
+      'mod-cat-burgers',
+      'mod-cat-pasta',
+      'mod-cat-pizza',
+      'mod-cat-appetizers',
+      'mod-cat-salads',
+      'mod-cat-desserts',
+    ],
+  };
 
-      if (stockFilter === 'ALERTS_ONLY') {
-        const status = evaluateStockStatus(item.currentStock, item.lowStockThreshold, globalThreshold).status;
-        return status === 'LOW' || status === 'OUT_OF_STOCK';
+  const visibleCategories =
+    isModendo && modendoGroupFilter !== 'all'
+      ? categories.filter((c) => MODENDO_GROUP_CATEGORIES[modendoGroupFilter].includes(c.id))
+      : categories;
+
+  // Filter menu items
+  const filteredItems = menuItems.filter((item) => {
+    if (!item.isAvailable) return false;
+    const matchesCat = selectedCategoryId === 'all' || item.categoryId === selectedCategoryId;
+
+    let matchesSubFilter = true;
+    if (isModendo) {
+      if (modendoGroupFilter !== 'all') {
+        matchesSubFilter = MODENDO_GROUP_CATEGORIES[modendoGroupFilter].includes(item.categoryId);
       }
-      return true;
-    })
-    .sort((a, b) => getItemPriorityRank(a) - getItemPriorityRank(b));
+    } else {
+      matchesSubFilter = roastFilter === 'all' || item.roast === roastFilter;
+    }
+
+    const matchesSearch =
+      !searchQuery.trim() ||
+      item.nameFa.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.nameEn && item.nameEn.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.origin && item.origin.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.notes && item.notes.some((n) => n.toLowerCase().includes(searchQuery.toLowerCase())));
+
+    if (!matchesCat || !matchesSubFilter || !matchesSearch) return false;
+
+    if (stockFilter === 'ALERTS_ONLY') {
+      const status = evaluateStockStatus(item.currentStock, item.lowStockThreshold, globalThreshold).status;
+      return status === 'LOW' || status === 'OUT_OF_STOCK';
+    }
+    return true;
+  });
 
   // Hotkeys: 1-9 to add items, P for POS card, C for cash
   useEffect(() => {
@@ -463,11 +410,6 @@ export const PosView: React.FC<PosViewProps> = ({
       // Hotkey 'P' or 'p': Direct POS Card payment
       if (e.key === 'p' || e.key === 'P' || e.key === 'پ') {
         if (cartItems.length > 0 && activeShift) {
-          if (activeTenant.workflow.requireTableNumber && orderType === 'DINE_IN' && !tableLabel.trim()) {
-            showTableToast('لطفاً شماره میز را انتخاب کنید');
-            playPosBeep('delete');
-            return;
-          }
           e.preventDefault();
           setPaymentMethod('CARD_MANUAL');
           setIsCheckoutOpen(true);
@@ -478,11 +420,6 @@ export const PosView: React.FC<PosViewProps> = ({
       // Hotkey 'C' or 'c': Direct Cash payment
       if (e.key === 'c' || e.key === 'C') {
         if (cartItems.length > 0 && activeShift) {
-          if (activeTenant.workflow.requireTableNumber && orderType === 'DINE_IN' && !tableLabel.trim()) {
-            showTableToast('لطفاً شماره میز را انتخاب کنید');
-            playPosBeep('delete');
-            return;
-          }
           e.preventDefault();
           setPaymentMethod('CASH');
           setCashTendered(netTotalToman);
@@ -496,10 +433,21 @@ export const PosView: React.FC<PosViewProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [filteredItems, cartItems, activeShift, netTotalToman]);
 
+  useEffect(() => {
+    if (!isCheckoutOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsCheckoutOpen(false);
+        setPaymentError(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isCheckoutOpen]);
+
   // Cart operations
   const handleAddItem = (item: MenuItem) => {
-    const bomStock = inventoryBomService.evaluateMenuItemStock(item.id);
-    if ((item.currentStock !== undefined && item.currentStock <= 0) || bomStock.isOutOfStock) {
+    if (item.currentStock !== undefined && item.currentStock <= 0) {
       playPosBeep('delete');
       return;
     }
@@ -544,12 +492,6 @@ export const PosView: React.FC<PosViewProps> = ({
     selectedModifiers: ModifierOption[],
     notes: string
   ) => {
-    const bomStock = inventoryBomService.evaluateMenuItemStock(item.id);
-    if ((item.currentStock !== undefined && item.currentStock <= 0) || bomStock.isOutOfStock) {
-      playPosBeep('delete');
-      return;
-    }
-
     playPosBeep('click');
     const modifiersDelta = selectedModifiers.reduce((sum, m) => sum + m.priceDeltaToman, 0);
     const unitPrice = item.priceToman + modifiersDelta;
@@ -567,43 +509,6 @@ export const PosView: React.FC<PosViewProps> = ({
         notes: notes || undefined,
       },
     ]);
-  };
-
-  const handleAddCatalogCardItem = (catItem: CatalogMenuItem, selectedBean: SelectedBean) => {
-    const isBlend = selectedBean === 'blend';
-    const beanLabel = isBlend ? 'میکس ۵۰/۵۰' : 'عربیکا ۱۰۰٪';
-    const effectivePrice = isBlend ? (catItem.priceBlend ?? catItem.priceToman) : (catItem.priceArabica ?? catItem.priceToman);
-
-    playPosBeep('click');
-    setCartItems((prev) => {
-      const existingIndex = prev.findIndex(
-        (c) => c.menuItemId === catItem.id && c.notes === beanLabel
-      );
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        const existing = updated[existingIndex];
-        const newQty = existing.quantity + 1;
-        updated[existingIndex] = {
-          ...existing,
-          quantity: newQty,
-          subtotalToman: existing.unitPriceSnapshotToman * newQty,
-        };
-        return updated;
-      }
-      return [
-        ...prev,
-        {
-          id: `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          menuItemId: catItem.id,
-          itemNameSnapshot: `${catItem.nameFa} (${beanLabel})`,
-          unitPriceSnapshotToman: effectivePrice,
-          quantity: 1,
-          subtotalToman: effectivePrice,
-          modifiers: [],
-          notes: beanLabel,
-        },
-      ];
-    });
   };
 
   const handleOpenModifierModal = (e: React.MouseEvent, item: MenuItem) => {
@@ -661,8 +566,139 @@ export const PosView: React.FC<PosViewProps> = ({
     setDiscountToman(0);
     setDiscountPercent(0);
     setCustomerName('');
-    setCustomerPhone('');
     setOrderNotes('');
+  };
+
+  const handleSaveAsOpenTable = async () => {
+    playPosBeep('success');
+
+    const targetNode =
+      MODENDO_FLOOR_NODES.find((n) => n.label === tableLabel || n.id === tableLabel) ||
+      MODENDO_FLOOR_NODES[0];
+    const targetNodeId = boundTable?.nodeId || targetNode?.id || tableLabel;
+    const targetLabel = boundTable?.label || targetNode?.label || tableLabel;
+
+    if (isModendo) {
+      // 1. Persist to modendo_floor_sessions_v1 with live timer & status
+      try {
+        const raw = localStorage.getItem('modendo_floor_sessions_v1');
+        const sessions: Record<string, TableSession> = raw ? JSON.parse(raw) : {};
+        const existing = sessions[targetNodeId];
+        const nowIso = new Date().toISOString();
+
+        sessions[targetNodeId] = {
+          nodeId: targetNodeId,
+          tableLabel: targetLabel,
+          kind: targetNode?.kind || 'TABLE',
+          status: 'OCCUPIED',
+          openedAt: existing?.openedAt || nowIso,
+          guestCount: existing?.guestCount || boundTable?.guestCount || targetNode?.seats || 2,
+          customerName: customerName || existing?.customerName || '',
+          notes: orderNotes || existing?.notes || '',
+          cartItems: [...cartItems],
+          discountToman,
+          discountPercent,
+          mergedIntoNodeId: existing?.mergedIntoNodeId,
+          mergedNodeIds: existing?.mergedNodeIds,
+          ps5Session:
+            existing?.ps5Session ||
+            (targetNode?.kind === 'PS5'
+              ? {
+                  startedAt: existing?.openedAt || nowIso,
+                  hourlyRateToman: targetNode.hourlyRateToman || 180000,
+                  controllersCount: 2,
+                  accumulatedMs: 0,
+                  isPaused: false,
+                }
+              : undefined),
+        };
+
+        localStorage.setItem('modendo_floor_sessions_v1', JSON.stringify(sessions));
+      } catch (e) {
+        console.warn('[PosView] Failed saving to modendo_floor_sessions_v1:', e);
+      }
+
+      // 2. Sync to openTabService
+      try {
+        const effectiveTenantId = tenant.id === 'modendo' ? 'tenant-modendo-01' : tenant.id;
+        const tabItems = cartItems.map((ci) => ({
+          id: ci.id,
+          menu_item_id: ci.menuItemId,
+          name: ci.itemNameSnapshot,
+          price: ci.unitPriceSnapshotToman,
+          quantity: ci.quantity,
+          subtotal: ci.subtotalToman,
+          modifiers: ci.modifiers?.map((m) => (typeof m === 'string' ? m : m.nameFa || m.id)) || [],
+          notes: ci.notes,
+        }));
+
+        const existingTab =
+          openTabService.getTabForTable(targetNodeId, effectiveTenantId) ||
+          openTabService.getTabForTable(targetLabel, effectiveTenantId);
+
+        if (existingTab) {
+          if (tabItems.length > 0) {
+            openTabService.addRoundToTab(existingTab.tab_id, tabItems, true, effectiveTenantId);
+          }
+        } else {
+          openTabService.openTab(
+            targetNodeId,
+            targetLabel,
+            activeUser.fullName,
+            targetNode?.seats || 2,
+            tabItems,
+            effectiveTenantId
+          );
+        }
+      } catch (e) {
+        console.warn('[PosView] Failed syncing to openTabService:', e);
+      }
+
+      // 3. Dispatch to Bar/Kitchen KDS if cartItems > 0
+      if (cartItems.length > 0) {
+        try {
+          const effectiveTenantId = tenant.id === 'modendo' ? 'tenant-modendo-01' : tenant.id;
+          const kdsOrder = {
+            id: `open-tab-${targetNodeId}-${Date.now()}`,
+            orderNumber: Math.floor(1000 + Math.random() * 9000),
+            clientGeneratedId: `client-${Date.now()}`,
+            tenantId: effectiveTenantId,
+            orderType: 'DINE_IN',
+            tableLabel: targetLabel,
+            customerName: customerName || `میز ${targetLabel}`,
+            items: cartItems,
+          };
+          await baristaDispatcher.dispatchOrder(kdsOrder, effectiveTenantId);
+        } catch (e) {
+          console.warn('[PosView] Failed to dispatch open table order to KDS:', e);
+        }
+      }
+    }
+
+    if (onSaveOpenTableTab) {
+      onSaveOpenTableTab({
+        nodeId: targetNodeId,
+        tableLabel: targetLabel,
+        cartItems,
+        customerName,
+        orderNotes,
+        discountToman,
+        discountPercent,
+      });
+    }
+
+    if (!boundTable) {
+      setCartItems([]);
+      setDiscountToman(0);
+      setDiscountPercent(0);
+      setCustomerName('');
+      setOrderNotes('');
+    }
+
+    // Return to 3-wing floor plan view
+    if (onBackToFloorPlan) {
+      onBackToFloorPlan();
+    }
   };
 
   const handleApplyDiscountPercent = (percent: number) => {
@@ -687,189 +723,33 @@ export const PosView: React.FC<PosViewProps> = ({
     }
   };
 
-  // Open Tabs Handlers
-  const handleRecallTabForEditing = (tab: OpenTabRecord) => {
-    try {
-      const recalled = CatalogService.recallTabForEditing(tab.tab_id, activeShift?.tenantId || currentTenantId);
-      const mappedItems: OrderItem[] = recalled.cart.map((c) => ({
-        id: c.cartItemId || `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-        menuItemId: c.menuItemId,
-        itemNameSnapshot: c.title,
-        unitPriceSnapshotToman: c.unitPriceToman || c.unitPriceSnapshotToman || 0,
-        quantity: c.quantity,
-        subtotalToman: c.subtotalToman,
-        modifiers: [],
-        notes: c.notes,
-      }));
-
-      setCartItems(mappedItems);
-      setTableLabel(tab.table_or_customer || '');
-      setActiveTabId(tab.tab_id);
-      showTableToast(`تب "${tab.table_or_customer}" در سبد فعال بازیابی شد`);
-    } catch (e: any) {
-      alert(`خطا در بازیابی تب: ${e?.message || e}`);
-    }
-  };
-
-  const handleSettleTabDirectly = (tab: OpenTabRecord) => {
-    try {
-      handleRecallTabForEditing(tab);
-      setTimeout(() => {
-        handleStartCheckout();
-      }, 50);
-    } catch (e: any) {
-      alert(`خطا در تسویه مستقیم تب: ${e?.message || e}`);
-    }
-  };
-
-  const handleHoldOrUpdateTab = () => {
-    if (cartItems.length === 0) {
-      playPosBeep('delete');
-      showTableToast('سبد سفارش برای ثبت تب خالی است');
-      return;
-    }
-
-    playPosBeep('click');
-    const catalogCart: CatalogCartItem[] = cartItems.map((it) => ({
-      cartItemId: it.id,
-      menuItemId: it.menuItemId,
-      title: it.itemNameSnapshot,
-      unitPriceToman: it.unitPriceSnapshotToman,
-      unitPriceSnapshotToman: it.unitPriceSnapshotToman,
-      quantity: it.quantity,
-      subtotalToman: it.subtotalToman,
-      bomGramsPerCup: 18.0,
-      selectedBean: it.notes?.includes('۵۰/۵۰') ? 'blend' : 'arabica',
-      notes: it.notes,
-    }));
-
-    const label = (orderType === 'DINE_IN' ? tableLabel : customerName) || 'میز موقت';
-    const effectiveTenantId = activeShift?.tenantId || currentTenantId;
-
-    let savedTabId = activeTabId;
-    if (activeTabId) {
-      // In-place mutation of existing tab
-      try {
-        CatalogService.updateOpenTab(activeTabId, catalogCart, label, effectiveTenantId);
-        showTableToast(`سفارش روی میز "${label}" با موفقیت بروزرسانی شد`);
-      } catch (e: any) {
-        alert(`خطا در بروزرسانی تب: ${e?.message || e}`);
-      }
-    } else {
-      // Creation of new tab
-      try {
-        const createdTab = CatalogService.holdCurrentCartAsTab(catalogCart, label, effectiveTenantId);
-        savedTabId = createdTab.tab_id;
-        showTableToast(`سفارش روی میز "${label}" به عنوان سفارش باز ثبت شد`);
-      } catch (e: any) {
-        alert(`خطا در ثبت تب: ${e?.message || e}`);
-      }
-    }
-
-    // Update floor plan table status to OCCUPIED / GAMING_ACTIVE
-    try {
-      const allTables = floorPlanService.getTables();
-      const matchedTable = allTables.find(
-        (t) =>
-          t.display_name === label ||
-          t.id === label ||
-          (label && (label.includes(t.display_name) || t.display_name.includes(label)))
-      );
-      if (matchedTable) {
-        floorPlanService.setTableState(matchedTable.id, {
-          status: matchedTable.billing_mode === 'hourly_timer' ? 'GAMING_ACTIVE' : 'OCCUPIED',
-          currentBillAmount: netTotalToman,
-          currentOrderId: savedTabId || undefined,
-          sessionStartTime: matchedTable.sessionStartTime || new Date().toISOString(),
-        });
-      }
-
-      // Also mirror into DexiePOSDatabase tableTabs table
-      const posDb = getDexiePOSDatabase();
-      posDb.tableTabs.put({
-        id: savedTabId || `tab-${Date.now()}`,
-        tenantId: effectiveTenantId,
-        tableId: matchedTable?.id || label,
-        tableLabel: label,
-        status: 'OPEN',
-        openedAt: new Date().toISOString(),
-        totalDueToman: netTotalToman,
-      }).catch(() => {});
-    } catch (tblErr) {
-      console.warn('[PosView] Floor plan table state update error:', tblErr);
-    }
-
-    handleClearCart();
-    setActiveTabId(null);
-    setOpenTabsCount(CatalogService.getOpenTabs(effectiveTenantId).length);
-  };
-
-  const handleCancelTabEditing = () => {
-    playPosBeep('delete');
-    setActiveTabId(null);
-    showTableToast('از حالت ویرایش تب خارج شدید');
-  };
-
-  const handleConfirmSettlement = (settleResult: SettlementResult) => {
-    const domainPayMethod: PaymentMethod =
-      settleResult.paymentMethod === 'CASH'
-        ? 'CASH'
-        : settleResult.paymentMethod === 'POS'
-        ? 'CARD_MANUAL'
-        : 'OTHER';
-
-    setPaymentMethod(domainPayMethod);
-    setTerminalName(settleResult.terminalName);
-    if (settleResult.referenceCode) {
-      setReferenceCode(settleResult.referenceCode);
-    }
-    if (settleResult.cashTendered !== undefined) {
-      setCashTendered(settleResult.cashTendered);
-    }
-    handleConfirmPayment(false, settleResult);
-  };
-
   // Checkout submission
   const handleStartCheckout = () => {
-    if (isSubmittingOrder) return; // double-click / in-flight checkout guard
     playPosBeep('click');
     if (!activeShift) {
       onOpenShiftRequired();
       return;
     }
     if (cartItems.length === 0) return;
-    if (activeTenant.workflow.requireTableNumber && orderType === 'DINE_IN' && !tableLabel.trim()) {
-      showTableToast('لطفاً شماره میز را انتخاب کنید');
-      playPosBeep('delete');
-      return;
-    }
+    setPaymentError(null);
     setCashTendered(netTotalToman);
     setIsCheckoutOpen(true);
   };
 
-  const handleConfirmPayment = async (autoPrint = false, settleResult?: SettlementResult) => {
-    if (!activeShift || isSubmittingOrder) return;
-    setIsSubmittingOrder(true);
+  const handleConfirmPayment = (autoPrint = false) => {
+    if (!activeShift) return;
+    // P0-2: a previous persistence failure blocks the button until the cashier
+    // acknowledges it (retry) — no double-click can slip a second sale through.
+    if (isSettling || paymentError) return;
+
+    setIsSettling(true);
+    setPaymentError(null);
 
     try {
-      playPosBeep('success');
-
       const clientGeneratedId =
         typeof crypto !== 'undefined' && crypto.randomUUID
           ? crypto.randomUUID()
           : `cid-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-
-      const effectivePaymentMethod: PaymentMethod = settleResult
-        ? (settleResult.paymentMethod === 'CASH'
-            ? 'CASH'
-            : settleResult.paymentMethod === 'POS'
-            ? 'CARD_MANUAL'
-            : 'OTHER')
-        : paymentMethod;
-
-      const effectiveTerminal = settleResult?.terminalName || terminalName;
-      const effectiveReferenceCode = (settleResult?.referenceCode ?? referenceCode).trim() || undefined;
-      const effectiveCashTendered = settleResult?.cashTendered ?? cashTendered;
 
       const newOrder: Order = {
         id: `order-${Date.now()}`,
@@ -893,272 +773,92 @@ export const PosView: React.FC<PosViewProps> = ({
 
       const result = onOrderCompleted(
         newOrder,
-        effectivePaymentMethod,
-        effectiveReferenceCode,
-        effectiveTerminal
+        paymentMethod,
+        referenceCode.trim() || undefined,
+        terminalName
       );
 
-      if (result) {
-        // ATOMIC DEXIE CHECKOUT WRITE — a single db.transaction('rw') covering order creation,
-        // payment record and packaged retail/inventory stock deduction. Power loss or refresh
-        // mid-write rolls back completely; the daily receipt number is allocated inside the
-        // same transaction so rapid consecutive checkouts never duplicate or skip (#001…).
+      if (!result) {
+        // Blocked before persistence (e.g. no active shift). Keep the modal
+        // open, show nothing success-like, no receipt.
+        return;
+      }
+
+      // Reached only after createOrder + recordPayment were persisted.
+      playPosBeep('success');
+      const orderSyncPayload = toOrderAggregate(result.order, [result.payment], clientGeneratedId, 'PAID');
+
+      // 1. Enqueue in OfflineSyncQueue (IndexedDB)
+      globalOfflineSyncQueue.enqueue(orderSyncPayload).catch((err) => {
+        console.warn('Enqueue into offline database failed:', err);
+      });
+
+      // 2. Dispatch to Barista Bar in real time
+      baristaDispatcher.dispatchPaidOrder(orderSyncPayload).catch((err) => {
+        console.warn('Dispatching to barista bar failed:', err);
+      });
+
+      setCompletedReceiptOrder(result.order);
+      setCompletedReceiptPayment(result.payment);
+      if (paymentMethod === 'CASH') {
+        setCompletedCashTendered(cashTendered);
+        setCompletedChange(Math.max(0, cashTendered - netTotalToman));
+      } else {
+        setCompletedCashTendered(undefined);
+        setCompletedChange(undefined);
+      }
+      setIsCheckoutOpen(false);
+      if (boundTable && onTableOrderSettled) {
+        onTableOrderSettled(boundTable.nodeId, result.order);
+      }
+      if (isModendo && orderType === 'DINE_IN') {
         try {
-          const posDexieDb = getDexiePOSDatabase(activeShift.tenantId);
-          const nowForDateKey = new Date();
-          const receiptDateKey = `${nowForDateKey.getFullYear()}-${String(
-            nowForDateKey.getMonth() + 1
-          ).padStart(2, '0')}-${String(nowForDateKey.getDate()).padStart(2, '0')}`;
-          const effectiveChangeDueToman = Math.max(
-            0,
-            Math.round(effectiveCashTendered) - Math.round(netTotalToman)
-          );
-          const atomicResult = await posDexieDb.persistPaidCheckoutAtomically({
-            tenantId: activeShift.tenantId,
-            clientGeneratedId,
-            receiptDateKey,
-            order: {
-              id: result.order.id,
-              orderNumber: result.order.orderNumber,
-              shiftId: activeShift.id,
-              orderType,
-              tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
-              customerName: customerName.trim() || undefined,
-              customerPhone: customerPhone.trim() || undefined,
-              grossAmountToman,
-              discountAmountToman,
-              netTotalToman,
-              createdByUserId: activeUser.id,
-              createdByUserName: activeUser.fullName,
-              createdAt: result.order.createdAt,
-              updatedAt: result.order.updatedAt,
-            },
-            items: cartItems.map((it) => ({
-              id: it.id,
-              menuItemId: it.menuItemId,
-              itemNameSnapshot: it.itemNameSnapshot,
-              unitPriceSnapshotToman: it.unitPriceSnapshotToman,
-              quantity: it.quantity,
-              subtotalToman: it.subtotalToman,
-              notes: it.notes,
-            })),
-            payment: {
-              id: result.payment.id,
-              amountToman: netTotalToman,
-              paymentMethod: effectivePaymentMethod,
-              referenceCode: effectiveReferenceCode,
-              terminalName: effectiveTerminal,
-              receivedByUserId: activeUser.id,
-              receivedByUserName: activeUser.fullName,
-              cashTenderedToman: effectivePaymentMethod === 'CASH' ? effectiveCashTendered : undefined,
-              changeDueToman: effectivePaymentMethod === 'CASH' ? effectiveChangeDueToman : undefined,
-              splitDetails: settleResult?.splitDetails
-                ? {
-                    partAMethod: settleResult.splitDetails.partAMethod,
-                    partAAmountToman: settleResult.splitDetails.partAAmountToman,
-                    partBMethod: settleResult.splitDetails.partBMethod,
-                    partBAmountToman: settleResult.splitDetails.partBAmountToman,
-                  }
-                : undefined,
-              createdAt: result.payment.createdAt,
-            },
-          });
-
-          result.order.dailyReceiptNumber = atomicResult.dailyReceiptNumber;
-          const storedOrders = SmartOrdersStore.getOrders();
-          const storedIdx = storedOrders.findIndex((o) => o.id === result.order.id);
-          if (storedIdx >= 0) {
-            storedOrders[storedIdx] = {
-              ...storedOrders[storedIdx],
-              dailyReceiptNumber: atomicResult.dailyReceiptNumber,
-            };
-            SmartOrdersStore.saveOrders(storedOrders);
-          }
-        } catch (atomicErr) {
-          console.warn('[PosView] Atomic checkout write failed — legacy mirror kept:', atomicErr);
-        }
-
-        // Release table back to AVAILABLE (آماده پذیرش) upon final checkout
-        try {
-          const allTables = floorPlanService.getTables();
-          const targetTable = allTables.find(
-            (t) =>
-              t.display_name === tableLabel ||
-              t.id === tableLabel ||
-              (tableLabel && (tableLabel.includes(t.display_name) || t.display_name.includes(tableLabel)))
-          );
-          if (targetTable) {
-            floorPlanService.clearSession(targetTable.id);
-          }
-        } catch (clearErr) {
-          console.warn('[PosView] Floor plan table release error:', clearErr);
-        }
-
-        // Automatically deduct raw BOM materials upon order settlement
-        // If completing a recalled open tab, settle and close it in place!
-        if (activeTabId) {
-          try {
-            CatalogService.settleAndCloseTab(activeTabId, result.order.id, activeShift.tenantId);
-            setOpenTabsCount(CatalogService.getOpenTabs(activeShift.tenantId).length);
-            const posDb = getDexiePOSDatabase();
-            posDb.tableTabs.update(activeTabId, { status: 'CLOSED' }).catch(() => {});
-          } catch (e) {
-            console.warn('[PosView] Failed to settle tab:', e);
-          }
-          setActiveTabId(null);
-        }
-
-        // Persist customer CRM details if customer name/phone was provided
-        if (customerName.trim() || customerPhone.trim()) {
-          const tenantDb = getCafeDatabase(activeShift.tenantId);
-          tenantDb.transaction('rw', tenantDb.customers, async () => {
-            const cName = customerName.trim();
-            const cPhone = customerPhone.trim();
-            let existing = null;
-            if (cPhone) {
-              existing = await tenantDb.customers.where('phone').equals(cPhone).first();
+          const raw = localStorage.getItem('modendo_floor_sessions_v1');
+          if (raw) {
+            const sessions: Record<string, TableSession> = JSON.parse(raw);
+            const targetNode = MODENDO_FLOOR_NODES.find(
+              (n) => n.label === tableLabel || n.id === tableLabel
+            );
+            const targetNodeId = boundTable?.nodeId || targetNode?.id || tableLabel;
+            if (sessions[targetNodeId]) {
+              delete sessions[targetNodeId];
+              localStorage.setItem('modendo_floor_sessions_v1', JSON.stringify(sessions));
             }
-            if (!existing && cName) {
-              existing = await tenantDb.customers.where('name').equals(cName).first();
-            }
-            if (existing) {
-              await tenantDb.customers.update(existing.id, {
-                name: cName || existing.name,
-                phone: cPhone || existing.phone,
-              });
-            } else {
-              await tenantDb.customers.put({
-                id: `cust_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-                name: cName,
-                phone: cPhone,
-                tenantId: activeShift.tenantId,
-                createdAt: Date.now(),
-              });
-            }
-          }).catch((err: any) => console.warn('[PosView] Customer CRM persistence error:', err));
-        }
-
-        inventoryBomService.deductForItems(
-          cartItems.map((it) => ({
-            id: it.id,
-            menuItemId: it.menuItemId,
-            title: it.itemNameSnapshot,
-            quantity: it.quantity,
-            unitPrice: it.unitPriceSnapshotToman,
-            subtotal: it.subtotalToman,
-            modifiers: it.modifiers?.map((m) => ({ id: m.id, nameFa: m.nameFa, priceDelta: m.priceDeltaToman })),
-            notes: it.notes,
-          }))
-        );
-
-        const orderAggregateItems: OrderItemAggregate[] = cartItems.map((item) => {
-          const mods = item.modifiers ? item.modifiers.map((m) => ({ ...m })) : [];
-          const modsDelta = mods.reduce((sum, m) => sum + m.priceDeltaToman, 0);
-          return {
-            id: item.id,
-            menuItemId: item.menuItemId,
-            itemNameSnapshot: item.itemNameSnapshot,
-            unitPriceSnapshotToman: item.unitPriceSnapshotToman,
-            quantity: item.quantity,
-            modifiers: mods,
-            modifiersDeltaToman: modsDelta * item.quantity,
-            subtotalToman: item.subtotalToman,
-            notes: item.notes,
-          };
-        });
-
-        const orderAggregate: OrderAggregate = {
-          clientGeneratedId,
-          id: result.order.id,
-          tenantId: activeShift.tenantId,
-          shiftId: activeShift.id,
-          orderNumber: result.order.orderNumber,
-          dailyReceiptNumber: result.order.dailyReceiptNumber,
-          orderType,
-          state: 'PAID',
-          tableLabel: orderType === 'DINE_IN' ? tableLabel : undefined,
-          customerName: customerName.trim() || undefined,
-          customerPhone: customerPhone.trim() || undefined,
-          items: orderAggregateItems,
-          grossAmountToman,
-          grossAmount: grossAmountToman,
-          discountAmountToman,
-          discountAmount: discountAmountToman,
-          netTotalToman,
-          totalNet: netTotalToman,
-          payments: [
-            {
-              id: result.payment.id,
-              tenantId: activeShift.tenantId,
-              orderId: result.order.id,
-              clientGeneratedId,
-              shiftId: activeShift.id,
-              receivedByUserId: activeUser.id,
-              receivedByUserName: activeUser.fullName,
-              amountToman: netTotalToman,
-              paymentMethod: effectivePaymentMethod,
-              referenceCode: effectiveReferenceCode,
-              terminalName: effectiveTerminal,
-              status: 'SUCCESSFUL',
-              createdAt: new Date().toISOString(),
-            },
-          ],
-          paidAmountToman: netTotalToman,
-          paidAmount: netTotalToman,
-          createdAt: result.order.createdAt,
-          updatedAt: result.order.updatedAt,
-          createdByUserId: activeUser.id,
-          createdByUserName: activeUser.fullName,
-        };
-
-        // 1. Enqueue in OfflineSyncQueue (IndexedDB)
-        globalOfflineSyncQueue.enqueue(orderAggregate).catch((err) => {
-          console.warn('Enqueue into offline database failed:', err);
-        });
-
-        // 2. Dispatch to Barista Bar in real time
-        baristaDispatcher.dispatchPaidOrder(orderAggregate).catch((err) => {
-          console.warn('Dispatching to barista bar failed:', err);
-        });
-
-        // 3. Station Printing & Routing (Bypassed when printer.enabled = false for 100 HICH)
-        usePrinterStore.getState().dispatchOrder(orderAggregate).catch((err) => {
-          console.warn('[PosView] Station printer routing dispatch:', err);
-        });
-
-        // 4. NON-BLOCKING ESC/POS thermal receipt queue — persists the job in the Dexie
-        //    printQueue table and prints in the background with auto-retry. Checkout and
-        //    order saving never wait on the thermal printer (offline/unplugged/no paper OK).
-        printQueueService.enqueueReceiptPrint(orderAggregate, tenant, {
-          cashTendered: effectivePaymentMethod === 'CASH' ? effectiveCashTendered : undefined,
-          changeDue:
-            effectivePaymentMethod === 'CASH'
-              ? Math.max(0, Math.round(effectiveCashTendered) - Math.round(netTotalToman))
-              : undefined,
-        });
-
-        setCompletedReceiptOrder(result.order);
-        setCompletedReceiptPayment(result.payment);
-        if (effectivePaymentMethod === 'CASH') {
-          setCompletedCashTendered(effectiveCashTendered);
-          setCompletedChange(Math.max(0, effectiveCashTendered - netTotalToman));
-        } else {
-          setCompletedCashTendered(undefined);
-          setCompletedChange(undefined);
-        }
-        setIsCheckoutOpen(false);
-        handleClearCart();
-        setReferenceCode('');
-        setIsMobileCartOpen(false);
-
-        if (autoPrint) {
-          setTimeout(() => {
-            printThermalReceipt('thermal-receipt');
-          }, 300);
+          }
+          const effectiveTenantId = tenant.id === 'modendo' ? 'tenant-modendo-01' : tenant.id;
+          const targetTab = openTabService.getTabForTable(tableLabel, effectiveTenantId);
+          if (targetTab) {
+            openTabService.settleTab(
+              targetTab.tab_id,
+              {
+                paymentMethod: paymentMethod === 'CASH' ? 'CASH' : 'CARD',
+                referenceCode,
+              },
+              effectiveTenantId
+            );
+          }
+        } catch (e) {
+          console.warn('[PosView] Clearing settled table session failed:', e);
         }
       }
+      handleClearCart();
+      setReferenceCode('');
+      setIsMobileCartOpen(false);
+
+      if (autoPrint) {
+        setTimeout(() => {
+          printThermalReceipt('thermal-receipt');
+        }, 300);
+      }
+    } catch (err: any) {
+      // P0-2: order/payment persistence failed. Keep the cart and modal
+      // intact, disable the payment buttons and show the real error.
+      // No receipt modal is opened and no success sound is played.
+      console.error('[PosView] checkout persistence failed', err);
+      setPaymentError(err?.message || 'خطای نامشخص در ذخیره‌سازی فاکتور و پرداخت');
+      playPosBeep('delete');
     } finally {
-      setIsSubmittingOrder(false);
+      setIsSettling(false);
     }
   };
 
@@ -1168,60 +868,9 @@ export const PosView: React.FC<PosViewProps> = ({
     setHardwarePrintStatus('در حال اتصال به چاپگر حرارتی...');
 
     try {
-      const orderAggregate: OrderAggregate = {
-        clientGeneratedId: completedReceiptOrder.id,
-        id: completedReceiptOrder.id,
-        tenantId: completedReceiptOrder.tenantId,
-        shiftId: completedReceiptOrder.shiftId,
-        orderNumber: completedReceiptOrder.orderNumber,
-        orderType: completedReceiptOrder.orderType,
-        state: 'PAID',
-        tableLabel: completedReceiptOrder.tableLabel,
-        customerName: completedReceiptOrder.customerName,
-        items: completedReceiptOrder.items.map((i) => ({
-          id: i.id,
-          menuItemId: i.menuItemId,
-          itemNameSnapshot: i.itemNameSnapshot,
-          unitPriceSnapshotToman: i.unitPriceSnapshotToman,
-          quantity: i.quantity,
-          modifiers: i.modifiers || [],
-          modifiersDeltaToman: 0,
-          subtotalToman: i.subtotalToman,
-          notes: i.notes,
-        })),
-        grossAmountToman: completedReceiptOrder.grossAmountToman,
-        grossAmount: completedReceiptOrder.grossAmountToman,
-        discountAmountToman: completedReceiptOrder.discountAmountToman,
-        discountAmount: completedReceiptOrder.discountAmountToman,
-        netTotalToman: completedReceiptOrder.netTotalToman,
-        totalNet: completedReceiptOrder.netTotalToman,
-        payments: completedReceiptPayment
-          ? [
-              {
-                id: completedReceiptPayment.id,
-                tenantId: completedReceiptPayment.tenantId,
-                orderId: completedReceiptPayment.orderId,
-                clientGeneratedId: completedReceiptOrder.id,
-                shiftId: completedReceiptPayment.shiftId,
-                receivedByUserId: completedReceiptPayment.receivedByUserId,
-                amountToman: completedReceiptPayment.amountToman,
-                paymentMethod: completedReceiptPayment.paymentMethod,
-                referenceCode: completedReceiptPayment.referenceCode,
-                terminalName: completedReceiptPayment.terminalName,
-                status: 'SUCCESSFUL',
-                createdAt: completedReceiptPayment.createdAt,
-              },
-            ]
-          : [],
-        paidAmountToman: completedReceiptOrder.netTotalToman,
-        paidAmount: completedReceiptOrder.netTotalToman,
-        createdAt: completedReceiptOrder.createdAt,
-        updatedAt: completedReceiptOrder.updatedAt,
-        createdByUserId: completedReceiptOrder.createdByUserId,
-        createdByUserName: completedReceiptOrder.createdByUserName,
-      };
+      const printPayload = toOrderAggregate(completedReceiptOrder, completedReceiptPayment ? [completedReceiptPayment] : []);
 
-      const canvas = renderReceiptToCanvas(orderAggregate, tenant);
+      const canvas = renderReceiptToCanvas(printPayload, tenant);
 
       const rasterBytes = convertCanvasToEscPosRaster(canvas);
 
@@ -1238,51 +887,288 @@ export const PosView: React.FC<PosViewProps> = ({
     }
   };
 
-  // 1-Click reprint trigger: re-queue every failed thermal receipt and print again
-  const handleReprintFailedPrints = () => {
-    playPosBeep('click');
-    const tenantIdForQueue = activeShift?.tenantId || currentTenantId;
-    printQueueService
-      .reprintFailed(tenantIdForQueue)
-      .then((count) => {
-        showTableToast(
-          count > 0
-            ? `${count} فیش ناموفق برای چاپ مجدد صف شد`
-            : 'فیش ناموفقی برای چاپ مجدد وجود ندارد'
-        );
-      })
-      .catch((err: unknown) => {
-        console.warn('[PosView] Reprint failed jobs error:', err);
-        showTableToast('خطا در صف‌گذاری چاپ مجدد فیش‌ها');
-      });
-  };
-
   const totalCartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
-    <>
-      <PosMainLayout
-        catalog={
+    <div className="flex-1 flex flex-col xl:flex-row gap-4 p-3 md:p-5 max-w-[1720px] mx-auto w-full relative select-none">
+      {/* ================= LEFT / MAIN: Catalog & Products Section ================= */}
+      <section className="flex-1 flex flex-col min-w-0 pb-24 xl:pb-8">
+        {/* Modendo: Unified Calm Top Bar (Table Navigation + Search + Queue Alert) */}
+        {isModendo ? (
+          <div className="space-y-3 mb-4">
+            <div className="rounded-[22px] liquid-glass-shell p-2.5 md:px-4 md:py-3 flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                {onBackToFloorPlan && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      onBackToFloorPlan();
+                    }}
+                    className="px-4 py-2 rounded-full liquid-glass-cta font-black text-xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ArrowRight className="w-4 h-4" />
+                    <span>نقشه سالن</span>
+                  </button>
+                )}
+
+                {boundTable ? (
+                  <div className="flex items-center gap-2 liquid-glass-well px-3.5 py-1.5 rounded-full text-xs">
+                    {boundTable.kind === 'PS5' ? (
+                      <Gamepad2 className="w-3.5 h-3.5 text-sky-400" />
+                    ) : (
+                      <MapIcon className="w-3.5 h-3.5 text-[#10B981]" />
+                    )}
+                    <strong className="text-white font-black">{boundTable.label}</strong>
+                    {boundTable.guestCount && (
+                      <span className="text-[11px] text-[#94A3B8] tabular-nums">
+                        · {boundTable.guestCount} نفر
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 liquid-glass-well px-3.5 py-1.5 rounded-full text-xs">
+                    <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                    <strong className="text-amber-200 font-bold">بیرون‌بر / آزاد</strong>
+                  </div>
+                )}
+
+                {boundTable?.kind === 'PS5' &&
+                  boundTable.ps5FeeToman !== undefined &&
+                  boundTable.ps5FeeToman > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const fee = safeInt(boundTable.ps5FeeToman || 0);
+                        if (fee <= 0) return;
+                        playPosBeep('click');
+                        setCartItems((prev) => {
+                          const existingIdx = prev.findIndex((i) => i.menuItemId === 'ps5-gaming-fee');
+                          const ps5Item: OrderItem = {
+                            id: `ps5-fee-${boundTable.nodeId}`,
+                            menuItemId: 'ps5-gaming-fee',
+                            itemNameSnapshot: `هزینه بازی ${boundTable.label}`,
+                            unitPriceSnapshotToman: fee,
+                            quantity: 1,
+                            subtotalToman: fee,
+                            modifiers: [],
+                          };
+                          if (existingIdx >= 0) {
+                            return prev.map((it, idx) => (idx === existingIdx ? ps5Item : it));
+                          }
+                          return [...prev, ps5Item];
+                        });
+                      }}
+                      className="px-3 py-1.5 rounded-full bg-sky-500/15 hover:bg-sky-500/25 border border-sky-400/35 text-sky-200 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer tabular-nums"
+                    >
+                      <Gamepad2 className="w-3.5 h-3.5 text-sky-300" />
+                      <span>+ بازی ({formatToman(boundTable.ps5FeeToman)} ت)</span>
+                    </button>
+                  )}
+
+                {boundTable && onInspectBoundTable && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      onInspectBoundTable(boundTable.nodeId);
+                    }}
+                    className="px-3 py-1.5 rounded-full liquid-glass-pill text-[#E2E8F0] hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Settings2 className="w-3.5 h-3.5 text-[#10B981]" />
+                    <span className="hidden sm:inline">جزئیات / تایمر</span>
+                  </button>
+                )}
+
+                {boundTable && onStartTakeaway && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      onStartTakeaway();
+                    }}
+                    className="px-3 py-1.5 rounded-full liquid-glass-pill text-amber-200 hover:text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <ShoppingBag className="w-3.5 h-3.5 text-amber-300" />
+                    <span className="hidden sm:inline">بیرون‌بر</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Search + Only show sync pill if pending > 0 */}
+              <div className="flex items-center gap-2 flex-1 sm:flex-initial justify-end">
+                {queueStats.pending > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleTriggerManualSync}
+                    disabled={isManualSyncing}
+                    className="px-3 py-1.5 rounded-full bg-amber-500/15 border border-amber-400/40 text-amber-200 text-[11px] font-bold flex items-center gap-1.5 cursor-pointer tabular-nums"
+                    title="سینک فوری صف آفلاین"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isManualSyncing ? 'animate-spin' : ''}`} />
+                    <span>{queueStats.pending} صف</span>
+                  </button>
+                )}
+
+                {stockAlertStats.totalLowStock > 0 && (
+                  <button
+                    onClick={() => {
+                      playPosBeep('click');
+                      setStockFilter(stockFilter === 'ALL' ? 'ALERTS_ONLY' : 'ALL');
+                    }}
+                    className={`px-3 py-1.5 rounded-full border text-[11px] font-bold transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                      stockFilter === 'ALERTS_ONLY'
+                        ? 'bg-rose-950/70 border-rose-500/70 text-rose-200'
+                        : 'liquid-glass-pill text-rose-300'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>{stockAlertStats.totalLowStock} کسری</span>
+                  </button>
+                )}
+
+                <div className="relative flex-1 sm:w-64">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="جستجو در منو..."
+                    className="w-full liquid-glass-well rounded-full text-white text-xs pr-9 pl-3 py-2 focus:outline-none focus:border-[#10B981]/70 placeholder:text-[#94A3B8]/65 transition-colors"
+                  />
+                  <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute right-3 top-2.5 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Hierarchical Clean Menu Filter: Primary Groups + Sub-Categories */}
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="liquid-glass-rail rounded-full p-1 flex items-center gap-1 shrink-0">
+                {(
+                  [
+                    { id: 'all', label: 'همه' },
+                    { id: 'gaming', label: 'گیمینگ' },
+                    { id: 'drinks', label: 'نوشیدنی' },
+                    { id: 'food', label: 'غذا و دسر' },
+                  ] as const
+                ).map((grp) => (
+                  <button
+                    key={grp.id}
+                    type="button"
+                    onClick={() => {
+                      playPosBeep('click');
+                      setModendoGroupFilter(grp.id);
+                      setSelectedCategoryId('all');
+                    }}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition cursor-pointer whitespace-nowrap shrink-0 ${
+                      modendoGroupFilter === grp.id
+                        ? 'liquid-glass-cta font-black'
+                        : 'text-[#94A3B8] hover:text-white'
+                    }`}
+                  >
+                    {grp.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
+                <button
+                  onClick={() => {
+                    playPosBeep('click');
+                    setSelectedCategoryId('all');
+                  }}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition cursor-pointer ${
+                    selectedCategoryId === 'all'
+                      ? 'bg-white/[0.16] text-white border border-white/[0.22]'
+                      : 'liquid-glass-pill text-[#94A3B8] hover:text-white'
+                  }`}
+                >
+                  همه دسته‌ها
+                </button>
+
+                {visibleCategories.map((cat) => {
+                  const isActive = selectedCategoryId === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        playPosBeep('click');
+                        setSelectedCategoryId(cat.id);
+                      }}
+                      className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition cursor-pointer ${
+                        isActive
+                          ? 'bg-white/[0.16] text-white border border-white/[0.22]'
+                          : 'liquid-glass-pill text-[#94A3B8] hover:text-white'
+                      }`}
+                    >
+                      {cat.nameFa}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
           <>
-        {/* Fixed Header Bar: Folder Tabs & Pinned Search Box */}
-        <div className="shrink-0 mb-3 flex flex-col gap-2">
-          <div className="flex items-end justify-between gap-3 border-b-2 border-white/10 pb-0">
-            {/* Horizontal File-Drawer Folder Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar select-none pt-1">
+            {/* 100HICH Legacy Announcement & Category Bars (Preserved) */}
+            <div className="bg-gradient-to-r from-[#0F223D] via-[#1B222C] to-[#0F223D] p-3 rounded-xl border border-[#293444] mb-3 flex flex-wrap items-center justify-between gap-2 shadow-inner">
+              <div className="flex items-center gap-3">
+                <span className="bg-[#D71921] text-white text-[10px] font-black px-2 py-0.5 rounded tracking-wider uppercase">
+                  NEW ROAST
+                </span>
+                <p className="text-xs md:text-sm font-semibold text-white">
+                  روست هفتگی بلند اختصاصی{' '}
+                  <span className="text-[#F3E9DD] font-bold">50/50 Brazil & Indonesia</span> آماده ارسال
+                  و آسیاب تازه در بار
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3 text-[11px] text-[#9EACB8]">
+                <div className="hidden sm:flex items-center gap-1.5">
+                  <span>دما و فشار بویلر:</span>
+                  <strong className="text-white font-mono num-heavy">93.5°C | 9.1 Bar</strong>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-[#121417]/80 px-2 py-0.5 rounded border border-[#293444]">
+                  {queueStats.pending > 0 ? (
+                    <>
+                      <WifiOff className="w-3.5 h-3.5 text-amber-400 animate-bounce" />
+                      <span className="text-amber-300 font-bold font-mono num-heavy">
+                        {queueStats.pending} صف آفلاین
+                      </span>
+                      <button
+                        onClick={handleTriggerManualSync}
+                        disabled={isManualSyncing}
+                        className="p-1 hover:text-white"
+                        title="سینک فوری با سرور"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isManualSyncing ? 'animate-spin' : ''}`} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400 font-medium">سینک برخط</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center overflow-x-auto scrollbar-none mb-3 select-none gap-2 pb-2">
               <button
-                type="button"
                 onClick={() => {
                   playPosBeep('click');
                   setSelectedCategoryId('all');
                 }}
-                className={`vision-glass-pill px-4 py-2 text-xs whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                className={`font-bold text-xs whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 cursor-pointer px-3.5 py-2 rounded-xl border ${
                   selectedCategoryId === 'all'
-                    ? 'active font-black relative z-10'
-                    : 'text-[#F5F5F7]/70 hover:text-white'
+                    ? 'bg-[#D71921] border-[#D71921] text-white shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
+                    : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white hover:border-[#9EACB8]'
                 }`}
               >
-                <span className="text-[#D71921]">⚡</span>
-                <span>همه محصولات</span>
+                <span>⚡</span>
+                <span>کل محصولات بار</span>
               </button>
 
               {categories.map((cat) => {
@@ -1290,23 +1176,22 @@ export const PosView: React.FC<PosViewProps> = ({
                 let icon = '☕';
                 if (cat.id.includes('blend')) icon = '🔥';
                 else if (cat.id.includes('single')) icon = '🌍';
-                else if (cat.id.includes('karak')) icon = '🫖';
-                else if (cat.id.includes('cold')) icon = '🧊';
-                else if (cat.id.includes('gear')) icon = '⚙️';
+                else if (cat.id.includes('tea') || cat.id.includes('karak')) icon = '🫖';
+                else if (cat.id.includes('iced') || cat.id.includes('cold')) icon = '🧊';
                 else if (cat.id.includes('pastry')) icon = '🍰';
+                else if (cat.id.includes('gear')) icon = '⚙️';
 
                 return (
                   <button
                     key={cat.id}
-                    type="button"
                     onClick={() => {
                       playPosBeep('click');
                       setSelectedCategoryId(cat.id);
                     }}
-                    className={`vision-glass-pill px-4 py-2 text-xs whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
+                    className={`font-bold text-xs whitespace-nowrap shrink-0 transition-all flex items-center gap-1.5 cursor-pointer px-3.5 py-2 rounded-xl border ${
                       isActive
-                        ? 'active font-black relative z-10'
-                        : 'text-[#F5F5F7]/70 hover:text-white'
+                        ? 'bg-[#D71921] border-[#D71921] text-white shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
+                        : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white hover:border-[#9EACB8]'
                     }`}
                   >
                     <span>{icon}</span>
@@ -1316,63 +1201,114 @@ export const PosView: React.FC<PosViewProps> = ({
               })}
             </div>
 
-            {/* Pinned Search Box & Item Count */}
-            <div className="flex items-center gap-2 mb-1.5 shrink-0">
-              {failedPrintCount > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#9EACB8] border-[#293444]/70 pb-3 mb-2 border-b">
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+                <span className="text-[11px] font-bold text-white shrink-0">فیلتر رست:</span>
                 <button
-                  type="button"
-                  onClick={handleReprintFailedPrints}
-                  title="چاپ مجدد فیش‌های ناموفق (پس از بارگذاری کاغذ)"
-                  className="h-8 px-2.5 rounded-lg bg-[#3d1015] hover:bg-[#571119] border border-rose-500/40 text-rose-300 hover:text-rose-200 text-[11px] font-bold flex items-center gap-1.5 transition cursor-pointer shrink-0"
-                >
-                  <span aria-hidden="true">🖨</span>
-                  <span>چاپ مجدد</span>
-                  <span className="min-w-[16px] h-[16px] px-1 rounded-full bg-[#D71921] text-white flex items-center justify-center text-[9px] font-mono font-bold shrink-0">
-                    {failedPrintCount}
-                  </span>
-                </button>
-              )}
-              {stockAlertStats.totalLowStock > 0 && (
-                <button
-                  type="button"
                   onClick={() => {
                     playPosBeep('click');
-                    setStockFilter(stockFilter === 'ALL' ? 'ALERTS_ONLY' : 'ALL');
+                    setRoastFilter('all');
                   }}
-                  className={`px-2.5 py-1.5 rounded-xl border text-[11px] font-bold transition cursor-pointer flex items-center gap-1 active:scale-95 ${
-                    stockFilter === 'ALERTS_ONLY'
-                      ? 'bg-[#D71921]/30 border-[#D71921] text-[#F5F5F7]'
-                      : 'bg-[#0F223D]/80 border-white/12 text-[#D71921] hover:border-[#D71921]'
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
+                    roastFilter === 'all'
+                      ? 'bg-[#0F223D] border-[#D71921] text-white'
+                      : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
                   }`}
-                  title="فیلتر کسری موجودی"
                 >
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">{stockAlertStats.totalLowStock} کسری</span>
+                  همه
                 </button>
-              )}
-              <div className="relative w-[330px] min-w-[330px] max-w-[330px]">
+                <button
+                  onClick={() => {
+                    playPosBeep('click');
+                    setRoastFilter('medium');
+                  }}
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
+                    roastFilter === 'medium'
+                      ? 'bg-[#0F223D] border-[#D71921] text-white'
+                      : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+                  }`}
+                >
+                  مدیوم رست (متعادل)
+                </button>
+                <button
+                  onClick={() => {
+                    playPosBeep('click');
+                    setRoastFilter('dark');
+                  }}
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
+                    roastFilter === 'dark'
+                      ? 'bg-[#0F223D] border-[#D71921] text-white'
+                      : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+                  }`}
+                >
+                  مدیوم دارک / اسپرسو
+                </button>
+                <button
+                  onClick={() => {
+                    playPosBeep('click');
+                    setRoastFilter('light');
+                  }}
+                  className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition cursor-pointer ${
+                    roastFilter === 'light'
+                      ? 'bg-[#0F223D] border-[#D71921] text-white'
+                      : 'bg-[#1B222C] border-[#293444] text-[#9EACB8] hover:text-white'
+                  }`}
+                >
+                  لایت / دمی تخصصی
+                </button>
+
+                {stockAlertStats.totalLowStock > 0 && (
+                  <button
+                    onClick={() => {
+                      playPosBeep('click');
+                      setStockFilter(stockFilter === 'ALL' ? 'ALERTS_ONLY' : 'ALL');
+                    }}
+                    className={`px-3 py-1 rounded-full border text-[11px] font-bold transition cursor-pointer flex items-center gap-1 whitespace-nowrap shrink-0 ${
+                      stockFilter === 'ALERTS_ONLY'
+                        ? 'bg-rose-950/70 border-rose-500/70 text-rose-200'
+                        : 'liquid-glass-pill text-rose-300'
+                    }`}
+                  >
+                    <AlertTriangle className="w-3 h-3" />
+                    <span>{stockAlertStats.totalLowStock} کسری موجودی</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="relative flex-1 max-w-xs">
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="جستجوی دان، ۵۰/۵۰، کرک تی، نوشیدنی..."
-                  className="glass-pill w-full text-[#F5F5F7] text-xs rounded-full pr-8 pl-3 py-2 focus:outline-none focus:border-[#D71921] transition-colors placeholder:text-[#F5F5F7]/40"
+                  className="w-full text-white text-xs pr-9 pl-3 py-2 focus:outline-none transition-colors bg-[#121417] border border-[#293444] focus:border-[#D71921] rounded-lg placeholder:text-[#9EACB8]/60"
                 />
-                <Search className="w-3.5 h-3.5 text-[#F5F5F7]/60 absolute right-2.5 top-2.5" />
+                <Search className="w-3.5 h-3.5 text-[#94A3B8] absolute right-3 top-2.5 pointer-events-none" />
+              </div>
+
+              <div className="hidden sm:block text-[11px] shrink-0 tabular-nums">
+                <span className="font-bold text-white num-heavy">{filteredItems.length}</span> محصول
               </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        {/* Dedicated Scroll Container for Product Cards Grid */}
-        <div className="flex-1 overflow-y-auto pr-1 no-scrollbar min-h-0">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-3 md:gap-4 pb-4">
+        {/* Product Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 2xl:grid-cols-4 gap-3.5 md:gap-4 flex-1 items-start">
           {filteredItems.length === 0 ? (
-            <div className="col-span-full py-16 text-center text-[#F5F5F7]/70 bg-[#0F223D]/40 border border-white/10 rounded-2xl">
-              <Coffee className="w-10 h-10 mx-auto text-[#D71921] mb-2 opacity-80" />
-              <p className="font-bold text-[#F5F5F7] text-sm">هیچ محصولی با این فیلتر یافت نشد</p>
-              <p className="text-xs text-[#F5F5F7]/50 mt-1">
-                نام دیگری مانند «۵۰/۵۰»، «کرک»، «اتیوپی» یا کاتگوری دیگری را انتخاب نمایید.
+            <div
+              className={`col-span-full py-16 text-center text-[#94A3B8] ${
+                isModendo
+                  ? 'liquid-glass-shell rounded-[24px]'
+                  : 'bg-[#1B222C]/50 border border-white/[0.08] rounded-2xl'
+              }`}
+            >
+              <Coffee className="w-10 h-10 mx-auto text-[#94A3B8] mb-2 opacity-50" />
+              <p className="font-bold text-white text-sm">هیچ محصولی با این فیلتر یافت نشد</p>
+              <p className="text-xs mt-1">
+                {isModendo
+                  ? 'نام دیگری مانند «پلی‌استیشن»، «برگر»، «پیتزا»، «لاته» یا دسته‌بندی دیگری را انتخاب کنید.'
+                  : 'نام دیگری مانند «۵۰/۵۰»، «کرک»، «اتیوپی» یا کاتگوری دیگری را انتخاب نمایید.'}
               </p>
             </div>
           ) : (
@@ -1382,106 +1318,90 @@ export const PosView: React.FC<PosViewProps> = ({
                 item.lowStockThreshold,
                 globalThreshold
               );
-              const bomStock = inventoryBomService.evaluateMenuItemStock(item.id);
-              const isOutOfStock = stockStatus.isOutOfStock || bomStock.isOutOfStock;
-              const isLow = (stockStatus.isLowStock || bomStock.hasLowStockIngredients) && !isOutOfStock;
-              const isSensoryCard = true; // In 100 HICH standalone target, all items render as 3D Liquid Glass CatalogCard
-              if (isSensoryCard) {
-                return (
-                  <CatalogCard
-                    key={item.id}
-                    item={item as unknown as CatalogMenuItem}
-                    onAddToCart={handleAddCatalogCardItem}
-                    isOutOfStock={isOutOfStock}
-                    isLowStock={isLow}
-                    hotkeyIndex={idx < 9 ? idx : undefined}
-                  />
-                );
-              }
+              const isOutOfStock = stockStatus.isOutOfStock;
+              const isLow = stockStatus.isLowStock && !isOutOfStock;
 
               return (
                 <article
                   key={item.id}
                   onClick={() => !isOutOfStock && handleAddItem(item)}
-                  className={`bg-[#1B222C] border border-[#293444] rounded-xl overflow-hidden hover:border-[#9EACB8]/60 transition-all duration-200 flex flex-col justify-between group shadow-lg relative ${
+                  className={`${
+                    isModendo
+                      ? 'liquid-glass-card rounded-[22px]'
+                      : 'bg-[#1B222C] border border-[#293444] hover:border-[#9EACB8]/60 rounded-xl shadow-lg'
+                  } overflow-hidden transition-all duration-200 flex flex-col justify-between group relative ${
                     isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
                   }`}
                 >
-                  {/* Card Header & Badges */}
-                  {/* Dynamic Item-Specific Full-Bleed Wallpaper */}
-                  <div
-                    className="product-card-wallpaper absolute inset-0 bg-cover bg-center z-0 transition-transform duration-500 group-hover:scale-105 pointer-events-none"
-                    style={getProductWallpaperStyle(item)}
-                  />
-
-                  {/* VisionOS Liquid Glass Legibility Overlay */}
-                  <div
-                    className="product-card-liquid-glass-overlay absolute inset-0 z-10 pointer-events-none"
-                    style={{
-                      backdropFilter: 'blur(12px) saturate(160%)',
-                      WebkitBackdropFilter: 'blur(12px) saturate(160%)',
-                      background: 'linear-gradient(180deg, rgba(10, 14, 22, 0.40) 0%, rgba(6, 8, 12, 0.75) 100%)',
-                      boxShadow: 'inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35)',
-                    }}
-                  />
-
-                  {/* Card Header & Badges */}
-                  <div className="relative z-20 p-3 pb-2 flex-1 flex flex-col justify-between">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {item.roastLevelText ? (
-                          <span className="text-[10px] font-mono tracking-wider font-bold bg-[#0F223D] border border-[#293444] text-[#F3E9DD] px-2 py-0.5 rounded">
-                            {item.roastLevelText}
-                          </span>
-                        ) : null}
-
-                        {item.badge ? (
-                          <span className="text-[10px] font-black bg-[#D71921] text-white px-2 py-0.5 rounded uppercase tracking-wider">
-                            {item.badge}
-                          </span>
-                        ) : item.weight ? (
-                          <span className="text-[10px] text-[#9EACB8] font-bold">
-                            {item.weight}
-                          </span>
-                        ) : null}
-                      </div>
-
-                      {/* Hotkey hint (1-9) */}
-                      {idx < 9 && (
-                        <span className="text-[10px] font-mono bg-[#121417] text-[#9EACB8] px-1.5 py-0.5 rounded border border-[#293444]">
-                          کلید {idx + 1}
+                  {/* Card Header & Specs */}
+                  <div className="p-4 pb-3 flex-1 flex flex-col justify-between">
+                    {isModendo ? (
+                      <div className="flex items-center justify-between gap-2 mb-1.5 text-[10px] min-h-[16px]">
+                        <span className="font-bold text-[#10B981] truncate">
+                          {item.badge || item.roastLevelText || item.weight || ''}
                         </span>
-                      )}
-                    </div>
+                        {idx < 9 && (
+                          <span className="font-mono tabular-nums text-[#64748b] shrink-0">
+                            {idx + 1}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {item.roastLevelText ? (
+                            <span className="text-[10px] font-mono tracking-wider font-bold px-2 py-0.5 rounded border bg-[#0F223D] border-[#293444] text-[#F3E9DD]">
+                              {item.roastLevelText}
+                            </span>
+                          ) : null}
 
-                    {/* Stock Alert Badge if low */}
+                          {item.badge ? (
+                            <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider bg-[#D71921] text-white">
+                              {item.badge}
+                            </span>
+                          ) : item.weight ? (
+                            <span className="text-[10px] text-[#94A3B8] font-bold">
+                              {item.weight}
+                            </span>
+                          ) : null}
+                        </div>
+
+                        {idx < 9 && (
+                          <span className="text-[10px] font-mono tabular-nums bg-[#121417] text-[#94A3B8] px-1.5 py-0.5 rounded border border-white/[0.08]">
+                            کلید {idx + 1}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Stock Alert Notice if low */}
                     {isOutOfStock ? (
-                      <div className="mb-2 bg-rose-950/60 border border-rose-800 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3 text-rose-400" />
-                        <span>ناموجود (اتمام مواد اولیه انبار)</span>
+                      <div className="mb-1.5 text-rose-300 text-[11px] font-bold flex items-center gap-1">
+                        <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                        <span>ناموجود</span>
                       </div>
                     ) : isLow ? (
-                      <div className="mb-2 bg-amber-950/60 border border-amber-800 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1">
-                        <AlertTriangle className="w-3 h-3 text-amber-400" />
-                        <span>هشدار کسری موجودی / مواد خام</span>
+                      <div className="mb-1.5 text-amber-300 text-[11px] font-bold flex items-center gap-1 tabular-nums">
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                        <span>باقیمانده: {item.currentStock}</span>
                       </div>
                     ) : null}
 
                     {/* Product Titles */}
-                    <h3 className="font-extrabold text-sm md:text-base text-white group-hover:text-[#F3E9DD] transition-colors leading-snug">
+                    <h3 className="font-extrabold text-sm md:text-[15px] text-white group-hover:text-[#F3E9DD] transition-colors leading-snug">
                       {item.nameFa}
                     </h3>
-                    {item.nameEn && (
-                      <p className="text-[11px] font-mono text-[#9EACB8] mt-0.5 truncate tracking-tight">
+                    {!isModendo && item.nameEn && (
+                      <p className="text-[11px] font-display-latin text-[#94A3B8] mt-0.5 truncate tracking-tight">
                         {item.nameEn}
                       </p>
                     )}
 
-                    {/* Technical Roast Specs Grid */}
-                    {(item.origin || item.process) && (
-                      <div className="mt-2.5 pt-2 border-t border-[#293444]/60 text-[11px] space-y-1">
+                    {/* Technical Roast Specs Grid (100Hich only or beans) */}
+                    {!isModendo && (item.origin || item.process) && (
+                      <div className="mt-2.5 pt-2 border-t border-white/[0.07] text-[11px] space-y-1">
                         {item.origin && (
-                          <div className="flex items-center justify-between text-[#9EACB8]">
+                          <div className="flex items-center justify-between text-[#94A3B8]">
                             <span>خاستگاه:</span>
                             <span className="text-white font-medium text-right max-w-[170px] truncate">
                               {item.origin}
@@ -1489,7 +1409,7 @@ export const PosView: React.FC<PosViewProps> = ({
                           </div>
                         )}
                         {item.process && item.process !== '-' && (
-                          <div className="flex items-center justify-between text-[#9EACB8]">
+                          <div className="flex items-center justify-between text-[#94A3B8]">
                             <span>فرآوری:</span>
                             <span className="text-[#F3E9DD] font-mono text-[10px]">
                               {item.process}
@@ -1499,50 +1419,63 @@ export const PosView: React.FC<PosViewProps> = ({
                       </div>
                     )}
 
-                    {/* Taste Notes Tags */}
+                    {/* Taste Notes Inline */}
                     {item.notes && item.notes.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2.5">
-                        {item.notes.slice(0, 3).map((note, nIdx) => (
-                          <span
-                            key={nIdx}
-                            className="text-[9.5px] bg-[#121417] text-[#9EACB8] px-1.5 py-0.5 rounded border border-[#293444] leading-tight"
-                          >
-                            {note}
-                          </span>
-                        ))}
-                      </div>
+                      isModendo ? (
+                        <p className="text-[11px] text-[#94A3B8]/90 mt-1.5 truncate">
+                          {item.notes.slice(0, 2).join(' · ')}
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1 mt-2.5">
+                          {item.notes.slice(0, 3).map((note, nIdx) => (
+                            <span
+                              key={nIdx}
+                              className="text-[9.5px] bg-[#121417] text-[#94A3B8] px-1.5 py-0.5 rounded border border-white/[0.08] leading-tight"
+                            >
+                              {note}
+                            </span>
+                          ))}
+                        </div>
+                      )
                     )}
                   </div>
 
                   {/* Card Bottom Bar: Price & Action CTA */}
-                  <div className="relative z-20 px-3 py-2 bg-[#121417]/90 border-t border-[#293444] rounded-b-xl flex items-center justify-between gap-1.5 mt-auto overflow-hidden">
-                    <div className="min-w-0 pr-0.5">
-                      <span className="text-[9px] text-[#F5F5F7]/60 block leading-none mb-0.5 font-medium">
-                        قیمت پایه:
-                      </span>
+                  <div
+                    className={`px-4 py-2.5 border-t flex items-center justify-between gap-2 mt-auto overflow-hidden ${
+                      isModendo
+                        ? 'bg-black/20 border-white/[0.08]'
+                        : 'bg-[#121417]/85 border-[#293444] rounded-b-xl'
+                    }`}
+                  >
+                    <div className="min-w-0">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-sm font-black text-[#C5A880] num-heavy font-mono tracking-tight">
+                        <span className="text-[15px] font-black text-white num-heavy tabular-nums tracking-tight">
                           {formatToman(item.priceToman)}
                         </span>
-                        <span className="text-[9px] text-[#C5A880]/80 shrink-0">تومان</span>
+                        <span className="text-[10px] text-[#94A3B8] shrink-0">تومان</span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {/* Customize / Modifiers button */}
                       <button
                         type="button"
                         onClick={(e) => handleOpenModifierModal(e, item)}
-                        title={item.isBean ? 'تنظیم درجه آسیاب' : 'تنظیم مودیفایر'}
-                        className="bg-[#0F223D] hover:bg-[#222B38] border border-[#293444] text-[#F3E9DD] h-7 px-2 rounded-lg font-bold flex items-center justify-center gap-1 transition cursor-pointer text-xs shrink-0 active:scale-95"
+                        title={item.isBean ? 'تنظیم درجه آسیاب' : 'تنظیم آپشن / مودیفایر'}
+                        className={`${
+                          isModendo
+                            ? 'liquid-glass-pill rounded-full text-[#cbd5e1] hover:text-white h-7 w-7'
+                            : 'bg-[#0F223D] hover:bg-[#222B38] border border-[#293444] rounded-lg text-[#F3E9DD] h-7 px-2.5 gap-1'
+                        } font-bold flex items-center justify-center transition cursor-pointer text-xs shrink-0 active:scale-95`}
                       >
-                        <Sliders className="w-3 h-3 text-[#F3E9DD] shrink-0" />
-                        <span className="text-[10px] font-semibold">
-                          {item.isBean ? 'آسیاب' : 'آپشن'}
-                        </span>
+                        <Sliders className="w-3 h-3 shrink-0" />
+                        {!isModendo && (
+                          <span className="text-[10px] font-semibold">
+                            {item.isBean ? 'آسیاب' : 'آپشن'}
+                          </span>
+                        )}
                       </button>
 
-                      {/* Quick Add Button */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1551,7 +1484,11 @@ export const PosView: React.FC<PosViewProps> = ({
                         }}
                         disabled={isOutOfStock}
                         title="افزودن به سفارش"
-                        className="bg-[#D71921] hover:bg-[#B8141B] active:scale-95 disabled:bg-stone-700 text-white h-7 px-2.5 rounded-lg font-bold flex items-center justify-center gap-1 shadow-md shadow-[#D71921]/30 transition cursor-pointer text-xs shrink-0"
+                        className={`active:scale-95 disabled:bg-stone-700 h-7 px-3 flex items-center justify-center gap-1 transition cursor-pointer text-xs shrink-0 ${
+                          isModendo
+                            ? 'liquid-glass-cta rounded-full font-black'
+                            : 'bg-[#D71921] hover:bg-[#B8141B] text-white font-bold rounded-lg shadow-md shadow-[#D71921]/30'
+                        }`}
                       >
                         <Plus className="w-3.5 h-3.5 shrink-0" />
                         <span className="text-xs font-black">افزودن</span>
@@ -1562,61 +1499,449 @@ export const PosView: React.FC<PosViewProps> = ({
               );
             })
           )}
+        </div>
+      </section>
+
+      {/* ================= RIGHT / SIDEBAR: ORDER & POS CART ================= */}
+      <aside
+        id="pos-cart-panel"
+        className={`hidden xl:flex flex-col w-[420px] sticky top-3 max-h-[calc(100vh-5rem)] h-[calc(100vh-5rem)] transition-all overflow-hidden ${
+          isModendo
+            ? 'liquid-glass-shell rounded-[26px]'
+            : 'bg-[#1B222C] border border-[#293444] rounded-xl shadow-2xl'
+        }`}
+      >
+        {/* Cart Header & Order Type Toggle */}
+        <div
+          className={`p-4 border-b flex flex-col gap-3 ${
+            isModendo
+              ? 'border-white/[0.08] bg-white/[0.03]'
+              : 'border-[#293444] bg-[#0F223D] rounded-t-xl'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-extrabold text-white tracking-wide">
+              سفارش جاری بار (فاکتور)
+            </h2>
+            <span className="font-mono tabular-nums text-xs text-[#94A3B8] font-bold">
+              #{isModendo ? 'MOD' : '100H'}-{activeShift ? activeShift.id.slice(-4) : 'POS'}
+            </span>
+          </div>
+
+          {/* Dine-in vs Takeaway Toggle */}
+          <div
+            className={`grid grid-cols-2 gap-1 text-xs font-bold ${
+              isModendo
+                ? 'liquid-glass-rail rounded-full p-1'
+                : 'bg-[#121417]/90 p-1 rounded-lg border border-white/[0.08]'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setOrderType('TAKEAWAY');
+              }}
+              className={`py-1.5 flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isModendo ? 'rounded-full' : 'rounded'
+              } ${
+                orderType === 'TAKEAWAY'
+                  ? isModendo
+                    ? 'liquid-glass-cta font-black'
+                    : 'bg-[#D71921] text-white shadow-sm'
+                  : 'text-[#94A3B8] hover:text-white'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>بیرون‌بر</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setOrderType('DINE_IN');
+              }}
+              className={`py-1.5 flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                isModendo ? 'rounded-full' : 'rounded'
+              } ${
+                orderType === 'DINE_IN'
+                  ? isModendo
+                    ? 'liquid-glass-cta font-black'
+                    : 'bg-[#D71921] text-white shadow-sm'
+                  : 'text-[#94A3B8] hover:text-white'
+              }`}
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>سرو در سالن</span>
+            </button>
           </div>
         </div>
-          </>
-        }
-        cart={
-          <PosCartPanel
-            cartItems={cartItems}
-            orderType={orderType}
-            setOrderType={setOrderType}
-            tableLabel={tableLabel}
-            setTableLabel={setTableLabel}
-            customerName={customerName}
-            setCustomerName={setCustomerName}
-            customerPhone={customerPhone}
-            setCustomerPhone={setCustomerPhone}
-            orderNotes={orderNotes}
-            setOrderNotes={setOrderNotes}
-            discountPercent={discountPercent}
-            handleApplyDiscountPercent={handleApplyDiscountPercent}
-            canEditFinancials={canEditFinancials}
-            grossAmountToman={grossAmountToman}
-            discountAmountToman={discountAmountToman}
-            netTotalToman={netTotalToman}
-            handleClearCart={handleClearCart}
-            handleStartCheckout={handleStartCheckout}
-            isSubmittingOrder={isSubmittingOrder}
-            handleUpdateQuantity={handleUpdateQuantity}
-            handleRemoveItem={handleRemoveItem}
-            activeTabId={activeTabId}
-            handleCancelTabEditing={handleCancelTabEditing}
-            openTabsCount={openTabsCount}
-            onOpenTabsModal={() => {
-              playPosBeep('click');
-              setIsOpenTabsModalOpen(true);
-            }}
-            onHoldOrUpdateTab={handleHoldOrUpdateTab}
-            activeShift={activeShift}
-            onOpenTablePicker={() => setIsTablePickerOpen(true)}
-            activeTenant={activeTenant}
-            formatToman={formatToman}
+
+        {/* Customer Detail */}
+        <div
+          className={`px-4 py-2.5 border-b flex items-center justify-between text-xs gap-2 ${
+            isModendo ? 'border-white/[0.08] bg-black/15' : 'bg-[#121417]/50 border-white/[0.08]'
+          }`}
+        >
+          <input
+            type="text"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            placeholder={
+              orderType === 'DINE_IN'
+                ? 'نام مشتری / مهمان سالن...'
+                : 'نام مشتری بیرون‌بر...'
+            }
+            className="bg-transparent text-white placeholder:text-[#94A3B8]/65 text-xs w-full focus:outline-none"
           />
-        }
-      />
+          {orderType === 'DINE_IN' ? (
+            <select
+              value={tableLabel}
+              onChange={(e) => setTableLabel(e.target.value)}
+              className={`text-[11px] text-white px-2.5 py-1 cursor-pointer focus:outline-none ${
+                isModendo
+                  ? 'liquid-glass-pill rounded-full font-bold'
+                  : 'bg-[#1B222C] px-1.5 py-0.5 rounded border border-white/[0.08]'
+              }`}
+            >
+              {Array.from(
+                new Set([
+                  ...(boundTable ? [boundTable.label] : []),
+                  ...(isModendo
+                    ? MODENDO_FLOOR_NODES.map((n) => n.label)
+                    : ['میز ۱', 'میز ۲', 'میز ۳', 'میز ۴', 'میز ۵', 'میز ۶', 'میز ۷', 'کانتر بار']),
+                ])
+              ).map((tbl) => (
+                <option key={tbl} value={tbl} className="bg-[#12161d] text-white">
+                  {tbl}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <span className="text-[11px] text-[#94A3B8] whitespace-nowrap font-medium">
+              بیرون‌بر
+            </span>
+          )}
+        </div>
+
+        {/* Invoice Notes */}
+        <div className="px-4 py-2 bg-black/10 border-b border-white/[0.08] flex items-center text-xs gap-2">
+          <input
+            type="text"
+            value={orderNotes}
+            onChange={(e) => setOrderNotes(e.target.value)}
+            placeholder="یادداشت فاکتور (توضیحات کلی سفارش)..."
+            className="bg-transparent text-white placeholder:text-[#94A3B8]/50 text-xs w-full focus:outline-none"
+          />
+        </div>
+
+        {/* Cart Items List (Scrollable Area) */}
+        <div className="flex-1 overflow-y-auto min-h-0 p-3.5 space-y-2.5">
+          {cartItems.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#94A3B8]">
+              <div
+                className={`w-14 h-14 rounded-full flex items-center justify-center mb-3 ${
+                  isModendo ? 'liquid-glass-well' : 'bg-[#121417] border border-white/[0.08]'
+                }`}
+              >
+                <Coffee
+                  className={`w-7 h-7 opacity-85 ${
+                    isModendo ? 'text-[#10B981]' : 'text-[#D71921]'
+                  }`}
+                />
+              </div>
+              <p className="text-sm font-bold text-white mb-1">فاکتور هنوز خالی است</p>
+              <p className="text-xs text-[#94A3B8] max-w-xs leading-relaxed">
+                {isModendo
+                  ? 'آیتمی از منوی کافه مودندو یا سشن‌های بازی را لمس کنید تا به سبد اضافه شود.'
+                  : 'آیتمی از منوی بلندها، بار گرم یا دانه‌های تخصصی صد هیچ را لمس کنید تا به سبد اضافه شود.'}
+              </p>
+            </div>
+          ) : (
+            cartItems.map((item) => (
+              <div
+                key={item.id}
+                className={`p-3 flex flex-col gap-2 transition animate-ticket-item-spring ${
+                  isModendo
+                    ? 'liquid-glass-well rounded-2xl hover:border-white/[0.16]'
+                    : 'bg-[#121417] border border-white/[0.08] rounded-lg hover:border-white/[0.16]'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-xs font-bold text-white truncate">
+                      {item.itemNameSnapshot}
+                    </h4>
+                    {item.modifiers && item.modifiers.length > 0 && (
+                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5 text-[10px] text-[#94A3B8]">
+                        {item.modifiers.map((m, mIdx) => (
+                          <span key={mIdx} className="text-[#F3E9DD] font-medium">
+                            {m.nameFa}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {item.notes && (
+                      <div className="text-[10px] text-amber-300 italic mt-0.5">*{item.notes}</div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveItem(item.id)}
+                    className="text-[#94A3B8] hover:text-rose-400 p-1 cursor-pointer transition"
+                    title="حذف آیتم"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between pt-1.5 border-t border-white/[0.07]">
+                  <div
+                    className={`flex items-center overflow-hidden ${
+                      isModendo
+                        ? 'liquid-glass-rail rounded-full p-0.5'
+                        : 'bg-[#1B222C] border border-white/[0.08] rounded-md'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateQuantity(item.id, -1)}
+                      className={`w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-white font-black text-sm ${
+                        isModendo
+                          ? 'rounded-full active:bg-[#10B981] active:text-[#04150e]'
+                          : 'active:bg-[#D71921]'
+                      } cursor-pointer transition`}
+                    >
+                      -
+                    </button>
+                    <span className="w-7 text-center font-bold text-xs text-white num-heavy tabular-nums">
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateQuantity(item.id, 1)}
+                      className={`w-6 h-6 flex items-center justify-center text-[#94A3B8] hover:text-white font-black text-sm ${
+                        isModendo
+                          ? 'rounded-full active:bg-[#10B981] active:text-[#04150e]'
+                          : 'active:bg-[#D71921]'
+                      } cursor-pointer transition`}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <div className="text-left">
+                    <span className="text-xs font-black text-white num-heavy tabular-nums">
+                      {formatToman(item.subtotalToman)}
+                    </span>
+                    <span className="text-[9px] text-[#94A3B8] mr-1">تومان</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Discount & POS Keypad Accelerators */}
+        <div className="px-4 pt-2.5 pb-2 border-t border-white/[0.08] bg-black/15">
+          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mb-2">
+            <span className="flex items-center gap-1.5">
+              <span>تخفیف سریع فاکتور</span>
+              {!canEditFinancials && (
+                <span className="flex items-center gap-0.5 text-[10px] text-amber-300 font-bold">
+                  <Lock className="w-2.5 h-2.5" />
+                  <span>قفل مدیر</span>
+                </span>
+              )}
+            </span>
+            <span className="text-[#F3E9DD] font-bold">
+              {discountPercent > 0 ? `${discountPercent}٪ تخفیف فعال` : 'بدون تخفیف'}
+            </span>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => handleApplyDiscountPercent(0)}
+              className={`py-1.5 text-[11px] cursor-pointer transition ${
+                isModendo ? 'rounded-full' : 'rounded border'
+              } ${
+                discountPercent === 0
+                  ? isModendo
+                    ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-300'
+                    : 'bg-[#0F223D] border-[#D71921] text-white'
+                  : isModendo
+                  ? 'liquid-glass-pill text-[#94A3B8] hover:text-white'
+                  : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white'
+              }`}
+            >
+              ۰٪
+            </button>
+            <button
+              type="button"
+              disabled={!canEditFinancials}
+              onClick={() => handleApplyDiscountPercent(5)}
+              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
+              className={`py-1.5 text-[11px] transition ${
+                isModendo ? 'rounded-full' : 'rounded border'
+              } ${
+                !canEditFinancials
+                  ? 'opacity-40 cursor-not-allowed liquid-glass-pill text-[#94A3B8]'
+                  : discountPercent === 5
+                  ? isModendo
+                    ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-300 cursor-pointer'
+                    : 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
+                  : isModendo
+                  ? 'liquid-glass-pill text-[#94A3B8] hover:text-white cursor-pointer'
+                  : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
+              }`}
+            >
+              ۵٪ ویژه
+            </button>
+            <button
+              type="button"
+              disabled={!canEditFinancials}
+              onClick={() => handleApplyDiscountPercent(10)}
+              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
+              className={`py-1.5 text-[11px] transition ${
+                isModendo ? 'rounded-full' : 'rounded border'
+              } ${
+                !canEditFinancials
+                  ? 'opacity-40 cursor-not-allowed liquid-glass-pill text-[#94A3B8]'
+                  : discountPercent === 10
+                  ? isModendo
+                    ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-300 cursor-pointer'
+                    : 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
+                  : isModendo
+                  ? 'liquid-glass-pill text-[#94A3B8] hover:text-white cursor-pointer'
+                  : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
+              }`}
+            >
+              ۱۰٪ باریستا
+            </button>
+            <button
+              type="button"
+              disabled={!canEditFinancials}
+              onClick={() => handleApplyDiscountPercent(15)}
+              title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
+              className={`py-1.5 text-[11px] transition ${
+                isModendo ? 'rounded-full' : 'rounded border'
+              } ${
+                !canEditFinancials
+                  ? 'opacity-40 cursor-not-allowed liquid-glass-pill text-[#94A3B8]'
+                  : discountPercent === 15
+                  ? isModendo
+                    ? 'bg-[#10B981]/20 border border-[#10B981]/50 text-emerald-300 cursor-pointer'
+                    : 'bg-[#0F223D] border-[#D71921] text-white cursor-pointer'
+                  : isModendo
+                  ? 'liquid-glass-pill text-[#94A3B8] hover:text-white cursor-pointer'
+                  : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
+              }`}
+            >
+              ۱۵٪ همکار
+            </button>
+          </div>
+        </div>
+
+        {/* Calculations & Total Summary */}
+        <div
+          className={`p-4 border-t border-white/[0.08] space-y-2 ${
+            isModendo ? 'bg-black/25' : 'bg-[#121417] rounded-b-xl'
+          }`}
+        >
+          <div className="flex justify-between items-center text-xs text-[#94A3B8]">
+            <span>جمع اقلام:</span>
+            <span className="font-bold text-white num-heavy tabular-nums">
+              {formatToman(grossAmountToman)} تومان
+            </span>
+          </div>
+
+          <div className="flex justify-between items-center text-xs text-[#94A3B8]">
+            <span>کسر تخفیف:</span>
+            <span className="text-[#F3E9DD] num-heavy tabular-nums">
+              {discountAmountToman > 0
+                ? `-${formatToman(discountAmountToman)} تومان`
+                : '۰ تومان'}
+            </span>
+          </div>
+
+          <div className="h-[1px] bg-white/[0.08] my-1"></div>
+
+          <div className="flex justify-between items-baseline">
+            <span className="text-sm font-extrabold text-white">مبلغ نهایی فاکتور:</span>
+            <div className="text-right">
+              <span
+                className={`text-xl font-black num-heavy tabular-nums tracking-tight ${
+                  isModendo ? 'text-emerald-300' : 'text-[#D71921]'
+                }`}
+              >
+                {formatToman(netTotalToman)}
+              </span>
+              <span className="text-xs text-[#94A3B8] mr-1">تومان</span>
+            </div>
+          </div>
+
+          {/* Action Controls */}
+          <div className="space-y-2 pt-2">
+            {isModendo && orderType === 'DINE_IN' && (
+              <button
+                type="button"
+                onClick={handleSaveAsOpenTable}
+                className="w-full py-2.5 px-4 rounded-2xl liquid-glass-pill border border-emerald-400/40 hover:border-emerald-400/80 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99] shadow-sm"
+              >
+                <Clock className="w-4 h-4 text-emerald-400" />
+                <span>ثبت روی میز باز (شروع زمان)</span>
+              </button>
+            )}
+
+            <div className="grid grid-cols-5 gap-2">
+              <button
+                type="button"
+                onClick={handleClearCart}
+                title="پاک کردن سبد"
+                className={`col-span-1 text-[#94A3B8] hover:text-rose-400 flex items-center justify-center transition cursor-pointer ${
+                  isModendo
+                    ? 'liquid-glass-pill rounded-2xl'
+                    : 'bg-[#1B222C] hover:bg-[#222B38] border border-white/[0.08] rounded-lg'
+                }`}
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={handleStartCheckout}
+                disabled={cartItems.length === 0}
+                className={`col-span-4 py-3 px-4 flex items-center justify-center gap-2 transition transform active:scale-[0.98] cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                  isModendo
+                    ? 'liquid-glass-cta rounded-2xl font-black'
+                    : 'bg-[#D71921] hover:bg-[#B8141B] disabled:bg-stone-700 text-white font-black rounded-lg shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
+                }`}
+              >
+                <CreditCard className="w-5 h-5" />
+                <span>ثبت نهایی سفارش و تسویه</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
 
       {/* ================= MOBILE FLOATING CART BAR ================= */}
-      <div className="hidden fixed bottom-4 left-4 right-4 z-40">
+      <div className="xl:hidden fixed bottom-4 left-4 right-4 z-40">
         <button
           onClick={() => setIsMobileCartOpen(true)}
-          className="w-full bg-[#D71921] hover:bg-[#B8141B] text-white p-3 rounded-xl flex items-center justify-between font-black shadow-[0_0_25px_rgba(215,25,33,0.6)] cursor-pointer"
+          className={`w-full p-3.5 flex items-center justify-between font-black cursor-pointer ${
+            isModendo
+              ? 'liquid-glass-cta rounded-full shadow-2xl'
+              : 'bg-[#D71921] hover:bg-[#B8141B] text-white rounded-xl shadow-[0_0_25px_rgba(215,25,33,0.6)]'
+          }`}
         >
           <div className="flex items-center gap-2">
             <ShoppingBag className="w-5 h-5" />
-            <span>مشاهده سبد فاکتور ({totalCartCount} آیتم)</span>
+            <span className="tabular-nums">مشاهده سبد فاکتور ({totalCartCount} آیتم)</span>
           </div>
-          <div className="font-mono num-heavy text-base">
+          <div className="font-mono num-heavy tabular-nums text-base">
             {formatToman(netTotalToman)} تومان
           </div>
         </button>
@@ -1624,18 +1949,29 @@ export const PosView: React.FC<PosViewProps> = ({
 
       {/* ================= MOBILE CART DRAWER ================= */}
       {isMobileCartOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col justify-end hidden">
-          <div className="bg-[#1B222C] border-t border-[#293444] rounded-t-2xl max-h-[85vh] flex flex-col p-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#293444]">
-              <h3 className="text-base font-extrabold text-white flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#D71921]"></span>
-                سبد سفارش صد هیچ
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsMobileCartOpen(false);
+          }}
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xl flex flex-col justify-end xl:hidden"
+        >
+          <div
+            className={`max-h-[85vh] flex flex-col p-5 animate-spatial-modal ${
+              isModendo
+                ? 'liquid-glass-modal rounded-t-[28px]'
+                : 'bg-[#1B222C] border-t border-white/[0.08] rounded-t-2xl'
+            }`}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-white/[0.08]">
+              <h3 className="text-base font-extrabold text-white">
+                {isModendo ? 'سبد سفارش مودندو' : 'سبد سفارش صد هیچ'}
               </h3>
               <button
                 onClick={() => setIsMobileCartOpen(false)}
-                className="text-[#9EACB8] hover:text-white p-1"
+                className="text-[#94A3B8] hover:text-white p-1.5 rounded-full hover:bg-white/[0.08] cursor-pointer"
+                aria-label="بستن"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -1643,25 +1979,29 @@ export const PosView: React.FC<PosViewProps> = ({
               {cartItems.map((item) => (
                 <div
                   key={item.id}
-                  className="bg-[#121417] p-2.5 rounded-lg border border-[#293444] flex items-center justify-between"
+                  className={`p-3 flex items-center justify-between ${
+                    isModendo
+                      ? 'liquid-glass-well rounded-2xl'
+                      : 'bg-[#121417] rounded-lg border border-white/[0.08]'
+                  }`}
                 >
                   <div>
                     <h5 className="font-bold text-xs text-white">{item.itemNameSnapshot}</h5>
-                    <span className="text-[10px] text-[#F3E9DD]">
+                    <span className="text-[10px] text-[#F3E9DD] tabular-nums">
                       {item.quantity} × {formatToman(item.unitPriceSnapshotToman)} ت
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleUpdateQuantity(item.id, -1)}
-                      className="w-6 h-6 bg-[#1B222C] text-white rounded flex items-center justify-center font-bold text-xs"
+                      className="w-7 h-7 liquid-glass-pill text-white rounded-full flex items-center justify-center font-bold text-xs cursor-pointer"
                     >
                       -
                     </button>
-                    <span className="font-bold text-xs font-mono">{item.quantity}</span>
+                    <span className="font-bold text-xs font-mono tabular-nums">{item.quantity}</span>
                     <button
                       onClick={() => handleUpdateQuantity(item.id, 1)}
-                      className="w-6 h-6 bg-[#1B222C] text-white rounded flex items-center justify-center font-bold text-xs"
+                      className="w-7 h-7 liquid-glass-pill text-white rounded-full flex items-center justify-center font-bold text-xs cursor-pointer"
                     >
                       +
                     </button>
@@ -1670,24 +2010,45 @@ export const PosView: React.FC<PosViewProps> = ({
               ))}
             </div>
 
-            <div className="pt-3 border-t border-[#293444] space-y-2">
+            <div className="pt-3 border-t border-white/[0.08] space-y-2.5">
               <div className="flex justify-between items-baseline">
-                <span className="text-xs text-[#9EACB8]">مبلغ کل قابل پرداخت:</span>
+                <span className="text-xs text-[#94A3B8]">مبلغ کل قابل پرداخت:</span>
                 <div>
-                  <span className="text-lg font-black text-[#D71921] num-heavy">
+                  <span
+                    className={`text-lg font-black num-heavy tabular-nums ${
+                      isModendo ? 'text-emerald-300' : 'text-[#D71921]'
+                    }`}
+                  >
                     {formatToman(netTotalToman)}
                   </span>
-                  <span className="text-xs text-[#9EACB8] mr-1">تومان</span>
+                  <span className="text-xs text-[#94A3B8] mr-1">تومان</span>
                 </div>
               </div>
+              {isModendo && orderType === 'DINE_IN' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileCartOpen(false);
+                    handleSaveAsOpenTable();
+                  }}
+                  className="w-full py-2.5 rounded-2xl liquid-glass-pill border border-emerald-400/40 bg-emerald-500/15 text-emerald-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Clock className="w-4 h-4 text-emerald-400" />
+                  <span>ثبت روی میز باز (شروع زمان)</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsMobileCartOpen(false);
                   handleStartCheckout();
                 }}
-                className="w-full bg-[#D71921] text-white py-3 rounded-lg font-bold shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)] cursor-pointer"
+                className={`w-full py-3 font-black cursor-pointer ${
+                  isModendo
+                    ? 'liquid-glass-cta rounded-2xl'
+                    : 'bg-[#D71921] text-white rounded-lg shadow-[0_0_15px_-3px_rgba(215,25,33,0.45)]'
+                }`}
               >
-                ثبت فاکتور و پرداخت
+                ثبت نهایی سفارش و پرداخت
               </button>
             </div>
           </div>
@@ -1698,38 +2059,318 @@ export const PosView: React.FC<PosViewProps> = ({
       <ModifierModal
         item={modifierItem}
         isOpen={isModifierOpen}
+        isModendo={isModendo}
         onClose={() => setIsModifierOpen(false)}
         onConfirm={handleAddWithModifiers}
       />
 
-      {/* ================= LIQUID GLASS PAYMENT SHEET ================= */}
-      <LiquidGlassPaymentSheet
-        isOpen={isCheckoutOpen}
-        totalBalanceToman={netTotalToman}
-        onClose={() => setIsCheckoutOpen(false)}
-        onConfirm={handleConfirmSettlement}
-        isSubmitting={isSubmittingOrder}
-        tableOrCustomerLabel={orderType === 'DINE_IN' ? tableLabel : customerName || 'مشتری بیرون‌بر'}
-      />
+      {/* ================= PAYMENT & CHECKOUT MODAL ================= */}
+      {isCheckoutOpen && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsCheckoutOpen(false);
+              setPaymentError(null);
+            }
+          }}
+          className="fixed inset-0 bg-black/75 backdrop-blur-xl z-50 flex items-center justify-center p-3"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className={`max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden text-right animate-spatial-modal ${
+              isModendo
+                ? 'liquid-glass-modal rounded-[28px]'
+                : 'bg-[#1B222C] border border-white/[0.08] rounded-2xl shadow-2xl'
+            }`}
+          >
+            {/* Header */}
+            <div className="shrink-0 flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
+              <h3 className="text-base font-extrabold text-white">
+                روش تسویه حساب بار
+              </h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCheckoutOpen(false);
+                  setPaymentError(null);
+                }}
+                className="text-[#94A3B8] hover:text-white p-1.5 rounded-full hover:bg-white/[0.08] cursor-pointer"
+                aria-label="بستن"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-      {/* ================= OPEN TABS MODAL ================= */}
-      <OpenTabsModal
-        isOpen={isOpenTabsModalOpen}
-        onClose={() => {
-          setIsOpenTabsModalOpen(false);
-          setOpenTabsCount(CatalogService.getOpenTabs(activeShift?.tenantId || currentTenantId).length);
-        }}
-        onRecallTab={handleRecallTabForEditing}
-        onSettleTab={handleSettleTabDirectly}
-        activeTabId={activeTabId}
-        tenantId={activeShift?.tenantId || currentTenantId}
-      />
+            {/* Scrollable Payment Methods Body */}
+            <div className="flex-1 overflow-y-auto min-h-0 p-5 sm:p-6 space-y-3.5">
+              <label className="text-xs text-[#94A3B8] block">
+                دستگاه پوز یا روش پرداخت را انتخاب کنید:
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    playPosBeep('click');
+                    setPaymentMethod('CARD_MANUAL');
+                    setTerminalName('پوز ۱ (بانک سامان)');
+                  }}
+                  className={`p-3.5 text-right text-xs transition cursor-pointer ${
+                    isModendo ? 'rounded-2xl' : 'rounded-xl border'
+                  } ${
+                    paymentMethod === 'CARD_MANUAL' && terminalName === 'پوز ۱ (بانک سامان)'
+                      ? isModendo
+                        ? 'liquid-glass-card-active font-bold'
+                        : 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
+                      : isModendo
+                      ? 'liquid-glass-card text-[#94A3B8] hover:text-white'
+                      : 'border-white/[0.08] bg-[#121417] text-[#94A3B8] hover:text-white'
+                  }`}
+                >
+                  <span className="text-white block mb-0.5 font-bold">پوز ۱ (بانک سامان)</span>
+                  <span className="text-[10px] text-emerald-300 font-mono">متصل به بار اصلی</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playPosBeep('click');
+                    setPaymentMethod('CARD_MANUAL');
+                    setTerminalName('پوز ۲ (بانک ملت)');
+                  }}
+                  className={`p-3.5 text-right text-xs transition cursor-pointer ${
+                    isModendo ? 'rounded-2xl' : 'rounded-xl border'
+                  } ${
+                    paymentMethod === 'CARD_MANUAL' && terminalName === 'پوز ۲ (بانک ملت)'
+                      ? isModendo
+                        ? 'liquid-glass-card-active font-bold'
+                        : 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
+                      : isModendo
+                      ? 'liquid-glass-card text-[#94A3B8] hover:text-white'
+                      : 'border-white/[0.08] bg-[#121417] text-[#94A3B8] hover:text-white'
+                  }`}
+                >
+                  <span className="text-white block mb-0.5 font-bold">پوز ۲ (بانک ملت)</span>
+                  <span className="text-[10px] text-[#94A3B8] font-mono">پوز سیار سالن</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playPosBeep('click');
+                    setPaymentMethod('CASH');
+                    setTerminalName('کش دراور نقدی');
+                  }}
+                  className={`p-3.5 text-right text-xs transition cursor-pointer ${
+                    isModendo ? 'rounded-2xl' : 'rounded-xl border'
+                  } ${
+                    paymentMethod === 'CASH'
+                      ? isModendo
+                        ? 'liquid-glass-card-active font-bold'
+                        : 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
+                      : isModendo
+                      ? 'liquid-glass-card text-[#94A3B8] hover:text-white'
+                      : 'border-white/[0.08] bg-[#121417] text-[#94A3B8] hover:text-white'
+                  }`}
+                >
+                  <span className="text-white block mb-0.5 font-bold">نقدی / کش دراور</span>
+                  <span className="text-[10px] text-[#94A3B8]">دریافت وجه نقد اسکناس</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    playPosBeep('click');
+                    setPaymentMethod('CARD_MANUAL');
+                    setTerminalName('کارت به کارت');
+                  }}
+                  className={`p-3.5 text-right text-xs transition cursor-pointer ${
+                    isModendo ? 'rounded-2xl' : 'rounded-xl border'
+                  } ${
+                    paymentMethod === 'CARD_MANUAL' && terminalName === 'کارت به کارت'
+                      ? isModendo
+                        ? 'liquid-glass-card-active font-bold'
+                        : 'border-2 border-[#D71921] bg-[#0F223D] font-bold shadow-sm'
+                      : isModendo
+                      ? 'liquid-glass-card text-[#94A3B8] hover:text-white'
+                      : 'border-white/[0.08] bg-[#121417] text-[#94A3B8] hover:text-white'
+                  }`}
+                >
+                  <span className="text-white block mb-0.5 font-bold">کارت به کارت</span>
+                  <span className="text-[10px] text-[#94A3B8]">تایید فیش همراه مشتری</span>
+                </button>
+              </div>
+
+              {/* Cash Tendered & Iranian Banknote Chips (If Cash) */}
+              {paymentMethod === 'CASH' && (
+                <div className="liquid-glass-well p-4 rounded-2xl space-y-2.5 mt-2">
+                  <label className="text-xs text-[#94A3B8] block">
+                    مبلغ وجه نقد دریافتی از مشتری (تومان):
+                  </label>
+                  <input
+                    type="number"
+                    value={cashTendered || ''}
+                    onChange={(e) => setCashTendered(safeInt(e.target.value))}
+                    className={`w-full liquid-glass-well rounded-xl p-2.5 text-white font-bold text-center text-sm tabular-nums focus:outline-none ${
+                      isModendo ? 'focus:border-[#10B981]' : 'focus:border-[#D71921]'
+                    }`}
+                  />
+
+                  {/* Iranian Banknotes Suggestion Chips */}
+                  <div>
+                    <span className="text-[11px] text-[#94A3B8] block mb-1.5">
+                      پیشنهاد اسکناس‌های رایج تومانی:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playPosBeep('click');
+                          setCashTendered(netTotalToman);
+                        }}
+                        className="px-2.5 py-1 rounded-full liquid-glass-pill text-[#F3E9DD] text-[11px] font-semibold tabular-nums cursor-pointer"
+                      >
+                        دقیقاً {formatToman(netTotalToman)}
+                      </button>
+                      {IRANIAN_BANKNOTES_TOMAN.map((note) => (
+                        <button
+                          key={note}
+                          type="button"
+                          onClick={() => {
+                            playPosBeep('click');
+                            setCashTendered(note);
+                          }}
+                          className="px-2.5 py-1 rounded-full liquid-glass-pill text-white text-[11px] font-mono tabular-nums cursor-pointer"
+                        >
+                          {formatToman(note)} ت
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center pt-2 border-t border-white/[0.08] text-xs">
+                    <span className="text-[#94A3B8]">باقیمانده پرداختی به مشتری:</span>
+                    <span
+                      className={`font-bold num-heavy tabular-nums ${
+                        cashTendered >= netTotalToman ? 'text-emerald-300' : 'text-rose-400'
+                      }`}
+                    >
+                      {cashTendered >= netTotalToman
+                        ? `${formatToman(cashTendered - netTotalToman)} تومان`
+                        : 'مبلغ کمتر از فاکتور است'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Card Terminal Reference / Trace ID */}
+              {paymentMethod !== 'CASH' && (
+                <div className="liquid-glass-well p-3 rounded-2xl text-xs flex justify-between items-center">
+                  <span className="text-[#94A3B8]">شناسه پیگیری فیش کارتخوان (اختیاری):</span>
+                  <input
+                    type="text"
+                    placeholder="مثلاً: ۷۴۸۲۹۱"
+                    value={referenceCode}
+                    onChange={(e) => setReferenceCode(e.target.value)}
+                    className="bg-transparent text-white font-mono font-bold text-left focus:outline-none placeholder:text-[#94A3B8]/40"
+                  />
+                </div>
+              )}
+
+              {/* Total Summary */}
+              <div className="pt-2 flex justify-between items-center text-xs">
+                <span className="text-[#94A3B8]">مبلغ کل قابل تسویه:</span>
+                <span
+                  className={`font-black text-base num-heavy tabular-nums ${
+                    isModendo ? 'text-emerald-300' : 'text-[#D71921]'
+                  }`}
+                >
+                  {formatToman(netTotalToman)} تومان
+                </span>
+              </div>
+
+              {/* P0-2: loud persistence failure — no receipt, no success */}
+              {paymentError && (
+                <div className="mt-3 bg-rose-950/75 border border-rose-500/40 rounded-2xl p-3.5 text-xs text-rose-100 flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-extrabold text-rose-200">
+                      فاکتور و پرداخت ذخیره نشد — وجهی دریافت نکنید.
+                    </p>
+                    <p className="mt-1 leading-5 text-rose-200/90">{paymentError}</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playPosBeep('click');
+                        setPaymentError(null);
+                      }}
+                      className="mt-2 px-3 py-1.5 rounded-full bg-rose-900/70 hover:bg-rose-800 border border-rose-600/50 text-rose-100 font-bold cursor-pointer"
+                    >
+                      تلاش مجدد (پس از رفع مشکل حافظه)
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Action Buttons */}
+            <div className="shrink-0 px-6 py-4 border-t border-white/[0.08] bg-black/25 flex flex-col gap-2">
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCheckoutOpen(false);
+                    setPaymentError(null);
+                  }}
+                  className="w-1/3 liquid-glass-pill text-[#94A3B8] hover:text-white py-3 rounded-2xl font-bold text-xs cursor-pointer"
+                >
+                  انصراف
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmPayment(false)}
+                  disabled={isPaymentBlocked}
+                  className={`w-2/3 py-3 rounded-2xl font-bold text-xs ${
+                    isPaymentBlocked
+                      ? 'liquid-glass-well text-[#526071] cursor-not-allowed opacity-60'
+                      : 'liquid-glass-pill text-white cursor-pointer'
+                  }`}
+                >
+                  {isSettling ? 'در حال ثبت فاکتور…' : 'ثبت پرداخت و مشاهده فیش'}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleConfirmPayment(true)}
+                disabled={isPaymentBlocked}
+                className={`w-full py-3 rounded-2xl font-black flex items-center justify-center gap-2 transition ${
+                  isPaymentBlocked
+                    ? 'bg-stone-800 text-[#94A3B8] cursor-not-allowed opacity-60'
+                    : isModendo
+                    ? 'liquid-glass-cta cursor-pointer'
+                    : 'bg-[#D71921] hover:bg-[#B8141B] text-white shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)] cursor-pointer active:scale-95'
+                }`}
+              >
+                <Printer className="w-4 h-4" />
+                <span>تایید تراکنش و چاپ فیش حرارتی (۸۰ میلی‌متری)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ================= COMPLETED RECEIPT PREVIEW MODAL ================= */}
       {completedReceiptOrder && (
         <div className="relative">
           {/* Hardware Direct Thermal Print Bar (WebUSB & Bluetooth) */}
-          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#0F223D] border border-[#D71921]/60 rounded-2xl p-3 shadow-2xl flex flex-wrap items-center justify-between gap-3 text-xs w-full max-w-xl animate-fadeIn">
+          <div
+            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] p-3 flex flex-wrap items-center justify-between gap-3 text-xs w-full max-w-xl animate-spatial-modal ${
+              isModendo
+                ? 'liquid-glass-shell rounded-2xl'
+                : 'bg-[#0F223D] border border-[#D71921]/60 rounded-2xl shadow-2xl'
+            }`}
+          >
             <div className="flex items-center gap-2 text-white">
               <Printer className="w-4 h-4 text-[#F3E9DD]" />
               <span className="font-bold">چاپ مستقیم حرارتی ۸۰ میلی‌متری (ESC/POS Raster):</span>
@@ -1738,25 +2379,25 @@ export const PosView: React.FC<PosViewProps> = ({
             <div className="flex items-center gap-2">
               <button
                 onClick={() => handleHardwarePrint('USB')}
-                className="px-2.5 py-1.5 rounded-lg bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-white font-medium flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-full liquid-glass-pill text-white font-medium flex items-center gap-1.5 cursor-pointer"
                 title="اتصال مستقیم بدون درایور از طریق WebUSB"
               >
-                <Usb className="w-3.5 h-3.5 text-blue-400" />
+                <Usb className="w-3.5 h-3.5 text-emerald-300" />
                 <span>WebUSB</span>
               </button>
 
               <button
                 onClick={() => handleHardwarePrint('BLUETOOTH')}
-                className="px-2.5 py-1.5 rounded-lg bg-[#1B222C] hover:bg-[#222B38] border border-[#293444] text-white font-medium flex items-center gap-1.5 transition cursor-pointer"
+                className="px-3 py-1.5 rounded-full liquid-glass-pill text-white font-medium flex items-center gap-1.5 cursor-pointer"
                 title="اتصال مستقیم بدون درایور از طریق بلوتوث"
               >
-                <Bluetooth className="w-3.5 h-3.5 text-cyan-400" />
+                <Bluetooth className="w-3.5 h-3.5 text-sky-300" />
                 <span>بلوتوث</span>
               </button>
             </div>
 
             {hardwarePrintStatus && (
-              <div className="w-full text-center text-[11px] text-[#F3E9DD] bg-[#121417] border border-[#293444] rounded p-1">
+              <div className="w-full text-center text-[11px] text-[#F3E9DD] liquid-glass-well rounded-xl p-1.5">
                 {hardwarePrintStatus}
               </div>
             )}
@@ -1768,6 +2409,7 @@ export const PosView: React.FC<PosViewProps> = ({
             tenantName={tenant.name}
             tenantPhone={tenant.phone}
             tenantAddress={tenant.address}
+            isModendo={isModendo}
             cashTendered={completedCashTendered}
             changeToman={completedChange}
             onClose={() => {
@@ -1780,23 +2422,6 @@ export const PosView: React.FC<PosViewProps> = ({
           />
         </div>
       )}
-
-      {/* Table Requirement Toast */}
-      {tableToast && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#842029] text-white border border-red-500/50 px-4 py-2.5 rounded-xl shadow-2xl text-xs font-bold flex items-center gap-2 animate-fadeIn">
-          <AlertCircle className="w-4 h-4 text-red-300" />
-          <span>{tableToast}</span>
-        </div>
-      )}
-
-      {/* Visual Table Picker Modal */}
-      <TablePickerModal
-        isOpen={isTablePickerOpen}
-        onClose={() => setIsTablePickerOpen(false)}
-        onSelectTable={(selectedTbl) => {
-          loadTabForTableIfOpen(selectedTbl);
-        }}
-      />
-    </>
+    </div>
   );
 };

@@ -1,6 +1,6 @@
 // InventoryAlertBanner.tsx
 import React from 'react';
-import { StockAlert } from './useInventoryAlerts';
+import { StockAlert } from '../hooks/useInventoryAlerts';
 
 interface Props {
   alerts: StockAlert[];
@@ -8,41 +8,36 @@ interface Props {
   onMarkAsSoldOut: (productId: string) => void;
 }
 
-export const InventoryAlertBanner: React.FC<Props> = ({ alerts, onDismiss, onMarkAsSoldOut }) => {
+export const InventoryAlertBanner: React.FC<Props> = ({
+  alerts,
+  onDismiss,
+  onMarkAsSoldOut,
+}) => {
   if (alerts.length === 0) return null;
 
   return (
-    <div className="fixed top-4 left-4 right-4 z-50 flex flex-col gap-2 max-w-2xl mx-auto font-sans" dir="rtl">
+    <div className="bg-amber-950/80 border-b border-amber-600/40 text-amber-200 px-4 py-2 text-xs flex flex-col gap-1 z-40 relative backdrop-blur animate-in fade-in">
       {alerts.map((alert) => (
-        <div
-          key={alert.id}
-          className={`flex items-center justify-between p-3.5 rounded-xl border shadow-lg backdrop-blur-md transition-all ${
-            alert.severity === 'CRITICAL'
-              ? 'bg-rose-950/90 border-rose-700/60 text-rose-100'
-              : 'bg-amber-950/90 border-amber-700/60 text-amber-100'
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">⚠️</span>
-            <div>
-              <p className="text-sm font-bold">{alert.productName} (کسری انبار)</p>
-              <p className="text-xs opacity-80">{alert.message}</p>
-            </div>
+        <div key={alert.id} className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping inline-block" />
+            <span className="font-medium text-amber-100">
+              [هشدار موجودی بحرانی] کالای «{alert.productName}» به حداقل مجاز (
+              {alert.currentStock} عدد) رسیده است!
+            </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                onMarkAsSoldOut(alert.productId);
-                onDismiss(alert.id);
-              }}
-              className="px-3 py-1 text-xs font-semibold bg-rose-600 hover:bg-rose-500 text-white rounded-lg transition cursor-pointer"
+              onClick={() => onMarkAsSoldOut(alert.productId)}
+              className="bg-red-800/80 hover:bg-red-700 text-white font-semibold px-2 py-0.5 rounded text-[10px] transition border border-red-500/50"
             >
-              ناموجود کردن در منو (Sold Out)
+              ۸۶ کردن آیتم در منو
             </button>
             <button
               onClick={() => onDismiss(alert.id)}
-              className="p-1 hover:bg-white/10 rounded-lg text-xs opacity-60 hover:opacity-100 cursor-pointer"
+              className="text-amber-400 hover:text-white px-1.5 py-0.5 text-[11px]"
+              title="نادیده گرفتن موقت"
             >
               ✕
             </button>

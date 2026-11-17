@@ -12,6 +12,7 @@ interface ReceiptPreviewProps {
   tenantName?: string;
   tenantPhone?: string;
   tenantAddress?: string;
+  isModendo?: boolean;
   cashTendered?: number;
   changeToman?: number;
   onClose: () => void;
@@ -20,13 +21,22 @@ interface ReceiptPreviewProps {
 export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   order,
   payment,
-  tenantName = '100 HICH COFFEE ROASTERS',
-  tenantPhone = '۰۲۱-۴۴۶۶۸۰۹۰',
-  tenantAddress = 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس',
+  tenantName,
+  tenantPhone,
+  tenantAddress,
+  isModendo = false,
   cashTendered,
   changeToman,
   onClose,
 }) => {
+  const resolvedTenantName =
+    tenantName || (isModendo ? 'MODENDO — کافه بردگیم و گیمینگ' : '100 HICH COFFEE ROASTERS');
+  const resolvedTenantPhone = tenantPhone || (isModendo ? '۰۲۱-۸۸۹۹۷۷۶۶' : '۰۲۱-۴۴۶۶۸۰۹۰');
+  const resolvedTenantAddress =
+    tenantAddress ||
+    (isModendo
+      ? 'تهران، خیابان شریعتی، مجتمع تجاری مودندو، طبقه منفی ۱ و همکف'
+      : 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس');
   const orderDate = new Date(order.createdAt);
   const formattedDate = orderDate.toLocaleDateString('fa-IR');
   const formattedTime = orderDate.toLocaleTimeString('fa-IR', {
@@ -83,9 +93,9 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
   const handlePrint = () => {
     playPosBeep('click');
     printThermalReceipt(orderData, {
-      documentTitle: `رسید فاکتور #${receiptNoLabel} - ${tenantName}`,
-      tenantAddress,
-      tenantPhone,
+      documentTitle: `رسید فاکتور #${receiptNoLabel} - ${resolvedTenantName}`,
+      tenantAddress: resolvedTenantAddress,
+      tenantPhone: resolvedTenantPhone,
     });
   };
 
@@ -100,7 +110,7 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md transition-opacity duration-200 print:hidden" />
         <Dialog.Positioner className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-4 overflow-y-auto print:p-0 print:static print:inset-auto">
           <Dialog.Content
-            data-tenant={order.tenantId || (tenantName?.toUpperCase().includes('MODENDO') ? 'tenant-modendo-01' : 'tenant-100hich-01')}
+            data-tenant={order.tenantId || (resolvedTenantName?.toUpperCase().includes('MODENDO') ? 'tenant-modendo-01' : 'tenant-100hich-01')}
             className="bg-[var(--color-surface-card,#1B222C)] border border-[var(--color-surface-border,#293444)] rounded-2xl max-w-sm w-full p-4 shadow-2xl flex flex-col gap-3 focus:outline-none print:border-none print:shadow-none print:p-0 print:max-w-none print:w-full print:bg-white animate-fadeIn select-none"
           >
             {/* Actions Bar (Hidden during print) */}
@@ -131,9 +141,9 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
               <ReceiptPrintTemplate
                 order={orderData}
                 tenantId={order.tenantId}
-                tenantName={tenantName}
-                tenantAddress={tenantAddress}
-                tenantPhone={tenantPhone}
+                tenantName={resolvedTenantName}
+                tenantAddress={resolvedTenantAddress}
+                tenantPhone={resolvedTenantPhone}
               />
             </div>
 

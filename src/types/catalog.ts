@@ -1,7 +1,7 @@
-/**
+﻿/**
  * src/types/catalog.ts
  * 
- * KarWand POS — 100 HICH Core & Sensory Lab Catalog Types
+ * KarWand POS â€” 100 HICH Core & Sensory Lab Catalog Types
  * Enforces:
  *  - Integer Toman Invariant (zero fractional currency amounts).
  *  - Dual-Bean Matrix: arabica vs blend pricing and BOM grams per cup.

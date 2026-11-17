@@ -1,5 +1,5 @@
-/**
- * CAFE OS — Multi-Mode Tenant Operational Configuration Contract
+﻿/**
+ * CAFE OS â€” Multi-Mode Tenant Operational Configuration Contract
  * Path: src/types/tenant-config.ts
  *
  * Defines operational modes, feature toggles, zone layouts, and tenant configuration contracts:
@@ -48,7 +48,7 @@ export interface VenueZoneConfig {
 }
 
 export interface TakeawayBillingPolicy {
-  allowRegularOpenTab: boolean; // Enables "ثبت حساب باز بیرونبر (مشتری ثابت)"
+  allowRegularOpenTab: boolean; // Enables "Ø«Ø¨Øª Ø­Ø³Ø§Ø¨ Ø¨Ø§Ø² Ø¨ÛŒØ±ÙˆÙ†Ø¨Ø± (Ù…Ø´ØªØ±ÛŒ Ø«Ø§Ø¨Øª)"
   defaultBillingMode: 'INSTANT_PAY' | 'OPEN_TAB_REGULAR';
   requireCustomerPhone: boolean;
   requireCustomerName: boolean;
@@ -107,7 +107,7 @@ export interface TenantOperationalConfig {
  */
 export const TENANT_CONFIG_100HICH: TenantOperationalConfig = {
   tenantId: 'tenant-100hich-01',
-  tenantName: (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_VENUE_NAME) || 'قهوهفروشی ۱۰۰هیچ',
+  tenantName: 'Ù‚Ù‡ÙˆÙ‡â€ŒÙØ±ÙˆØ´ÛŒ Û±Û°Û°Ù‡ÛŒÚ†',
   tenantNameEn: '100 HICH Coffee Roasters',
   primaryMode: 'COUNTER_QUICK_PAY',
   supportedModes: ['COUNTER_QUICK_PAY', 'DINE_IN_PAY_BY_ORDER'],
@@ -122,7 +122,7 @@ export const TENANT_CONFIG_100HICH: TenantOperationalConfig = {
   },
   tableService: {
     requireGuestCount: false,
-    defaultRoundLabel: 'سفارش پیشخوان',
+    defaultRoundLabel: 'Ø³ÙØ§Ø±Ø´ Ù¾ÛŒØ´Ø®ÙˆØ§Ù†',
     autoReleaseTableOnSettle: true,
     allowSplitBill: false,
   },
@@ -134,31 +134,31 @@ export const TENANT_CONFIG_100HICH: TenantOperationalConfig = {
   zones: [
     {
       id: 'zone-100hich-counter',
-      nameFa: 'کانتر و بار اکسپرس',
+      nameFa: 'Ú©Ø§Ù†ØªØ± Ùˆ Ø¨Ø§Ø± Ø§Ú©Ø³Ù¾Ø±Ø³',
       nameEn: 'Express Bar & Counter',
       type: 'COUNTER',
       sortOrder: 1,
       tables: [
-        { id: 'tbl-100hich-c1', tableNumber: 'C1', label: 'پیشخوان ۱ (سفارش سریع)', capacity: 1 },
-        { id: 'tbl-100hich-c2', tableNumber: 'C2', label: 'پیشخوان ۲ (بار دم‌آوری)', capacity: 1 },
-        { id: 'tbl-100hich-bar1', tableNumber: 'B1', label: 'صندلی بار ۱', capacity: 1 },
-        { id: 'tbl-100hich-bar2', tableNumber: 'B2', label: 'صندلی بار ۲', capacity: 1 },
+        { id: 'tbl-100hich-c1', tableNumber: 'C1', label: 'Ù¾ÛŒØ´Ø®ÙˆØ§Ù† Û± (Ø³ÙØ§Ø±Ø´ Ø³Ø±ÛŒØ¹)', capacity: 1 },
+        { id: 'tbl-100hich-c2', tableNumber: 'C2', label: 'Ù¾ÛŒØ´Ø®ÙˆØ§Ù† Û² (Ø¨Ø§Ø± Ø¯Ù…â€ŒØ¢ÙˆØ±ÛŒ)', capacity: 1 },
+        { id: 'tbl-100hich-bar1', tableNumber: 'B1', label: 'ØµÙ†Ø¯Ù„ÛŒ Ø¨Ø§Ø± Û±', capacity: 1 },
+        { id: 'tbl-100hich-bar2', tableNumber: 'B2', label: 'ØµÙ†Ø¯Ù„ÛŒ Ø¨Ø§Ø± Û²', capacity: 1 },
       ],
     },
     {
       id: 'zone-100hich-retail',
-      nameFa: 'میزهای تست و خرده‌فروشی دان',
+      nameFa: 'Ù…ÛŒØ²Ù‡Ø§ÛŒ ØªØ³Øª Ùˆ Ø®Ø±Ø¯Ù‡â€ŒÙØ±ÙˆØ´ÛŒ Ø¯Ø§Ù†',
       nameEn: 'Coffee Tasting & Retail Tables',
       type: 'RETAIL',
       sortOrder: 2,
       tables: [
-        { id: 'tbl-100hich-r1', tableNumber: 'R1', label: 'میز تست و کاپینگ ۱', capacity: 4 },
-        { id: 'tbl-100hich-r2', tableNumber: 'R2', label: 'میز مشاوره دان و دم‌آوری ۲', capacity: 4 },
+        { id: 'tbl-100hich-r1', tableNumber: 'R1', label: 'Ù…ÛŒØ² ØªØ³Øª Ùˆ Ú©Ø§Ù¾ÛŒÙ†Ú¯ Û±', capacity: 4 },
+        { id: 'tbl-100hich-r2', tableNumber: 'R2', label: 'Ù…ÛŒØ² Ù…Ø´Ø§ÙˆØ±Ù‡ Ø¯Ø§Ù† Ùˆ Ø¯Ù…â€ŒØ¢ÙˆØ±ÛŒ Û²', capacity: 4 },
       ],
     },
   ],
   takeawayPolicy: {
-    allowRegularOpenTab: true, // Enables "ثبت حساب باز بیرونبر (مشتری ثابت)"
+    allowRegularOpenTab: true, // Enables "Ø«Ø¨Øª Ø­Ø³Ø§Ø¨ Ø¨Ø§Ø² Ø¨ÛŒØ±ÙˆÙ†Ø¨Ø± (Ù…Ø´ØªØ±ÛŒ Ø«Ø§Ø¨Øª)"
     defaultBillingMode: 'INSTANT_PAY',
     requireCustomerPhone: true,
     requireCustomerName: true,
@@ -177,7 +177,7 @@ export const TENANT_CONFIG_100HICH: TenantOperationalConfig = {
  */
 export const TENANT_CONFIG_MODENDO: TenantOperationalConfig = {
   tenantId: 'tenant-modendo-01',
-  tenantName: 'کافه بازی و گیمینگ مودندو',
+  tenantName: 'Ú©Ø§ÙÙ‡ Ø¨Ø§Ø²ÛŒ Ùˆ Ú¯ÛŒÙ…ÛŒÙ†Ú¯ Ù…ÙˆØ¯Ù†Ø¯Ùˆ',
   tenantNameEn: 'Modendo Boardgame & Gaming Cafe',
   primaryMode: 'TAB_PAY_LATER',
   supportedModes: ['TAB_PAY_LATER', 'COUNTER_QUICK_PAY'],
@@ -192,7 +192,7 @@ export const TENANT_CONFIG_MODENDO: TenantOperationalConfig = {
   },
   tableService: {
     requireGuestCount: true,
-    defaultRoundLabel: 'تب باز میز / گیم پاد',
+    defaultRoundLabel: 'ØªØ¨ Ø¨Ø§Ø² Ù…ÛŒØ² / Ú¯ÛŒÙ… Ù¾Ø§Ø¯',
     autoReleaseTableOnSettle: true,
     allowSplitBill: true,
   },
@@ -204,17 +204,17 @@ export const TENANT_CONFIG_MODENDO: TenantOperationalConfig = {
   zones: [
     {
       id: 'zone-modendo-hall',
-      nameFa: 'سالن اصلی بردگیم',
+      nameFa: 'Ø³Ø§Ù„Ù† Ø§ØµÙ„ÛŒ Ø¨Ø±Ø¯Ú¯ÛŒÙ…',
       nameEn: 'Main Boardgame Hall',
       type: 'HALL',
       sortOrder: 1,
       tables: [
-        { id: 'tbl-modendo-1', tableNumber: 'T1', label: 'میز کافه T1', capacity: 4 },
-        { id: 'tbl-modendo-2', tableNumber: 'T2', label: 'میز کافه T2', capacity: 4 },
-        { id: 'tbl-modendo-3', tableNumber: 'T3', label: 'میز کافه T3', capacity: 4 },
-        { id: 'tbl-modendo-4', tableNumber: 'T4', label: 'میز کافه T4', capacity: 6 },
-        { id: 'tbl-modendo-5', tableNumber: 'T5', label: 'میز کافه T5', capacity: 4 },
-        { id: 'tbl-modendo-6', tableNumber: 'T6', label: 'میز کافه T6', capacity: 6 },
+        { id: 'tbl-modendo-1', tableNumber: 'T1', label: 'Ù…ÛŒØ² Ú©Ø§ÙÙ‡ T1', capacity: 4 },
+        { id: 'tbl-modendo-2', tableNumber: 'T2', label: 'Ù…ÛŒØ² Ú©Ø§ÙÙ‡ T2', capacity: 4 },
+        { id: 'tbl-modendo-3', tableNumber: 'T3', label: 'Ù…ÛŒØ² Ú©Ø§ÙÙ‡ T3', capacity: 4 },
+        { id: 'tbl-modendo-4', tableNumber: 'T4', label: 'Ù…ÛŒØ² Ú©Ø§ÙÙ‡ T4', capacity: 6 },
+        { id: 'tbl-modendo-5', tableNumber: 'T5', label: 'Ù…ÛŒØ² Ú©Ø§ÙÙ‡ T5', capacity: 4 },
+        { id: 'tbl-modendo-6', tableNumber: 'T6', label: 'Ù…ÛŒØ² Ú©Ø§ÙÙ‡ T6', capacity: 6 },
       ],
     },
     {
@@ -245,7 +245,7 @@ export const TENANT_CONFIG_MODENDO: TenantOperationalConfig = {
         {
           id: 'tbl-modendo-ps5-3',
           tableNumber: 'PS5-3',
-          label: 'پاد PS5 شماره ۳',
+          label: 'Ù¾Ø§Ø¯ PS5 Ø´Ù…Ø§Ø±Ù‡ Û³',
           capacity: 4,
           isPs5Station: true,
           ps5StationNumber: 3,
@@ -264,7 +264,7 @@ export const TENANT_CONFIG_MODENDO: TenantOperationalConfig = {
     },
     {
       id: 'zone-modendo-vip',
-      nameFa: 'اتاق VIP بردگیم',
+      nameFa: 'Ø§ØªØ§Ù‚ VIP Ø¨Ø±Ø¯Ú¯ÛŒÙ…',
       nameEn: 'VIP Boardgame Suite',
       type: 'VIP_BOARDGAME',
       sortOrder: 3,
@@ -272,14 +272,14 @@ export const TENANT_CONFIG_MODENDO: TenantOperationalConfig = {
         {
           id: 'tbl-modendo-vip-1',
           tableNumber: 'VIP-1',
-          label: 'غرفه VIP گیمینگ ۱',
+          label: 'ØºØ±ÙÙ‡ VIP Ú¯ÛŒÙ…ÛŒÙ†Ú¯ Û±',
           capacity: 8,
           hourlyRateToman: 150000,
         },
         {
           id: 'tbl-modendo-vip-2',
           tableNumber: 'VIP-2',
-          label: 'غرفه VIP گیمینگ ۲',
+          label: 'ØºØ±ÙÙ‡ VIP Ú¯ÛŒÙ…ÛŒÙ†Ú¯ Û²',
           capacity: 8,
           hourlyRateToman: 150000,
         },
@@ -287,7 +287,7 @@ export const TENANT_CONFIG_MODENDO: TenantOperationalConfig = {
     },
   ],
   takeawayPolicy: {
-    allowRegularOpenTab: true, // Enables "ثبت حساب باز بیرونبر (مشتری ثابت)"
+    allowRegularOpenTab: true, // Enables "Ø«Ø¨Øª Ø­Ø³Ø§Ø¨ Ø¨Ø§Ø² Ø¨ÛŒØ±ÙˆÙ†Ø¨Ø± (Ù…Ø´ØªØ±ÛŒ Ø«Ø§Ø¨Øª)"
     defaultBillingMode: 'INSTANT_PAY',
     requireCustomerPhone: true,
     requireCustomerName: true,
@@ -305,7 +305,7 @@ export const TENANT_CONFIG_MODENDO: TenantOperationalConfig = {
  */
 export const TENANT_CONFIG_GENERIC_BISTRO: TenantOperationalConfig = {
   tenantId: 'tenant-bistro-01',
-  tenantName: 'بیسترو و رستوران جنریک',
+  tenantName: 'Ø¨ÛŒØ³ØªØ±Ùˆ Ùˆ Ø±Ø³ØªÙˆØ±Ø§Ù† Ø¬Ù†Ø±ÛŒÚ©',
   tenantNameEn: 'Generic Bistro & Dining',
   primaryMode: 'DINE_IN_PAY_BY_ORDER',
   supportedModes: ['DINE_IN_PAY_BY_ORDER', 'COUNTER_QUICK_PAY'],
@@ -320,7 +320,7 @@ export const TENANT_CONFIG_GENERIC_BISTRO: TenantOperationalConfig = {
   },
   tableService: {
     requireGuestCount: true,
-    defaultRoundLabel: 'راند سفارش سالن',
+    defaultRoundLabel: 'Ø±Ø§Ù†Ø¯ Ø³ÙØ§Ø±Ø´ Ø³Ø§Ù„Ù†',
     autoReleaseTableOnSettle: false, // Session continues across rounds until guest departs
     allowSplitBill: true,
   },
@@ -332,13 +332,13 @@ export const TENANT_CONFIG_GENERIC_BISTRO: TenantOperationalConfig = {
   zones: [
     {
       id: 'zone-bistro-dining',
-      nameFa: 'سالن غذاخوری اصلی',
+      nameFa: 'Ø³Ø§Ù„Ù† ØºØ°Ø§Ø®ÙˆØ±ÛŒ Ø§ØµÙ„ÛŒ',
       nameEn: 'Main Dining Room',
       type: 'HALL',
       sortOrder: 1,
       tables: [
-        { id: 'tbl-bistro-1', tableNumber: 1, label: 'میز ۱ (سالن)', capacity: 4 },
-        { id: 'tbl-bistro-2', tableNumber: 2, label: 'میز ۲ (سالن)', capacity: 4 },
+        { id: 'tbl-bistro-1', tableNumber: 1, label: 'Ù…ÛŒØ² Û± (Ø³Ø§Ù„Ù†)', capacity: 4 },
+        { id: 'tbl-bistro-2', tableNumber: 2, label: 'Ù…ÛŒØ² Û² (Ø³Ø§Ù„Ù†)', capacity: 4 },
       ],
     },
   ],

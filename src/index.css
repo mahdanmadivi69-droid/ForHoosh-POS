@@ -1,436 +1,34 @@
 @import "tailwindcss";
-@import "./styles/theme-tokens.css";
-@import "./styles/pinar_font.css";
 
-/* Farsi Typography Hierarchy */
-@font-face {
-  font-family: 'Vazirmatn';
-  src: url('/fonts/Vazirmatn-Regular.woff2') format('woff2');
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Vazirmatn';
-  src: url('/fonts/Vazirmatn-SemiBold.woff2') format('woff2');
-  font-weight: 600;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Vazirmatn';
-  src: url('/fonts/Vazirmatn-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-display: swap;
-}
-
+/* Farsi Typography: System Font Fallback (Offline-Ready) */
 /* System Typography Tokens & Motion Physics Variables */
 :root {
-  --font-fa-sans: 'Pinar', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono-numbers: 'Fira Code', 'JetBrains Mono', monospace;
+  --font-fa-sans: 'Vazirmatn', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display-latin: 'Plus Jakarta Sans', 'Vazirmatn', sans-serif;
+  --font-mono-numbers: 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* AntiGravity Apple VisionOS Physics Tokens */
-  --motion-tactile-scale: 0.96;
-  --motion-spring-physics: cubic-bezier(0.32, 0.72, 0, 1);
-  --motion-drawer-enter-duration: 0.26s;
-  --motion-drawer-enter-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  /* AntiGravity & Spatial Liquid Glass Physics Tokens */
+  --motion-tactile-scale: 0.97;
+  --motion-drawer-enter-duration: 0.24s;
+  --motion-drawer-enter-ease: cubic-bezier(0.16, 1, 0.3, 1);
   --motion-drawer-exit-duration: 0.18s;
   --motion-drawer-exit-ease: cubic-bezier(0.7, 0, 0.84, 0);
+  --motion-spring-fluid: cubic-bezier(0.22, 1, 0.36, 1);
   --motion-ticket-stiffness: 420;
   --motion-ticket-damping: 32;
   --motion-ticket-mass: 0.7;
-
-  /* ===== KarWand Liquid Glass Dark Theme — Brand Tokens v2 (100 HICH Edition) ===== */
-  --kw-canvas-core: #0A0D11;
-  --kw-canvas-halo: #131B29;
-  --kw-carmine: #D71921;
-  --kw-carmine-deep: #B8141B;
-  --kw-maroon: #3D0C11;
-  --kw-gold: #9E8A5E;
-  --kw-platinum: #E5E4E2;
-  --kw-hairline: rgba(255, 255, 255, 0.10);
-  --kw-specular: rgba(255, 255, 255, 0.22);
-  --kw-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --glass-base: linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 24%, rgba(16, 20, 28, 0.82) 58%, rgba(10, 13, 17, 0.94) 100%);
-  --glass-blur: 22px;
-  --glass-saturate: 180%;
-  --glass-brightness: 1.07;
-  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
-  --glass-specular: rgba(255, 255, 255, 0.30);
-  --glow-accent: rgba(215, 25, 33, 0.25);
 }
 
-/* Tenant-scoped token layer — mirrors the 100 HICH brand grammar; future tenants override here */
-[data-theme='100hich'] {
-  --kw-canvas-core: #0A0D11;
-  --kw-canvas-halo: #131B29;
-  --kw-carmine: #D71921;
-  --kw-carmine-deep: #B8141B;
-  --kw-maroon: #3D0C11;
-  --kw-gold: #9E8A5E;
-  --kw-platinum: #E5E4E2;
-  --kw-hairline: rgba(255, 255, 255, 0.10);
-  --kw-specular: rgba(255, 255, 255, 0.28);
-  --kw-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --glass-base: linear-gradient(165deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 24%, rgba(16, 20, 28, 0.82) 58%, rgba(10, 13, 17, 0.94) 100%);
-  --glass-blur: 22px;
-  --glass-saturate: 180%;
-  --glass-brightness: 1.07;
-  --glass-border: 1px solid rgba(255, 255, 255, 0.12);
-  --glass-specular: rgba(255, 255, 255, 0.30);
-  --glow-accent: rgba(215, 25, 33, 0.25);
-}
-
-/* Modendo Gaming Lounge — Emerald Liquid Glass (Official Mission Palette v0.16) */
-[data-theme='modendo'] {
-  --kw-canvas-core: #081813;
-  --kw-canvas-halo: #0A241C;
-  --kw-carmine: #005A3E;
-  --kw-carmine-deep: #00402C;
-  --kw-maroon: #03110C;
-  --kw-gold: #68A691;
-  --kw-platinum: #F8EED9;
-  --kw-hairline: rgba(248, 238, 217, 0.12);
-  --kw-specular: rgba(168, 230, 205, 0.30);
-  --kw-press-ease: cubic-bezier(0.32, 0.72, 0, 1);
-  --glass-base: linear-gradient(165deg, rgba(104, 166, 145, 0.10) 0%, rgba(104, 166, 145, 0.03) 24%, rgba(8, 24, 19, 0.72) 58%, rgba(4, 12, 9, 0.94) 100%);
-  --glass-blur: 22px;
-  --glass-saturate: 180%;
-  --glass-brightness: 1.07;
-  --glass-border: 1px solid rgba(104, 166, 145, 0.28);
-  --glass-specular: rgba(168, 230, 205, 0.32);
-  --glow-accent: rgba(0, 122, 84, 0.28);
-}
-
-/* Deep Emerald Obsidian Canvas: #081813 → #040C09 (Modendo only) */
-body.theme-modendo {
-  background: linear-gradient(180deg, #081813 0%, #040C09 100%);
-}
-
-/* Strict Viewport Freeze: Zero page-level bounce, elasticity, or scroll */
-html, body, #root {
-  height: 100%;
-  max-height: 100vh;
-  overflow: hidden;
-  overscroll-behavior: none;
-  -webkit-overscroll-behavior: none;
-}
-
-html, body, button, input, select, textarea, [dir="rtl"], nav, header {
-  font-family: 'Pinar', 'Pinar-DS4', 'Vazirmatn', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-  font-variation-settings: 'DSTY' 4;
+[dir="rtl"] {
+  font-family: var(--font-fa-sans);
   letter-spacing: 0 !important; /* Never use negative tracking in Persian script */
 }
 
-/* Scrollbar suppression utility for horizontal capsule strips */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+.font-display-latin {
+  font-family: var(--font-display-latin);
 }
 
-/* =========================================================================
-   APPLE VISIONOS LIQUID GLASS SYSTEM & MATERIALITY OVERHAUL
-   ========================================================================= */
-
-/* Typography & Readability Floating Optimization */
-body, button, input, select, textarea {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-}
-
-.text-float-shadow {
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75), 0 0 10px rgba(0, 0, 0, 0.4);
-}
-
-/* Ambient Luminous Underlay Mesh (Reveals Frosted Translucency) */
-.vision-ambient-mesh {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  overflow: hidden;
-}
-
-.vision-ambient-orb {
-  position: absolute;
-  border-radius: 9999px;
-  filter: blur(80px);
-  will-change: transform;
-  pointer-events: none;
-}
-
-.vision-orb-carmine {
-  width: 650px;
-  height: 650px;
-  top: -100px;
-  right: -80px;
-  background: radial-gradient(circle, var(--color-brand-primary-light, rgba(140, 19, 24, 0.45)) 0%, var(--glow-accent, rgba(140, 19, 24, 0.22)) 50%, transparent 75%);
-  opacity: 0.85;
-  animation: floatOrbCarmine 24s ease-in-out infinite alternate;
-}
-
-.vision-orb-navy {
-  width: 720px;
-  height: 720px;
-  bottom: -150px;
-  left: -100px;
-  background: radial-gradient(circle, var(--color-brand-secondary-light, rgba(15, 34, 61, 0.65)) 0%, rgba(12, 28, 51, 0.35) 50%, transparent 75%);
-  opacity: 0.85;
-  animation: floatOrbNavy 28s ease-in-out infinite alternate;
-}
-
-.vision-orb-gold {
-  width: 480px;
-  height: 480px;
-  top: 35%;
-  left: 28%;
-  background: radial-gradient(circle, var(--color-brand-gold-light, rgba(158, 138, 94, 0.28)) 0%, rgba(158, 138, 94, 0.12) 50%, transparent 70%);
-  opacity: 0.6;
-}
-
-@keyframes floatOrbCarmine {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(-40px, 60px) scale(1.1); }
-}
-
-@keyframes floatOrbNavy {
-  0% { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(50px, -50px) scale(1.08); }
-}
-
-/* Deep Glass Slab (Base containers, Header island, Cart ledger) */
-.vision-glass-slab {
-  background: radial-gradient(130% 100% at 50% 0%, rgba(15, 34, 61, 0.72) 0%, rgba(12, 20, 35, 0.78) 50%, rgba(7, 10, 18, 0.85) 100%);
-  backdrop-filter: blur(32px) saturate(210%);
-  -webkit-backdrop-filter: blur(32px) saturate(210%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
-    0 20px 48px -10px rgba(0, 0, 0, 0.75),
-    0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 20px -2px rgba(158, 138, 94, 0.2);
-  position: relative;
-}
-
-/* Sculpted Glass Cards (Product Cards, Category Shells, Modals) */
-.vision-glass-card {
-  background: radial-gradient(120% 120% at 50% 0%, rgba(20, 42, 75, 0.65) 0%, rgba(12, 20, 35, 0.75) 55%, rgba(6, 10, 18, 0.82) 100%);
-  backdrop-filter: blur(32px) saturate(210%);
-  -webkit-backdrop-filter: blur(32px) saturate(210%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.35),
-    0 16px 36px -8px rgba(0, 0, 0, 0.75),
-    0 0 0 1px rgba(255, 255, 255, 0.06);
-  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1),
-              box-shadow 0.24s cubic-bezier(0.32, 0.72, 0, 1),
-              border-color 0.2s ease,
-              background 0.24s ease;
-  will-change: transform, box-shadow;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Hover elevation: Specular sheen expands & glowing ambient rim illuminates */
-.vision-glass-card:hover {
-  background: radial-gradient(120% 120% at 50% 0%, rgba(28, 58, 102, 0.75) 0%, rgba(15, 26, 46, 0.82) 55%, rgba(8, 14, 24, 0.88) 100%);
-  border-color: rgba(158, 138, 94, 0.45);
-  box-shadow: 
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.5),
-    0 24px 50px -8px rgba(0, 0, 0, 0.85),
-    0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 0 24px -2px rgba(158, 138, 94, 0.35);
-}
-
-/* Haptic Press & Elevation: Instant spring scale down (0.96) + contracting drop-shadow */
-.vision-glass-card:active,
-.vision-haptic-press:active {
-  transform: scale(0.96) !important;
-  box-shadow: 
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.6),
-    0 6px 14px -2px rgba(0, 0, 0, 0.9),
-    0 0 16px -2px rgba(140, 19, 24, 0.5) !important;
-  transition-duration: 80ms !important;
-}
-
-/* VisionOS Glass Navigation Pills (Categories, Filters) */
-.vision-glass-pill {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(16, 20, 28, 0.72) 100%);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  border: 1px solid var(--kw-hairline);
-  border-radius: 9999px;
-  box-shadow: inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.16), 0 6px 18px -8px rgba(0, 0, 0, 0.6);
-  transition: transform 180ms var(--kw-press-ease), border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
-  will-change: transform, box-shadow;
-}
-
-.vision-glass-pill:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(158, 138, 94, 0.4);
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 0 14px rgba(158, 138, 94, 0.2);
-  color: #FFFFFF;
-}
-
-.vision-glass-pill.active,
-.vision-glass-pill-active {
-  background: linear-gradient(180deg, rgba(215, 25, 33, 0.30) 0%, rgba(140, 19, 24, 0.40) 100%) !important;
-  border-color: rgba(215, 25, 33, 0.6) !important;
-  color: #FFFFFF !important;
-  box-shadow:
-    0 0 16px rgba(215, 25, 33, 0.25),
-    inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.18) !important;
-  font-weight: 700;
-}
-
-.vision-glass-pill:active {
-  transform: scale(0.96);
-  transition-duration: 80ms;
-}
-
-/* Primary Checkout Trigger Button with Liquid Gold & Velvet Carmine Glow */
-.vision-checkout-cta {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 38%), #D71921;
-  border: 1px solid rgba(215, 25, 33, 0.55);
-  box-shadow:
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.28),
-    0 10px 24px -8px rgba(215, 25, 33, 0.55),
-    0 12px 28px -6px rgba(0, 0, 0, 0.75);
-  transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1),
-              box-shadow 0.22s cubic-bezier(0.32, 0.72, 0, 1),
-              filter 0.2s ease;
-  will-change: transform, box-shadow;
-}
-
-.vision-checkout-cta:hover:not(:disabled) {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 38%), var(--kw-carmine-deep);
-  border-color: rgba(215, 25, 33, 0.8);
-  box-shadow:
-    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.35),
-    0 0 26px rgba(215, 25, 33, 0.45),
-    0 16px 36px -6px rgba(0, 0, 0, 0.85);
-}
-
-.vision-checkout-cta:active:not(:disabled) {
-  transform: scale(0.97) !important;
-  box-shadow: 
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.4),
-    0 0 18px rgba(215, 25, 33, 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.9) !important;
-  transition-duration: 180ms !important;
-}
-
-.vision-checkout-cta:disabled {
-  background: #1c1917 !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: none !important;
-  opacity: 0.4;
-}
-
-/* Retrofit Existing Glass Classes to Liquid VisionOS Specifications */
-.glass-panel {
-  background: radial-gradient(130% 100% at 50% 0%, rgba(15, 34, 61, 0.72) 0%, rgba(12, 20, 35, 0.78) 50%, rgba(7, 10, 18, 0.85) 100%) !important;
-  backdrop-filter: blur(32px) saturate(210%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(210%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 16px 40px -8px rgba(0, 0, 0, 0.7) !important;
-}
-
-.glass-card {
-  background: radial-gradient(120% 120% at 50% 0%, rgba(20, 42, 75, 0.65) 0%, rgba(12, 20, 35, 0.75) 55%, rgba(6, 10, 18, 0.82) 100%) !important;
-  backdrop-filter: blur(32px) saturate(210%) !important;
-  -webkit-backdrop-filter: blur(32px) saturate(210%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.14) !important;
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.35), 0 16px 36px -8px rgba(0, 0, 0, 0.75) !important;
-  transition: transform 0.24s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.24s cubic-bezier(0.32, 0.72, 0, 1), border-color 0.2s ease !important;
-}
-
-.glass-card:active {
-  transform: scale(0.96) !important;
-}
-
-/* Universal Base Formula for Liquid Glass Elements - HWEI / VISIONOS SPEC */
-.liquid-glass-surface, .liquid-glass, .liquid-glass-card, .liquid-glass-panel, .vision-glass-slab {
-  background: var(--glass-base, rgba(15, 22, 34, 0.72)) !important;
-  backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 160%)) !important;
-  -webkit-backdrop-filter: blur(var(--glass-blur, 24px)) saturate(var(--glass-saturate, 160%)) !important;
-  border: var(--glass-border, 1px solid rgba(255, 255, 255, 0.12)) !important;
-  box-shadow: 
-    inset 0 1px 1px 0 var(--kw-specular),
-    0 10px 28px -6px rgba(0, 0, 0, 0.65) !important;
-  border-radius: var(--glass-radius, 28px) !important;
-  position: relative;
-  overflow: hidden;
-  transform-style: preserve-3d;
-  will-change: transform;
-  transition: transform 0.2s cubic-bezier(0.32, 0.72, 0, 1), box-shadow 0.2s cubic-bezier(0.32, 0.72, 0, 1);
-}
-
-.liquid-glass-btn, .tactile-press, button.vision-haptic-press {
-  transition: transform 180ms var(--kw-press-ease), border-color 180ms ease, box-shadow 180ms ease !important;
-}
-
-.liquid-glass-btn:active, .tactile-press:active, button.vision-haptic-press:active, .liquid-glass:not(.catalog-card-tilt):active {
-  transform: scale(0.97) !important;
-  box-shadow: inset 0 1px 1px 0 var(--kw-specular), 0 0 16px rgba(215, 25, 33, 0.25) !important;
-}
-
-.liquid-glass:hover {
-  border-color: rgba(144, 210, 237, 0.45) !important;
-  box-shadow: 
-    inset 0 1px 1.5px 0 var(--glass-specular, rgba(255, 255, 255, 0.4)),
-    0 24px 60px -15px rgba(0, 0, 0, 0.90),
-    0 0 25px var(--glow-accent, rgba(0, 229, 255, 0.25)) !important;
-}
-
-.glass-sheen {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: none;
-  background: radial-gradient(circle at var(--sheen-x, 50%) var(--sheen-y, 0%), rgba(255, 255, 255, 0.16) 0%, transparent 65%);
-  opacity: var(--sheen-opacity, 0);
-  transition: opacity 0.3s ease;
-  z-index: 10;
-}
-
-/* =========================================================================
-   KARWAND LIQUID GLASS DARK THEME — OBSIDIAN CANVAS & TOKEN BRIDGE (v2)
-   ========================================================================= */
-
-/* Deep obsidian radial canvas: halo halo above the horizon, obsidian floor */
-body {
-  background-image: radial-gradient(circle at 50% 0%, var(--kw-canvas-halo) 0%, var(--kw-canvas-core) 65%);
-  background-attachment: fixed;
-}
-
-/* Pill capsule grammar (mission-specified class names resolve to the unified system) */
-.glass-pill {
-  border-radius: 9999px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(16, 20, 28, 0.72) 100%);
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
-  border: 1px solid var(--kw-hairline);
-  box-shadow: inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.16), 0 6px 18px -8px rgba(0, 0, 0, 0.6);
-}
-
-.glass-pill-active {
-  border-color: rgba(215, 25, 33, 0.6);
-  box-shadow: 0 0 16px rgba(215, 25, 33, 0.25), inset 0 1px 0.5px 0 rgba(255, 255, 255, 0.18);
-}
-
-/* Carmine primary CTA with soft specular top highlight + deep shadow */
-.kw-cta-carmine {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0) 38%), var(--kw-carmine);
-  box-shadow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.28), 0 10px 24px -8px rgba(215, 25, 33, 0.55);
-}
-
-/* =========================================================================
-   ANIMATIONS & TRANSITIONS (MOMENTUM & INERTIAL FLUIDITY)
-   ========================================================================= */
-
+/* Zero-G UI Animations & Spatial Fluid Physics Profiles */
 @keyframes slideInRight {
   from {
     transform: translateX(100%);
@@ -458,49 +56,60 @@ body {
   to { opacity: 1; }
 }
 
-@keyframes socketFlash {
+@keyframes spatialModalIn {
   0% {
-    border-color: #8C1318;
-    box-shadow: 0 0 25px rgba(140, 19, 24, 0.85);
-  }
-  50% {
-    border-color: rgba(158, 138, 94, 0.5);
-    box-shadow: 0 0 12px rgba(158, 138, 94, 0.45);
+    opacity: 0;
+    transform: translateY(10px) scale(0.965);
   }
   100% {
-    border-color: rgba(255, 255, 255, 0.14);
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes socketFlash {
+  0% {
+    border-color: #D71921;
+    box-shadow: 0 0 25px rgba(215, 25, 33, 0.75);
+  }
+  50% {
+    border-color: rgba(215, 25, 33, 0.4);
+    box-shadow: 0 0 10px rgba(215, 25, 33, 0.3);
+  }
+  100% {
+    border-color: #293444;
     box-shadow: 0 0 0px rgba(0, 0, 0, 0);
   }
 }
 
-/* AntiGravity Drawer Enter: Decelerated Enter (0.26s, cubic-bezier(0.32, 0.72, 0, 1)) */
+/* AntiGravity Drawer Enter: Decelerated Enter (0.24s, [0.16, 1, 0.3, 1]) */
 .animate-drawer-enter,
 .animate-slideInRight {
-  animation: slideInRight 0.26s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+  animation: slideInRight 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* AntiGravity Drawer Exit: Instant Accelerated Exit (0.18s, cubic-bezier(0.7, 0, 0.84, 0)) */
+/* AntiGravity Drawer Exit: Instant Accelerated Exit (0.18s, [0.7, 0, 0.84, 0]) */
 .animate-drawer-exit {
   animation: slideOutRight 0.18s cubic-bezier(0.7, 0, 0.84, 0) forwards;
 }
 
-/* Tactile Tap Spring (scale 0.96, cubic-bezier(0.32, 0.72, 0, 1)) */
+/* AntiGravity Micro-Interactions: Tactile Tap (scale 0.97, spring 500/30/0.6) */
 .tactile-tap {
-  transition: transform 0.18s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 .tactile-tap:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
-/* Ticket Item Spring (stiffness 420, damping 32, mass 0.7) */
+/* AntiGravity Ticket Item Spring (stiffness 420, damping 32, mass 0.7) */
 @keyframes ticketItemSpring {
   0% {
     opacity: 0;
-    transform: translateY(12px) scale(0.96);
+    transform: translateY(10px) scale(0.97);
   }
   70% {
-    transform: translateY(-1px) scale(1.006);
+    transform: translateY(-0.8px) scale(1.004);
   }
   100% {
     opacity: 1;
@@ -509,11 +118,15 @@ body {
 }
 
 .animate-ticket-item-spring {
-  animation: ticketItemSpring 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: ticketItemSpring 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.2s ease-out forwards;
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-spatial-modal {
+  animation: spatialModalIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .flash-socket-pulse {
@@ -523,7 +136,7 @@ body {
 @keyframes zeroGCardEnter {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.97);
+    transform: translateY(8px) scale(0.985);
   }
   100% {
     opacity: 1;
@@ -532,20 +145,251 @@ body {
 }
 
 .animate-card-enter {
-  animation: zeroGCardEnter 0.26s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: zeroGCardEnter 0.24s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes zeroGPulseRing {
   0%, 100% {
-    box-shadow: 0 0 20px -3px rgba(140, 19, 24, 0.5), 0 0 10px rgba(158, 138, 94, 0.3);
+    box-shadow: 0 0 20px -3px rgba(215, 25, 33, 0.45);
   }
   50% {
-    box-shadow: 0 0 35px 2px rgba(140, 19, 24, 0.75), 0 0 16px rgba(158, 138, 94, 0.55);
+    box-shadow: 0 0 32px 0px rgba(215, 25, 33, 0.7);
   }
 }
 
 .glow-crimson-pulse {
   animation: zeroGPulseRing 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* ============================================================================
+ * Liquid Glass / visionOS Spatial Materials (Modendo Avant-Garde Design System)
+ * ============================================================================ */
+
+/* Deep Charcoal Canvas & Base Root Ground */
+[data-theme="modendo"],
+[data-tenant="tenant-modendo-01"],
+.theme-modendo {
+  --color-surface-base: #0b0e12;
+  --app-bg: #0b0e12;
+  --color-brand-primary: #10b981;
+  background-color: #0b0e12;
+}
+
+body.theme-modendo,
+[data-theme="modendo"] body {
+  background-color: #0b0e12;
+}
+
+/* Ambient Spatial Backdrop (Deep Obsidian + Diffused Specular Atmospheres) */
+.liquid-ambient-canvas {
+  background-color: #0b0e12;
+  background-image:
+    radial-gradient(64% 48% at 14% 6%, rgba(16, 185, 129, 0.14) 0%, transparent 65%),
+    radial-gradient(52% 44% at 86% 12%, rgba(56, 189, 248, 0.08) 0%, transparent 65%),
+    radial-gradient(60% 50% at 52% 96%, rgba(16, 185, 129, 0.08) 0%, transparent 70%);
+}
+
+/* Primary Frosted Window / Floating Navigation Chrome */
+.liquid-glass-shell {
+  background: linear-gradient(
+    180deg,
+    rgba(28, 34, 43, 0.72) 0%,
+    rgba(16, 20, 26, 0.68) 100%
+  );
+  backdrop-filter: blur(28px) saturate(185%);
+  -webkit-backdrop-filter: blur(28px) saturate(185%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 0 rgba(255, 255, 255, 0.04),
+    0 24px 56px -18px rgba(0, 0, 0, 0.72);
+}
+
+/* Emerald Glass Surfaces (Modendo Specification) */
+.liquid-glass-emerald,
+.liquid-glass-surface {
+  background: rgba(16, 185, 129, 0.16);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    0 14px 34px -12px rgba(16, 185, 129, 0.28);
+}
+
+/* Deep Frosted Panel / Container Sheet */
+.liquid-glass-panel {
+  background: linear-gradient(
+    165deg,
+    rgba(27, 34, 44, 0.88) 0%,
+    rgba(16, 20, 27, 0.94) 100%
+  );
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+    0 24px 64px -16px rgba(0, 0, 0, 0.78);
+}
+
+/* Spring motion micro-interactions */
+.liquid-glass-spring {
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Spatial Pavilion / Zone Surface */
+.liquid-glass-zone {
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.055) 0%,
+    rgba(22, 28, 36, 0.52) 48%,
+    rgba(14, 18, 24, 0.68) 100%
+  );
+  backdrop-filter: blur(28px) saturate(165%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.14),
+    0 18px 42px -20px rgba(0, 0, 0, 0.65);
+}
+
+/* Interactive Glass Card (Refractive Specular Lift on Hover) */
+.liquid-glass-card {
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.085) 0%,
+    rgba(255, 255, 255, 0.03) 45%,
+    rgba(15, 19, 25, 0.55) 100%
+  );
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.19),
+    inset 0 0 0 0.5px rgba(255, 255, 255, 0.04),
+    0 10px 28px -14px rgba(0, 0, 0, 0.6);
+  transition:
+    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+
+.liquid-glass-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.28),
+    0 18px 36px -14px rgba(0, 0, 0, 0.72);
+}
+
+.liquid-glass-card:active {
+  transform: translateY(0) scale(0.985);
+}
+
+/* Active / Occupied Emerald Glass State */
+.liquid-glass-card-active {
+  background: rgba(16, 185, 129, 0.16);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    inset 0 1px 0 0 rgba(167, 243, 208, 0.28),
+    0 14px 34px -12px rgba(16, 185, 129, 0.28);
+}
+
+.liquid-glass-card-active:hover {
+  transform: translateY(-2px);
+  border-color: rgba(52, 211, 153, 0.72);
+  box-shadow:
+    inset 0 1px 0 0 rgba(167, 243, 208, 0.38),
+    0 18px 38px -10px rgba(16, 185, 129, 0.36);
+}
+
+/* Recessed Glass Control / Input Well */
+.liquid-glass-well {
+  background: rgba(9, 12, 16, 0.56);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+
+/* Segmented Capsule Rail & Specular Pill */
+.liquid-glass-rail {
+  background: rgba(10, 13, 18, 0.58);
+  backdrop-filter: blur(24px) saturate(170%);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.4),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.liquid-glass-pill {
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.16);
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.16s ease, border-color 0.16s ease;
+}
+
+.liquid-glass-pill:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Luminous Emerald Spatial Primary CTA */
+.liquid-glass-cta {
+  background: linear-gradient(180deg, #34d399 0%, #10b981 55%, #059669 100%);
+  color: #04150e;
+  border: 1px solid rgba(167, 243, 208, 0.5);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.55),
+    0 12px 28px -8px rgba(16, 185, 129, 0.55);
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), filter 0.16s ease, box-shadow 0.16s ease;
+}
+
+.liquid-glass-cta:hover {
+  filter: brightness(1.06);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.65),
+    0 16px 34px -8px rgba(16, 185, 129, 0.68);
+}
+
+.liquid-glass-cta:active {
+  transform: scale(0.975);
+}
+
+/* Deep Frosted Modal Sheet */
+.liquid-glass-modal {
+  background: linear-gradient(
+    165deg,
+    rgba(27, 34, 44, 0.84) 0%,
+    rgba(16, 20, 27, 0.90) 100%
+  );
+  backdrop-filter: blur(44px) saturate(190%);
+  -webkit-backdrop-filter: blur(44px) saturate(190%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+    0 32px 80px -16px rgba(0, 0, 0, 0.82);
+}
+
+/* Zero-G Legacy Glass Layers (Preserved for 100hich compatibility) */
+.glass-panel {
+  background: rgba(18, 20, 23, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-card {
+  background: rgba(27, 34, 44, 0.75);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Mechanical Keycap Badge */
@@ -556,10 +400,10 @@ body {
   font-family: var(--font-mono-numbers);
   font-weight: 800;
   border-radius: 6px;
-  background: linear-gradient(180deg, rgba(31, 39, 51, 0.85) 0%, rgba(18, 24, 32, 0.95) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 2px 0 0 rgba(13, 18, 24, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.25);
-  color: #F5E8D0;
+  background: linear-gradient(180deg, #1f2733 0%, #121820 100%);
+  border: 1px solid #354254;
+  box-shadow: 0 2px 0 0 #0d1218, inset 0 1px 0 0 rgba(255, 255, 255, 0.12);
+  color: #f3e9dd;
 }
 
 /* Reduced Motion Mode (<120ms linear opacity fades) */
@@ -579,13 +423,12 @@ body {
   .animate-ticket-item-spring,
   .tactile-tap,
   .animate-fadeIn,
+  .animate-spatial-modal,
   .animate-pulse,
   .animate-bounce,
   .flash-socket-pulse,
   .animate-card-enter,
-  .glow-crimson-pulse,
-  .vision-glass-card,
-  .vision-checkout-cta {
+  .glow-crimson-pulse {
     animation: reducedLinearFade 0.1s linear !important;
     transform: none !important;
   }
@@ -599,78 +442,39 @@ body {
 @theme {
   --color-brand-navy: #0F223D;
   --color-brand-navyDark: #081425;
-  --color-brand-red: #8C1318;
-  --color-brand-redHover: #A5171D;
-  --color-brand-cream: #F5E8D0;
+  --color-brand-red: #D71921;
+  --color-brand-redHover: #B8141B;
+  --color-brand-cream: #F3E9DD;
 
-  --color-surface-charcoal: #0C1423;
-  --color-surface-dark: #101E35;
-  --color-surface-darkElevated: #162846;
-  --color-surface-border: rgba(255, 255, 255, 0.14);
-  --color-surface-muted: #A0B2C6;
+  --color-surface-charcoal: #121417;
+  --color-surface-dark: #1B222C;
+  --color-surface-darkElevated: #222B38;
+  --color-surface-border: #293444;
+  --color-surface-muted: #9EACB8;
 
-  /* Engine Protocol Surface Hierarchy */
-  --color-bg-base: #070A0F;
-  --color-bg-surface-1: rgba(12, 20, 35, 0.75);
-  --color-bg-surface-2: rgba(15, 28, 48, 0.78);
-  --color-bg-surface-3: rgba(22, 42, 72, 0.82);
-
-  /* Hairline & Grid Borders */
-  --color-border-subtle: rgba(255, 255, 255, 0.14);
-  --color-border-grid: rgba(255, 255, 255, 0.12);
-
-  /* Spatial Accents */
-  --color-accent-ps5: #3B82F6;
-  --color-accent-lounge: #059669;
-  --color-accent-boardgame: #B45309;
-  --color-accent-terrace: #78350F;
-  --color-accent-bar: #8C1318;
-
-  /* State Colors */
-  --color-status-available: #10B981;
-  --color-status-occupied: #EF4444;
-  --color-status-gaming: #3B82F6;
-  --color-status-awaiting: #F59E0B;
-
-  /* Text Tones */
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #E2E8F0;
-  --color-text-muted: #A0B2C6;
-  --color-text-dim: #64748B;
-
-  --shadow-crimson-glow: 0 0 25px -3px rgba(140, 19, 24, 0.6);
-  --shadow-navy-glow: 0 0 25px -3px rgba(15, 34, 61, 0.65);
-  --shadow-gold-glow: 0 0 20px -2px rgba(158, 138, 94, 0.45);
-  --shadow-ps5-glow: 0 0 20px -3px rgba(59, 130, 246, 0.5);
+  --shadow-crimson-glow: 0 0 20px -3px rgba(215, 25, 33, 0.45);
+  --shadow-navy-glow: 0 0 20px -3px rgba(15, 34, 61, 0.6);
 }
 
-/* Tracking Discipline Utilities */
-.tracking-heading {
-  letter-spacing: -0.025em;
-}
-.tracking-mono {
-  letter-spacing: +0.035em;
-}
-
-/* Custom Scrollbar for Sleek VisionOS Look */
+/* Custom Scrollbar for Sleek Industrial Look */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(12, 20, 35, 0.5);
-  backdrop-filter: blur(16px);
+  background: #121417;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.22);
+  background: #293444;
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9E8A5E;
+  background: #D71921;
 }
 
 /* Monospaced punchy numbers */
 .num-heavy {
+  font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
   letter-spacing: -0.02em;
 }

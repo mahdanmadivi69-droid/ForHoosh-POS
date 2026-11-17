@@ -1,6 +1,6 @@
-/**
- * CAFE OS — Phase 4: Order & Payment Domain Aggregate
- * Pilot Target: 100 Hich Specialty Coffee Lab (قهوه‌فروشی ۱۰۰هیچ)
+﻿/**
+ * CAFE OS â€” Phase 4: Order & Payment Domain Aggregate
+ * Pilot Target: 100 Hich Specialty Coffee Lab (Ù‚Ù‡ÙˆÙ‡â€ŒÙØ±ÙˆØ´ÛŒ Û±Û°Û°Ù‡ÛŒÚ†)
  * 
  * Architectural Invariants:
  * 1. Multi-Tenant RLS isolation: All entities bound to tenantId.
@@ -60,7 +60,7 @@ export interface OrderAggregate {
   tenantId: string;
   shiftId: string;
   orderNumber: number;
-  /** Daily receipt sequence number (per tenant + local day, 1-based → #001) — printed on the thermal receipt. */
+  /** Daily receipt sequence number (per tenant + local day, 1-based â†’ #001) â€” printed on the thermal receipt. */
   dailyReceiptNumber?: number;
   orderType: OrderType;
   state: OrderState;
@@ -170,7 +170,7 @@ export class OrderDomainService {
       createdAt: now,
       updatedAt: now,
       createdByUserId: params.createdByUserId || 'cashier-01',
-      createdByUserName: params.createdByUserName || 'صندوق‌دار',
+      createdByUserName: params.createdByUserName || 'ØµÙ†Ø¯ÙˆÙ‚â€ŒØ¯Ø§Ø±',
     };
   }
 
@@ -283,7 +283,7 @@ export class OrderDomainService {
       method: payment.method,
       referenceCode: payment.referenceNumber || payment.referenceCode,
       referenceNumber: payment.referenceNumber || payment.referenceCode,
-      terminalName: payment.terminalName || 'کارت‌خوان پوز ۱',
+      terminalName: payment.terminalName || 'Ú©Ø§Ø±Øªâ€ŒØ®ÙˆØ§Ù† Ù¾ÙˆØ² Û±',
       status: 'SUCCESSFUL',
       createdAt: new Date().toISOString(),
     };

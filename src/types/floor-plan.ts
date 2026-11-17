@@ -1,5 +1,5 @@
-/**
- * Modendo POS — Floor Plan & Spatial Entity Types
+﻿/**
+ * Modendo POS â€” Floor Plan & Spatial Entity Types
  * Compliant with Specification v6.3-Final Settled
  */
 
@@ -41,7 +41,7 @@ export interface TableEntity {
   currentOrderId?: string;
   currentBillAmount?: number;
   sessionStartTime?: string; // ISO string for timer
-  pausedMs?: number; // accumulated paused duration (integer ms) — excluded from billing
+  pausedMs?: number; // accumulated paused duration (integer ms) â€” excluded from billing
   pausedAt?: string; // ISO timestamp while session is paused (frozen timer)
   activeGuestsCount?: number;
   assignedToken?: string;
