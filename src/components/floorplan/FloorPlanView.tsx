@@ -17,6 +17,12 @@ import {
   Store,
   CreditCard,
   Search,
+  Play,
+  Trash2,
+  Plus,
+  UtensilsCrossed,
+  Receipt,
+  DollarSign,
 } from 'lucide-react';
 import {
   FloorPlanCanvas,
@@ -27,6 +33,7 @@ import {
   getSessionTotalToman,
   resolvePrimaryNodeId,
   is100HichNode,
+  formatElapsedTimer,
 } from './FloorPlanCanvas';
 import { TableSessionModal } from './TableSessionModal';
 import { TableEntity } from '../../types/floor-plan';
@@ -42,6 +49,15 @@ interface FloorPlanViewProps {
   tenantName?: string;
   selectedNodeId?: string | null;
   onBackToHub?: () => void;
+  tenant?: any;
+  activeShift?: any;
+  activeUser?: any;
+  onOrderCompleted?: (
+    order: any,
+    paymentMethod: any,
+    referenceCode?: string,
+    terminalName?: string
+  ) => any;
 }
 
 const STORAGE_KEY_SESSIONS = 'cafeos_modendo_floor_sessions_v2';
@@ -51,12 +67,19 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   onSelectTableForOrder,
   selectedNodeId,
   onBackToHub,
+  tenant,
+  activeShift,
+  activeUser,
+  onOrderCompleted,
 }) => {
   const [activeZone, setActiveZone] = useState<FloorZone | 'ALL'>('ALL');
   const [nowMs, setNowMs] = useState<number>(Date.now());
   const [modalNode, setModalNode] = useState<FloorNode | null>(null);
   const [modalTableEntity, setModalTableEntity] = useState<TableEntity | null>(null);
   const [selectedTableNodeId, setSelectedTableNodeId] = useState<string>(selectedNodeId || 'M-01');
+  const [isSettleModalOpen, setIsSettleModalOpen] = useState<boolean>(false);
+  const [draftCustomerName, setDraftCustomerName] = useState<string>('');
+  const [draftNotes, setDraftNotes] = useState<string>('');
 
   // Table Merge Mode state
   const [mergeMode, setMergeMode] = useState<boolean>(false);
@@ -97,6 +120,33 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     } catch (e) {
       console.warn('[FloorPlanView] Failed reloading floor plan:', e);
     }
+  }, []);
+
+  // Live event listener for floor sessions synchronization
+  useEffect(() => {
+    const handleSessionsChanged = () => {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY_SESSIONS);
+        if (stored) {
+          const parsed: Record<string, TableSession> = JSON.parse(stored);
+          const clean: Record<string, TableSession> = {};
+          for (const [key, val] of Object.entries(parsed)) {
+            if (!is100HichNode(key) && !is100HichNode(val.tableLabel)) {
+              clean[key] = val;
+            }
+          }
+          setSessions(clean);
+        }
+      } catch (e) {
+        console.warn('[FloorPlanView] Failed reloading floor sessions on event:', e);
+      }
+    };
+    window.addEventListener('cafeos_floor_sessions_changed', handleSessionsChanged);
+    window.addEventListener('storage', handleSessionsChanged);
+    return () => {
+      window.removeEventListener('cafeos_floor_sessions_changed', handleSessionsChanged);
+      window.removeEventListener('storage', handleSessionsChanged);
+    };
   }, []);
 
   // Save sessions to localStorage whenever changed
@@ -480,6 +530,135 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     }
   };
 
+  // Quick accept table (Start session + live timer)
+  const handleQuickAcceptTable = (node: FloorNode) => {
+    playPosBeep('success');
+    const nowIso = new Date().toISOString();
+    setSessions((prev) => {
+      const next = { ...prev };
+      next[node.id] = {
+        nodeId: node.id,
+        tableLabel: node.label,
+        kind: node.kind,
+        status: 'OCCUPIED',
+        guestCount: node.seats,
+        customerName: draftCustomerName || '',
+        notes: draftNotes || '',
+        openedAt: nowIso,
+        cartItems: [],
+        discountToman: 0,
+        discountPercent: 0,
+        ps5Session:
+          node.kind === 'PS5'
+            ? {
+                startedAt: nowIso,
+                hourlyRateToman: node.hourlyRateToman || 180000,
+                controllersCount: 2,
+                accumulatedMs: 0,
+                isPaused: false,
+              }
+            : undefined,
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: next }));
+      } catch (e) {
+        console.warn(e);
+      }
+      return next;
+    });
+  };
+
+  // Live update customer details / session notes
+  const handleUpdateActiveSession = (patch: Partial<TableSession>) => {
+    setSessions((prev) => {
+      const next = { ...prev };
+      const current = next[selectedNode.id] || {
+        nodeId: selectedNode.id,
+        tableLabel: selectedNode.label,
+        kind: selectedNode.kind,
+        status: 'OCCUPIED',
+        guestCount: selectedNode.seats,
+        openedAt: new Date().toISOString(),
+        cartItems: [],
+        discountToman: 0,
+        discountPercent: 0,
+      };
+      next[selectedNode.id] = { ...current, ...patch };
+      try {
+        localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(next));
+        window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: next }));
+      } catch (e) {
+        console.warn(e);
+      }
+      return next;
+    });
+  };
+
+  // Clear / vacate table
+  const handleReleaseTable = (nodeId: string) => {
+    if (confirm(`آیا از آزادسازی و تخلیه میز ${selectedNode.label} اطمینان دارید؟`)) {
+      playPosBeep('delete');
+      setSessions((prev) => {
+        const next = { ...prev };
+        delete next[nodeId];
+        try {
+          localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(next));
+          window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: next }));
+        } catch (e) {
+          console.warn(e);
+        }
+        return next;
+      });
+    }
+  };
+
+  // Direct settlement from FloorPlan side panel
+  const handleSettleFromSidePanel = (paymentMethod: 'CARD' | 'CASH') => {
+    if (!activeShift) {
+      alert('شیفت کاری فعال نیست. لطفاً ابتدا شیفت را باز کنید.');
+      return;
+    }
+    const finalAmount = sessionTotal || 0;
+    if (onOrderCompleted) {
+      const orderPayload: any = {
+        tenantId: activeShift.tenantId,
+        shiftId: activeShift.id,
+        createdByUserId: activeUser?.id || 'cashier',
+        createdByUserName: activeUser?.fullName || 'صندوق‌دار',
+        orderNumber: 0,
+        orderType: 'DINE_IN',
+        tableLabel: selectedNode.label,
+        customerName: activeTableSession?.customerName || undefined,
+        notes: activeTableSession?.notes || undefined,
+        status: 'COMPLETED',
+        items: activeTableSession?.cartItems || [],
+        grossAmountToman: finalAmount,
+        discountAmountToman: activeTableSession?.discountToman || 0,
+        netTotalToman: finalAmount,
+      };
+
+      const result = onOrderCompleted(orderPayload, paymentMethod, '', 'صندوق سالن');
+      if (result) {
+        playPosBeep('success');
+        setSessions((prev) => {
+          const next = { ...prev };
+          delete next[selectedNode.id];
+          try {
+            localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(next));
+            window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: next }));
+          } catch (e) {
+            console.warn(e);
+          }
+          return next;
+        });
+        setIsSettleModalOpen(false);
+      }
+    } else {
+      onSelectTableForOrder(selectedNode.label);
+    }
+  };
+
   const selectedNode = useMemo(() => {
     return MODENDO_FLOOR_NODES.find((n) => n.id === selectedTableNodeId) || MODENDO_FLOOR_NODES[0];
   }, [selectedTableNodeId]);
@@ -497,11 +676,11 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   return (
     <MotionConfig reducedMotion="user">
       <div
-        dir="rtl"
+        dir="ltr"
         className="flex-1 flex flex-col xl:grid xl:grid-cols-[400px_1fr] gap-4 p-3 md:p-4 max-w-[1780px] mx-auto w-full select-none"
       >
-        {/* Left Column: Side-by-side Order Cart Panel (Matching Reference Image 2) */}
-        <aside className="hidden xl:flex flex-col modendo-cart-shell rounded-[28px] overflow-hidden max-h-[calc(100vh-6rem)] h-[calc(100vh-6rem)] sticky top-3">
+        {/* Left Column: Side-by-side Order Cart Panel (Strictly on LEFT side matching reference) */}
+        <aside dir="rtl" className="hidden xl:flex flex-col modendo-cart-shell rounded-[28px] overflow-hidden max-h-[calc(100vh-6rem)] h-[calc(100vh-6rem)] sticky top-3">
           {/* Cart Header */}
           <div className="p-4 border-b border-white/[0.08] bg-black/20 flex flex-col gap-3">
             <div className="flex items-center justify-between">
@@ -537,18 +716,21 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             </div>
           </div>
 
-          {/* Customer Detail Inputs */}
+          {/* Customer Detail Inputs (Interactive) */}
           <div className="px-4 py-2.5 border-b border-white/[0.08] bg-black/15 space-y-2 text-xs">
             <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
               <span className="text-white/40">👤</span>
               <input
                 type="text"
-                readOnly
-                value={activeTableSession?.customerName || ''}
-                placeholder="نام مشتری..."
+                value={activeTableSession?.customerName || draftCustomerName}
+                onChange={(e) => {
+                  setDraftCustomerName(e.target.value);
+                  handleUpdateActiveSession({ customerName: e.target.value });
+                }}
+                placeholder="نام مشتری / مهمان..."
                 className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
               />
-              <span className="text-[11px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5">
+              <span className="text-[11px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5 shrink-0">
                 {selectedNode.label}
               </span>
             </div>
@@ -557,7 +739,8 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               <span className="text-white/40">📞</span>
               <input
                 type="text"
-                readOnly
+                value={activeTableSession?.customerPhone || ''}
+                onChange={(e) => handleUpdateActiveSession({ customerPhone: e.target.value })}
                 placeholder="شماره تماس..."
                 className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
               />
@@ -567,8 +750,11 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               <span className="text-white/40">📝</span>
               <input
                 type="text"
-                readOnly
-                value={activeTableSession?.notes || ''}
+                value={activeTableSession?.notes || draftNotes}
+                onChange={(e) => {
+                  setDraftNotes(e.target.value);
+                  handleUpdateActiveSession({ notes: e.target.value });
+                }}
                 placeholder="یادداشت فاکتور (توضیحات کل سفارش)..."
                 className="bg-transparent text-white placeholder:text-[#94A3B8]/50 text-xs w-full focus:outline-none"
               />
@@ -578,41 +764,67 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
           {/* Cart / Table Items List */}
           <div className="flex-1 overflow-y-auto min-h-0 p-3.5 space-y-2.5">
             {activeTableSession?.cartItems && activeTableSession.cartItems.length > 0 ? (
-              activeTableSession.cartItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-2xl bg-black/35 border border-red-500/15 flex flex-col gap-2 shadow-inner"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-bold text-white truncate">{item.itemNameSnapshot}</h4>
-                      <div className="mt-1 text-xs font-black text-emerald-300 num-heavy tabular-nums">
-                        {formatToman(item.subtotalToman)} تومان
+              <>
+                <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-300 px-1 pb-1 border-b border-white/[0.06]">
+                  <span>⏱️ زمان باز بودن میز:</span>
+                  <span className="tabular-nums">
+                    {activeTableSession.openedAt
+                      ? formatElapsedTimer(Math.max(0, nowMs - new Date(activeTableSession.openedAt).getTime()))
+                      : '00:00:00'}
+                  </span>
+                </div>
+
+                {activeTableSession.cartItems.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-3 rounded-2xl bg-black/35 border border-red-500/15 flex flex-col gap-2 shadow-inner"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-white truncate">{item.itemNameSnapshot}</h4>
+                        <div className="mt-1 text-xs font-black text-emerald-300 num-heavy tabular-nums">
+                          {formatToman(item.subtotalToman)} تومان
+                        </div>
+                      </div>
+                      <div className="flex items-center rounded-full bg-[#3B1218] border border-red-900/60 p-0.5">
+                        <span className="w-6 text-center font-bold text-xs text-white num-heavy tabular-nums">
+                          {item.quantity}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex items-center rounded-full bg-[#3B1218] border border-red-900/60 p-0.5">
-                      <span className="w-6 text-center font-bold text-xs text-white num-heavy tabular-nums">
-                        {item.quantity}
-                      </span>
-                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             ) : (
-              <div className="p-4 rounded-2xl bg-black/35 border border-red-500/15 space-y-2">
+              <div className="p-4 rounded-2xl bg-black/35 border border-red-500/15 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="font-extrabold text-white text-xs">
                     میز {selectedNode.label} ({selectedNode.titleFa})
                   </div>
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                    activeTableSession ? 'bg-rose-500/30 text-rose-300 border border-rose-400/40' : 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/40'
-                  }`}>
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                      activeTableSession
+                        ? 'bg-rose-500/30 text-rose-300 border border-rose-400/40'
+                        : 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/40'
+                    }`}
+                  >
                     {activeTableSession ? 'اشغال' : 'آماده پذیرش'}
                   </span>
                 </div>
+
                 <div className="text-[11px] text-[#94A3B8]">
                   ظرفیت: {selectedNode.seats} نفر · زون: {selectedNode.zone}
                 </div>
+
+                {activeTableSession?.openedAt && (
+                  <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-300 pt-1 border-t border-white/5">
+                    <span>⏱️ زمان جاری:</span>
+                    <span className="tabular-nums">
+                      {formatElapsedTimer(Math.max(0, nowMs - new Date(activeTableSession.openedAt).getTime()))}
+                    </span>
+                  </div>
+                )}
+
                 {selectedNode.kind === 'PS5' && (
                   <div className="text-xs font-mono font-bold text-sky-300">
                     نرخ ساعتی: {formatToman(selectedNode.hourlyRateToman || 180000)} تومان
@@ -640,7 +852,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             </div>
           </div>
 
-          {/* Price & Checkout CTA */}
+          {/* Price & Action Controls */}
           <div className="p-4 border-t border-white/[0.08] bg-black/25 space-y-3">
             <div className="flex justify-between items-baseline">
               <span className="text-sm font-extrabold text-white">مبلغ نهایی:</span>
@@ -652,19 +864,84 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => onSelectTableForOrder(selectedNode.label)}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#DC2626] via-[#B91C1C] to-[#991B1B] text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(220,38,38,0.5)] border border-red-500/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
-            >
-              <CreditCard className="w-5 h-5" />
-              <span>ثبت سفارش و پرداخت</span>
-            </button>
+            {/* Dynamic Actions based on Table Session State */}
+            {activeTableSession && activeTableSession.cartItems && activeTableSession.cartItems.length > 0 ? (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSettleModalOpen(true)}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#DC2626] via-[#B91C1C] to-[#991B1B] text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(220,38,38,0.5)] border border-red-500/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+                >
+                  <CreditCard className="w-5 h-5" />
+                  <span>تسویه فاکتور و پرداخت</span>
+                </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTableForOrder(selectedNode.label)}
+                    className="py-2.5 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/30 text-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>افزودن آیتم</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleReleaseTable(selectedNode.id)}
+                    className="py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>آزاد کردن میز</span>
+                  </button>
+                </div>
+              </div>
+            ) : activeTableSession ? (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => onSelectTableForOrder(selectedNode.label)}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(16,185,129,0.35)] border border-emerald-400/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+                >
+                  <UtensilsCrossed className="w-4 h-4" />
+                  <span>ثبت سفارش در صندوق</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleReleaseTable(selectedNode.id)}
+                  className="w-full py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>آزاد کردن و لغو پذیرش</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => handleQuickAcceptTable(selectedNode)}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(16,185,129,0.4)] border border-emerald-400/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+                >
+                  <Play className="w-4 h-4 text-emerald-200 fill-emerald-200" />
+                  <span>پذیرش سریع میز و شروع زمان</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onSelectTableForOrder(selectedNode.label)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-emerald-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 border border-emerald-500/30 transition-all cursor-pointer"
+                >
+                  <UtensilsCrossed className="w-3.5 h-3.5" />
+                  <span>ثبت فاکتور در صندوق (انتخاب اقلام)</span>
+                </button>
+              </div>
+            )}
           </div>
         </aside>
 
-        {/* Right Column: Blueprint & Controls */}
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
+        {/* Right Column: Blueprint & Controls (Strictly on RIGHT side in LTR grid) */}
+        <div dir="rtl" className="flex-1 flex flex-col gap-3 min-w-0">
           {/* Top Control Bar with Search and View Switchers */}
           <div className="rounded-[22px] liquid-glass-shell p-2.5 px-4 flex flex-wrap items-center justify-between gap-3 shadow-lg border border-white/10">
             {/* View Switchers */}
@@ -1001,6 +1278,87 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             occupiedNodeIds={Object.keys(sessions)}
           />
         )}
+        {/* Direct Settle & Receipt Modal for Side Panel */}
+        <AnimatePresence>
+          {isSettleModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                dir="rtl"
+                className="w-full max-w-md liquid-glass-modal rounded-[28px] p-6 space-y-4 border border-emerald-500/30 shadow-2xl"
+              >
+                <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <Receipt className="w-5 h-5 text-emerald-400" />
+                    <h3 className="text-base font-black text-white">
+                      تسویه و صدور فیش میز {selectedNode.label}
+                    </h3>
+                  </div>
+                  <button
+                    onClick={() => setIsSettleModalOpen(false)}
+                    className="p-1 rounded-full text-white/50 hover:text-white cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="liquid-glass-well rounded-2xl p-4 space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-[#94A3B8]">میز:</span>
+                    <span className="text-white font-bold">{selectedNode.titleFa}</span>
+                  </div>
+                  {activeTableSession?.customerName && (
+                    <div className="flex justify-between">
+                      <span className="text-[#94A3B8]">مشتری:</span>
+                      <span className="text-white font-bold">{activeTableSession.customerName}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-[#94A3B8]">تعداد اقلام:</span>
+                    <span className="text-white font-bold">{activeTableSession?.cartItems?.length || 0} قلم</span>
+                  </div>
+                  <div className="h-px bg-white/10 my-2" />
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-sm font-bold text-white">مبلغ کل قابل پرداخت:</span>
+                    <span className="text-xl font-black text-emerald-300 num-heavy tabular-nums">
+                      {formatToman(sessionTotal || 0)} تومان
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleSettleFromSidePanel('CARD')}
+                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg border border-emerald-400/40 hover:brightness-110 cursor-pointer"
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    <span>پرداخت با کارت‌خوان بانکی (POS)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSettleFromSidePanel('CASH')}
+                    className="w-full py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-emerald-200 text-xs font-bold flex items-center justify-center gap-2 border border-white/10 cursor-pointer"
+                  >
+                    <DollarSign className="w-4 h-4 text-emerald-300" />
+                    <span>پرداخت نقدی (وجه نقد)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsSettleModalOpen(false)}
+                    className="w-full py-2.5 text-xs text-[#94A3B8] hover:text-white cursor-pointer"
+                  >
+                    انصراف
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </MotionConfig>
   );

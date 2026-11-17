@@ -271,7 +271,7 @@ export const INITIAL_MODENDO_FLOOR_PLAN: ModendoFloorPlanSchema = {
     // --- اتاق VIP گیمینگ (VIP-1 و VIP-2) ---
     {
       id: 'VIP-1',
-      zone_id: 'vip',
+      zone_id: 'vip_booth',
       display_name: 'VIP-1 (اتاق VIP)',
       level: 1,
       billing_mode: 'hourly_timer',
@@ -283,7 +283,7 @@ export const INITIAL_MODENDO_FLOOR_PLAN: ModendoFloorPlanSchema = {
     },
     {
       id: 'VIP-2',
-      zone_id: 'vip',
+      zone_id: 'vip_booth',
       display_name: 'VIP-2 (اتاق VIP)',
       level: 1,
       billing_mode: 'hourly_timer',

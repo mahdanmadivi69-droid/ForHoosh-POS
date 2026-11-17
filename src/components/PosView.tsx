@@ -68,6 +68,8 @@ import { openTabService } from '../services/openTabService';
 import { TabCartItem } from '../types/inventory-tab';
 import { getProductWallpaper } from '../utils/productWallpapers';
 
+const MODENDO_FLOOR_SESSIONS_STORAGE_KEY = 'cafeos_modendo_floor_sessions_v2';
+
 // Iranian common banknotes in Toman for rapid cash calculation
 const IRANIAN_BANKNOTES_TOMAN = [
   50000,
@@ -237,7 +239,9 @@ export const PosView: React.FC<PosViewProps> = ({
       setOrderType('DINE_IN');
       if (isModendo) {
         try {
-          const raw = localStorage.getItem('modendo_floor_sessions_v1');
+          const raw =
+            localStorage.getItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY) ||
+            localStorage.getItem('modendo_floor_sessions_v1');
           if (raw) {
             const sessions: Record<string, TableSession> = JSON.parse(raw);
             const node = MODENDO_FLOOR_NODES.find(
@@ -246,13 +250,14 @@ export const PosView: React.FC<PosViewProps> = ({
             const session = node
               ? sessions[node.id]
               : Object.values(sessions).find((s) => s.tableLabel === preselectedTableLabel);
-            if (session && session.cartItems && session.cartItems.length > 0) {
+            if (session && Array.isArray(session.cartItems) && session.cartItems.length > 0) {
               setCartItems(session.cartItems);
               setCustomerName(session.customerName || '');
               setOrderNotes(session.notes || '');
               setDiscountToman(session.discountToman || 0);
               setDiscountPercent(session.discountPercent || 0);
             } else if (session) {
+              setCartItems([]);
               setCustomerName(session.customerName || '');
               setOrderNotes(session.notes || '');
               setDiscountToman(session.discountToman || 0);
@@ -583,9 +588,9 @@ export const PosView: React.FC<PosViewProps> = ({
     const targetLabel = boundTable?.label || targetNode?.label || tableLabel;
 
     if (isModendo) {
-      // 1. Persist to modendo_floor_sessions_v1 with live timer & status
+      // 1. Persist to shared floor sessions with live timer & status
       try {
-        const raw = localStorage.getItem('modendo_floor_sessions_v1');
+        const raw = localStorage.getItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY);
         const sessions: Record<string, TableSession> = raw ? JSON.parse(raw) : {};
         const existing = sessions[targetNodeId];
         const nowIso = new Date().toISOString();
@@ -617,9 +622,10 @@ export const PosView: React.FC<PosViewProps> = ({
               : undefined),
         };
 
-        localStorage.setItem('modendo_floor_sessions_v1', JSON.stringify(sessions));
+        localStorage.setItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+        window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: sessions }));
       } catch (e) {
-        console.warn('[PosView] Failed saving to modendo_floor_sessions_v1:', e);
+        console.warn('[PosView] Failed saving to floor sessions:', e);
       }
 
       // 2. Sync to openTabService
@@ -817,7 +823,7 @@ export const PosView: React.FC<PosViewProps> = ({
       }
       if (isModendo && orderType === 'DINE_IN') {
         try {
-          const raw = localStorage.getItem('modendo_floor_sessions_v1');
+          const raw = localStorage.getItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY);
           if (raw) {
             const sessions: Record<string, TableSession> = JSON.parse(raw);
             const targetNode = MODENDO_FLOOR_NODES.find(
@@ -826,7 +832,8 @@ export const PosView: React.FC<PosViewProps> = ({
             const targetNodeId = boundTable?.nodeId || targetNode?.id || tableLabel;
             if (sessions[targetNodeId]) {
               delete sessions[targetNodeId];
-              localStorage.setItem('modendo_floor_sessions_v1', JSON.stringify(sessions));
+              localStorage.setItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+              window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: sessions }));
             }
           }
           const effectiveTenantId = tenant.id === 'modendo' ? 'tenant-modendo-01' : tenant.id;

@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { TenantThemeProvider } from './components/TenantThemeProvider';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { getActiveTenant } from './config/tenantConfig';
 import './index.css';
 
@@ -31,8 +32,10 @@ bootstrapTenantTheme();
 const rootElement = document.getElementById('root');
 if (rootElement) {
   ReactDOM.createRoot(rootElement).render(
-    <TenantThemeProvider>
-      <App />
-    </TenantThemeProvider>
+    <ErrorBoundary>
+      <TenantThemeProvider>
+        <App />
+      </TenantThemeProvider>
+    </ErrorBoundary>
   );
 }

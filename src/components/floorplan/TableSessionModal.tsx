@@ -59,7 +59,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
   // Hooks run unconditionally — the previous early-return-before-hooks
   // violated React rules-of-hooks and could crash on modal close.
   const [guestCount, setGuestCount] = useState<number>(
-    table?.activeGuestsCount || table?.capacity.nominal || 2
+    table?.activeGuestsCount || table?.capacity?.nominal || 2
   );
   const [tokenInput, setTokenInput] = useState<string>(table?.assignedToken || '');
   const [elapsedSeconds, setElapsedSeconds] = useState<number>(0);
@@ -71,7 +71,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
 
   // Reset per-table runtime inputs when a different entity is opened
   useEffect(() => {
-    setGuestCount(table?.activeGuestsCount || table?.capacity.nominal || 2);
+    setGuestCount(table?.activeGuestsCount || table?.capacity?.nominal || 2);
     setTokenInput(table?.assignedToken || '');
     setIsTransferOpen(false);
   }, [table?.id]);
@@ -138,6 +138,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
   const handleStartSession = () => {
     playPosBeep('success');
     floorPlanService.startSession(table.id, table.billing_mode === 'token' ? tokenInput : guestCount);
+    window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed'));
   };
 
   const handlePauseResume = () => {
@@ -148,6 +149,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
       playPosBeep('click');
       floorPlanService.pauseSession(table.id);
     }
+    window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed'));
   };
 
   const handleClearSession = () => {
@@ -167,6 +169,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
       if (confirm(`آیا از تسویه و آزادسازی ${table.display_name} اطمینان دارید؟`)) {
         playPosBeep('delete');
         floorPlanService.clearSession(table.id);
+        window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed'));
         onClose();
       }
       return;
@@ -231,6 +234,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
       });
     }
     floorPlanService.clearSession(table.id);
+    window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed'));
     onClose();
   };
 
@@ -284,7 +288,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
     onClose();
   };
 
-  const timerBlockVisible = table.billing_mode === 'hourly_timer' || table.capabilities.game_timer;
+  const timerBlockVisible = table.billing_mode === 'hourly_timer' || table.capabilities?.game_timer;
 
   return (
     <AnimatePresence>
@@ -351,7 +355,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
                 </span>
               </div>
               <span className="text-xs text-[#9EACB8] font-medium">
-                ظرفیت: {table.capacity.nominal} تا {table.capacity.max} نفر
+                ظرفیت: {table.capacity?.nominal || 2} تا {table.capacity?.max || 4} نفر
               </span>
             </div>
 
@@ -433,7 +437,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
                   whileTap={MotionConfig.tactileTap}
                   onClick={() => {
                     playPosBeep('click');
-                    setGuestCount((c) => Math.min(table.capacity.max, c + 1));
+                    setGuestCount((c) => Math.min(table.capacity?.max || 8, c + 1));
                   }}
                   className="w-8 h-8 bg-[#1E293B] hover:bg-[#334155] rounded-lg text-white font-bold flex items-center justify-center cursor-pointer border border-white/[0.06]"
                 >

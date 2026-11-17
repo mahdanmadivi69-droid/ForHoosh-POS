@@ -350,24 +350,24 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
         } flex flex-col overflow-hidden transition-all`}
       >
         {/* KDS Header */}
-        <div className="px-5 py-3.5 bg-gradient-to-r from-stone-950 via-stone-900 to-amber-950/70 border-b border-stone-800 flex items-center justify-between gap-4">
+        <div className="px-5 py-3.5 bg-gradient-to-r from-[#061813] via-[#0A2E24] to-[#061813] border-b border-[#164538] flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-amber-600/20 text-amber-400 border border-amber-500/40 shadow-inner">
+            <div className="p-2.5 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 shadow-inner">
               <Coffee className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg font-black tracking-wide text-stone-100 flex items-center gap-2">
+                <h1 className="text-lg font-black tracking-wide text-white flex items-center gap-2">
                   <span>سیستم نمایشگر باریستا</span>
-                  <span className="text-xs font-mono text-amber-400/90 font-bold px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/30">
+                  <span className="text-xs font-mono text-emerald-300 font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40">
                     BAR KDS
                   </span>
                 </h1>
-                <span className="text-[11px] bg-stone-800/90 text-amber-400 border border-amber-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                <span className="text-[11px] bg-[#07241C] text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-bold">
                   {tenantName}
                 </span>
               </div>
-              <p className="text-xs text-stone-400 mt-0.5 flex items-center gap-3">
+              <p className="text-xs text-emerald-200/70 mt-0.5 flex items-center gap-3">
                 <span>نمایش زنده صف آماده‌سازی، کنترل SLA سفارش و نظارت بر تاخیرات</span>
               </p>
             </div>
@@ -413,9 +413,9 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
               type="button"
               onClick={toggleFullscreen}
               title={isFullScreen ? 'خروج از تمام‌صفحه' : 'حالت تمام‌صفحه تبلت و کیوسک (F11)'}
-              className="p-2.5 rounded-xl border border-stone-700 bg-stone-850 hover:bg-stone-800 text-stone-300 hover:text-amber-400 transition cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-semibold"
+              className="p-2.5 rounded-xl border border-[#164538] bg-[#07241C]/80 hover:bg-[#0A2E24] text-emerald-200 hover:text-white transition cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-semibold"
             >
-              {isFullScreen ? <Minimize2 className="w-4 h-4 text-amber-400" /> : <Maximize2 className="w-4 h-4 text-amber-400" />}
+              {isFullScreen ? <Minimize2 className="w-4 h-4 text-emerald-300" /> : <Maximize2 className="w-4 h-4 text-emerald-300" />}
               <span className="hidden sm:inline">{isFullScreen ? 'پنجره‌ای' : 'تمام‌صفحه'}</span>
             </button>
 
@@ -425,7 +425,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
               title={soundEnabled ? 'قطع صدای اعلان' : 'فعال‌سازی صدای اعلان'}
               className={`p-2.5 rounded-xl border transition cursor-pointer active:scale-95 ${
                 soundEnabled
-                  ? 'bg-amber-950/40 border-amber-600/50 text-amber-400 hover:bg-amber-900/40'
+                  ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-300 hover:bg-emerald-900/50'
                   : 'bg-stone-850 border-stone-750 text-stone-400 hover:bg-stone-800'
               }`}
             >
@@ -436,9 +436,9 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
               type="button"
               onClick={handleTestSound}
               title="تست آکوستیک زنگ باریستا"
-              className="px-3 py-2 rounded-xl bg-stone-850 hover:bg-stone-800 border border-stone-750 text-stone-300 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+              className="px-3 py-2 rounded-xl bg-[#07241C]/80 hover:bg-[#0A2E24] border border-[#164538] text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer active:scale-95"
             >
-              <Bell className="w-3.5 h-3.5 text-amber-400" />
+              <Bell className="w-3.5 h-3.5 text-emerald-300" />
               <span className="hidden sm:inline">تست زنگ</span>
             </button>
 
@@ -465,7 +465,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                   : 'text-stone-400 hover:text-stone-200 bg-stone-900 border border-stone-800'
               }`}
             >
-              <Layers className="w-3.5 h-3.5 text-amber-400" />
+              <Layers className="w-3.5 h-3.5 text-emerald-400" />
               <span>همه تیکت‌ها ({tickets.length})</span>
             </button>
 
@@ -489,8 +489,8 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
               onClick={() => setFilter('IN_PREP')}
               className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-2 cursor-pointer active:scale-95 ${
                 filter === 'IN_PREP'
-                  ? 'bg-amber-600 text-white shadow-lg ring-2 ring-amber-400'
-                  : 'text-amber-400 hover:bg-amber-950/40 bg-stone-900 border border-amber-900/50'
+                  ? 'bg-teal-600 text-white shadow-lg ring-2 ring-teal-400'
+                  : 'text-teal-400 hover:bg-teal-950/40 bg-stone-900 border border-teal-900/50'
               }`}
             >
               <Flame className="w-3.5 h-3.5" />
@@ -631,7 +631,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                       isPending
                         ? 'bg-stone-950/90 border-rose-800/70 ring-1 ring-rose-500/30'
                         : isInPrep
-                        ? 'bg-amber-950/20 border-amber-600/80 ring-1 ring-amber-500/20'
+                        ? 'bg-[#061813]/90 border-teal-500/80 ring-1 ring-teal-500/30'
                         : 'bg-stone-950/60 border-emerald-900/60 opacity-90'
                     }`}
                   >
@@ -649,7 +649,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                         <div className="flex items-start justify-between pb-3 mb-3 border-b border-stone-800/80">
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="text-2xl font-black text-amber-400 font-mono tracking-tight">
+                              <span className="text-2xl font-black text-emerald-400 font-mono tracking-tight">
                                 #{ticket.orderNumber}
                               </span>
                               <span
@@ -663,7 +663,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                               </span>
                             </div>
                             <div className="text-xs font-semibold text-stone-200 mt-1">
-                              محل: <span className="text-amber-300">{ticket.tableLabel || 'پیشخوان'}</span>
+                              محل: <span className="text-emerald-300">{ticket.tableLabel || 'پیشخوان'}</span>
                               {ticket.customerName && (
                                 <span className="text-stone-400 mr-2">({ticket.customerName})</span>
                               )}
@@ -701,7 +701,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                                     </span>
                                   )}
                                 </div>
-                                <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold">
+                                <span className="bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold">
                                   × {item.quantity}
                                 </span>
                               </div>
@@ -712,9 +712,9 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                                   {item.modifiers.map((mod, mIdx) => (
                                     <span
                                       key={mIdx}
-                                      className="text-[11px] bg-stone-800 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium"
+                                      className="text-[11px] bg-stone-800 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-md flex items-center gap-1 font-medium"
                                     >
-                                      <Sparkles className="w-3 h-3 text-amber-400" />
+                                      <Sparkles className="w-3 h-3 text-emerald-400" />
                                       <span>{mod}</span>
                                     </span>
                                   ))}
@@ -722,7 +722,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                               )}
 
                               {item.notes && (
-                                <p className="mt-1.5 text-[11px] text-amber-200/80 bg-amber-950/30 border border-amber-900/40 rounded p-1.5 italic">
+                                <p className="mt-1.5 text-[11px] text-emerald-200/80 bg-emerald-950/30 border border-emerald-900/40 rounded p-1.5 italic">
                                   یادداشت: {item.notes}
                                 </p>
                               )}
@@ -737,7 +737,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
                           <button
                             type="button"
                             onClick={() => handleUpdateStatus(ticket.orderId, 'IN_PREP')}
-                            className="w-full min-h-[48px] bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-white font-bold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition cursor-pointer active:scale-95"
+                            className="w-full min-h-[48px] bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-500 hover:to-emerald-500 text-white font-bold py-2.5 px-4 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg transition cursor-pointer active:scale-95"
                           >
                             <PlayCircle className="w-5 h-5" />
                             <span>شروع دم‌آوری (Start Brewing)</span>
@@ -802,7 +802,7 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
           <div className="flex items-center gap-4">
             <div>
               <span>کل سفارشات فعال بار: </span>
-              <strong className="text-amber-400 font-mono text-sm">{tickets.length}</strong>
+              <strong className="text-emerald-400 font-mono text-sm">{tickets.length}</strong>
             </div>
             <span className="text-stone-700">|</span>
             <div className="hidden sm:inline">

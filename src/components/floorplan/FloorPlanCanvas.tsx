@@ -122,6 +122,60 @@ export const MODENDO_FLOOR_NODES: FloorNode[] = [
     seats: 6,
   },
   {
+    id: 'BAR-1',
+    tableId: 'BAR-1',
+    label: 'بار ۱',
+    titleFa: 'کانتر بار - صندلی ۱',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 1,
+  },
+  {
+    id: 'BAR-2',
+    tableId: 'BAR-2',
+    label: 'بار ۲',
+    titleFa: 'کانتر بار - صندلی ۲',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 1,
+  },
+  {
+    id: 'BAR-3',
+    tableId: 'BAR-3',
+    label: 'بار ۳',
+    titleFa: 'کانتر بار - صندلی ۳',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 1,
+  },
+  {
+    id: 'BAR-4',
+    tableId: 'BAR-4',
+    label: 'بار ۴',
+    titleFa: 'کانتر بار - صندلی ۴',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 1,
+  },
+  {
+    id: 'BAR-5',
+    tableId: 'BAR-5',
+    label: 'بار ۵',
+    titleFa: 'کانتر بار - صندلی ۵',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 1,
+  },
+  {
+    id: 'BAR-6',
+    tableId: 'BAR-6',
+    label: 'بار ۶',
+    titleFa: 'کانتر بار - صندلی ۶',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 1,
+  },
+  {
     id: 'BAR-01',
     tableId: 'BAR-01',
     label: 'کانتر بار',
@@ -792,7 +846,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
    */
   const renderArchitecturalTable = (
     nodeId: string,
-    variant: 'vertical-4' | 'vertical-6' | 'square-2' | 'square-3' | 'bar-counter' | 'lounge-counter' | 'sofa-table',
+    variant: 'vertical-4' | 'vertical-6' | 'square-2' | 'square-3' | 'bar-counter' | 'lounge-counter' | 'sofa-table' | 'round-3',
     className = ''
   ) => {
     const node = nodeMap.get(nodeId);
@@ -844,6 +898,8 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
       ? 'bg-cyan-500/15 border-cyan-400/70 ring-2 ring-cyan-400/50 opacity-80'
       : isMergeChecked
       ? 'bg-cyan-500/20 border-cyan-300/80 ring-2 ring-cyan-400/60 shadow-[0_0_26px_-6px_rgba(34,211,238,0.55)]'
+      : isSelected && isOccupied
+      ? 'bg-[#881337] border-2 border-white ring-2 ring-rose-400 shadow-[0_0_24px_rgba(239,68,68,0.8)] text-white scale-[1.02]'
       : isSelected
       ? 'bg-emerald-500/40 border-white ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.5)] text-white'
       : isPaymentPending
@@ -855,6 +911,37 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
           accent ? `${accent.border} ring-1 ${accent.ring}` : ''
         }`
       : 'bg-[#064E3B]/70 border border-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.45)] text-emerald-100 hover:border-emerald-300';
+
+    if (variant === 'round-3') {
+      return (
+        <div className={`relative flex items-center justify-center p-2 ${className}`}>
+          {/* Orbiting chairs matching Image 5 Terrace round table */}
+          <span className={`absolute top-0 w-3.5 h-3.5 rounded-full ${CHAIR_DOT_CLS} shadow-sm`} />
+          <span className={`absolute bottom-0 w-3.5 h-3.5 rounded-full ${CHAIR_DOT_CLS} shadow-sm`} />
+          <span className={`absolute left-0 w-3.5 h-3.5 rounded-full ${CHAIR_DOT_CLS} shadow-sm`} />
+          <span className={`absolute right-0 w-3.5 h-3.5 rounded-full ${CHAIR_DOT_CLS} shadow-sm`} />
+
+          <motion.div
+            data-floor-node={node.id}
+            data-table-id={node.tableId}
+            dir="rtl"
+            role="button"
+            tabIndex={0}
+            whileHover={dragState ? undefined : { y: -2, scale: 1.025 }}
+            whileTap={dragState ? undefined : { scale: 0.975 }}
+            transition={{ type: 'spring', stiffness: 460, damping: 32 }}
+            onClick={() => handleCardClick(node)}
+            onDoubleClick={() => onConfirmTableOrder?.(node)}
+            className={`w-[84px] h-[84px] rounded-full backdrop-blur-xl flex flex-col items-center justify-center p-2 select-none ${surfaceStyle} transition-all duration-200 cursor-pointer shadow-lg`}
+          >
+            <span className="font-black text-xs text-white tracking-tight">{node.label}</span>
+            <span className="text-[10px] font-bold text-emerald-200 mt-0.5">
+              {isOccupied ? 'اشغال' : `${node.seats} نفره`}
+            </span>
+          </motion.div>
+        </div>
+      );
+    }
 
     const isWide = variant === 'lounge-counter' || variant === 'bar-counter';
     const showSideChairs = variant === 'vertical-4' || variant === 'vertical-6';
@@ -1169,8 +1256,20 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
           <div
             ref={blueprintRef}
             dir="ltr"
-            className="relative min-w-[980px] rounded-[30px] liquid-glass-shell p-4 md:p-5 overflow-hidden border border-white/10 shadow-[0_32px_90px_-20px_rgba(0,0,0,0.88)]"
+            className="relative min-w-[980px] rounded-[30px] liquid-glass-shell p-4 md:p-5 overflow-hidden border border-emerald-500/30 shadow-[0_32px_90px_-20px_rgba(0,0,0,0.88)]"
           >
+            {/* Architectural Floor Plan Blueprint Underlay (Image 4 & 5 Quality) */}
+            <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none rounded-[30px]">
+              <img
+                src="/tenants/modendo/architectural-plan.jpg"
+                alt="Modendo Floor Plan Blueprint"
+                className="w-full h-full object-cover opacity-40 mix-blend-luminosity filter contrast-125 brightness-75 scale-[1.01]"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#061813]/70 via-[#0A2E24]/50 to-[#061813]/80" />
+            </div>
             {/* North Window Mullions Accent */}
             <div
               aria-hidden="true"
@@ -1493,10 +1592,66 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                     </div>
                   </div>
 
-                  {/* Horizontal Bar Spine: BAR-01 + Cashier (صندوق) */}
+                  {/* Horizontal Bar Spine: 6-Seat Counter (BAR-1 .. BAR-6) + Cashier (صندوق) */}
                   <div className="grid grid-cols-12 gap-2.5 items-stretch pt-2 border-t border-white/[0.08]">
-                    <div className="col-span-8 h-[68px]">
-                      {renderArchitecturalTable('BAR-01', 'bar-counter', 'h-full')}
+                    <div className="col-span-8 rounded-2xl bg-gradient-to-r from-[#1C0D05]/95 via-[#2E1508]/95 to-[#1C0D05]/95 border border-amber-600/40 p-1.5 flex flex-col justify-between shadow-[0_4px_16px_rgba(0,0,0,0.5)]">
+                      {/* Counter Title Header */}
+                      <div className="flex items-center justify-between px-2 py-0.5 text-[10px] font-bold text-amber-200/90 border-b border-amber-500/20">
+                        <span className="flex items-center gap-1">
+                          <Coffee className="w-3 h-3 text-amber-400" />
+                          <span>کانتر بار (۶ صندلی / فیش مستقل)</span>
+                        </span>
+                        <span className="text-[9.5px] text-amber-300 font-mono tabular-nums">
+                          {['BAR-1', 'BAR-2', 'BAR-3', 'BAR-4', 'BAR-5', 'BAR-6'].filter((id) => Boolean(sessions[id])).length} / ۶ فعال
+                        </span>
+                      </div>
+
+                      {/* 6 Interactive Stool Capsules */}
+                      <div className="grid grid-cols-6 gap-1.5 pt-1 flex-1">
+                        {['BAR-1', 'BAR-2', 'BAR-3', 'BAR-4', 'BAR-5', 'BAR-6'].map((barId, idx) => {
+                          const barNode = nodeMap.get(barId);
+                          if (!barNode) return null;
+                          const primaryId = resolvePrimaryNodeId(sessions, barNode.id);
+                          const rawSession = sessions[barNode.id];
+                          const effectiveSession = sessions[primaryId];
+                          const isOccupied = Boolean(effectiveSession);
+                          const isSelected = activeSelectedId === primaryId || activeSelectedId === barNode.id;
+                          const isMergeChecked = mergeSelectedIds.includes(barNode.id);
+                          const isMerged = Boolean(rawSession?.mergedIntoNodeId) || Boolean(rawSession?.mergedNodeIds?.length);
+
+                          return (
+                            <motion.button
+                              key={barId}
+                              type="button"
+                              data-floor-node={barNode.id}
+                              data-table-id={barNode.tableId}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() => onNodeClick(barNode)}
+                              onDoubleClick={() => onOpenModal(barNode)}
+                              className={`h-full min-h-[38px] py-1 px-1 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all border ${
+                                isMergeChecked
+                                  ? 'bg-cyan-500/25 border-cyan-300 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.5)] text-cyan-100'
+                                  : isSelected && isOccupied
+                                  ? 'bg-rose-900/90 border-2 border-white ring-2 ring-rose-400 shadow-[0_0_16px_rgba(239,68,68,0.7)] text-white'
+                                  : isSelected
+                                  ? 'bg-emerald-500/40 border-white ring-2 ring-white shadow-[0_0_14px_rgba(255,255,255,0.6)] text-white'
+                                  : isOccupied
+                                  ? 'bg-[#881337]/90 border border-rose-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
+                                  : 'bg-[#064E3B]/60 hover:bg-[#064E3B]/80 border-emerald-400/60 text-emerald-100 shadow-sm'
+                              }`}
+                              title={`${barNode.titleFa} ${isOccupied ? '(اشغال)' : '(آزاد)'}`}
+                            >
+                              <span className="text-[10px] font-black leading-tight">
+                                {isMerged ? `🔗 B${idx + 1}` : `B-${idx + 1}`}
+                              </span>
+                              <span className={`text-[8.5px] font-bold ${isOccupied ? 'text-rose-200' : 'text-emerald-300/80'}`}>
+                                {isOccupied ? 'اشغال' : 'آزاد'}
+                              </span>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
                     </div>
 
                     <div
@@ -1578,10 +1733,10 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                   <span className="text-[10px] text-[#94A3B8]">فضای باز</span>
                 </div>
 
-                {/* Vertical Stack of Terrace Tables: M-05, M-06, T-01, T-02, T-03 */}
+                {/* Vertical Stack of Terrace Tables: M-05 (Round), M-06, T-01, T-02, T-03 */}
                 <div className="flex-1 flex flex-col justify-between gap-2 min-h-0">
-                  <div className="h-[106px]">
-                    {renderArchitecturalTable('M-05', 'vertical-6', 'h-full')}
+                  <div className="h-[96px] flex items-center justify-center">
+                    {renderArchitecturalTable('M-05', 'round-3', 'w-full h-full')}
                   </div>
                   <div className="h-[106px]">
                     {renderArchitecturalTable('M-06', 'vertical-6', 'h-full')}

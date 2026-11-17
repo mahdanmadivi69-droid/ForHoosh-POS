@@ -82,8 +82,9 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({
   });
 
   // Calculate cart totals (strictly integer Toman)
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
+  const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
+  const subtotal = safeCartItems.reduce(
+    (sum, item) => sum + (item.unitPrice || 0) * (item.quantity || 1),
     0
   );
 
@@ -148,7 +149,7 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({
 
       {/* Cart Items List */}
       <div className="flex-1 overflow-y-auto px-4 py-3 divide-y divide-zinc-800/60">
-        {cartItems.length === 0 ? (
+        {safeCartItems.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-zinc-500 text-sm">
             <span>سبد سفارش خالی است</span>
             <span className="text-xs text-zinc-600 mt-1">
@@ -156,7 +157,7 @@ export const PosCheckoutView: React.FC<PosCheckoutViewProps> = ({
             </span>
           </div>
         ) : (
-          cartItems.map((item) => (
+          safeCartItems.map((item) => (
             <div key={item.id} className="py-2.5 flex items-center justify-between">
               <div>
                 <div className="font-medium text-sm text-zinc-200">{item.name}</div>

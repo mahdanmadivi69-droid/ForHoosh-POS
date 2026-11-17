@@ -161,12 +161,19 @@ export const Header: React.FC<HeaderProps> = ({
   if (isModendo) {
     return (
       <header className="sticky top-0 md:top-2 z-40 md:mx-auto md:w-[calc(100%-1.5rem)] max-w-[1780px] md:rounded-full bg-gradient-to-r from-[#072019]/92 via-[#0A2E24]/92 to-[#072019]/92 backdrop-blur-2xl border border-[#164538]/70 shadow-[0_12px_36px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(167,243,208,0.15)] transition-all duration-200 select-none">
-        <div className="px-3 md:px-5 py-2 flex items-center justify-between gap-2 md:gap-4 min-w-0">
-          {/* Left Zone: Red Badge · Exit Button · User Pill (Red Border) · Clock/Date · Launcher */}
-          <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-nowrap">
-            {/* Crimson Monogram Emblem [ K ] */}
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7F1D1D] to-[#450A0A] border border-[#DC2626]/70 flex items-center justify-center font-black text-rose-300 shadow-[0_0_12px_rgba(220,38,38,0.35)] shrink-0">
-              <span className="font-display-latin text-xs font-black">K</span>
+        <div dir="ltr" className="relative px-3 md:px-5 py-2 flex items-center justify-between gap-2 md:gap-4 min-w-0">
+          {/* Left Wing: KarWand Cafe OS · Exit · User Capsule · Clock/Date · Launcher */}
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-nowrap z-20">
+            {/* KarWand Cafe OS Crimson Pill */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#5B0E14] via-[#40080D] to-[#250407] border border-[#DC2626]/70 shadow-[0_0_16px_rgba(220,38,38,0.4)] shrink-0 select-none">
+              <img
+                src="/karwand-logo.png"
+                alt="KarWand"
+                className="w-5 h-5 object-contain filter drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]"
+              />
+              <span className="font-display-latin text-xs font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#FDE68A] via-[#F59E0B] to-[#FBBF24] drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
+                Cafe OS
+              </span>
             </div>
 
             {/* Exit Button */}
@@ -196,7 +203,7 @@ export const Header: React.FC<HeaderProps> = ({
                 title="حساب کاربری و منوی ابزارها"
               >
                 <Lock className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                <span className="max-w-[110px] truncate whitespace-nowrap">
+                <span className="max-w-[100px] truncate whitespace-nowrap">
                   {activeUser.fullName || 'مدیر سیستم'}
                 </span>
                 <span className="text-white/40">|</span>
@@ -206,7 +213,7 @@ export const Header: React.FC<HeaderProps> = ({
 
               {/* Utility Dropdown (Preserving all utilities: shift, kds, PIN user switch, backup, receipt history) */}
               {isUtilityMenuOpen && (
-                <div className="absolute right-0 mt-2.5 w-72 liquid-glass-modal rounded-[24px] p-4 space-y-3 z-50 animate-spatial-modal text-right shadow-2xl">
+                <div dir="rtl" className="absolute left-0 mt-2.5 w-72 liquid-glass-modal rounded-[24px] p-4 space-y-3 z-50 animate-spatial-modal text-right shadow-2xl">
                   {/* Profile + Live Clock */}
                   <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08]">
                     <div>
@@ -356,7 +363,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {/* Live Clock & Persian Date */}
-            <div className="hidden lg:flex items-center gap-1.5 rounded-full bg-[#07241C]/80 border border-[#16382F] px-3 py-1.5 text-xs font-mono font-bold text-emerald-200 tabular-nums shadow-sm shrink-0">
+            <div className="hidden xl:flex items-center gap-1.5 rounded-full bg-[#07241C]/80 border border-[#16382F] px-3 py-1.5 text-xs font-mono font-bold text-emerald-200 tabular-nums shadow-sm shrink-0">
               <span>{liveClock || '20:47:43'}</span>
               <span className="text-white/30">|</span>
               <span className="font-sans font-bold text-emerald-300/90 text-[11px]">{persianDate}</span>
@@ -377,7 +384,41 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <LayoutGrid className="w-4 h-4" />
             </button>
+          </div>
 
+          {/* Absolute Center Anchor: Modendo 3D Hexagon Emblem (top) + Persian Calligraphy (bottom) */}
+          <div
+            onClick={() => onTabChange('pos')}
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center cursor-pointer pointer-events-auto select-none group z-10 transition-transform duration-200 active:scale-95"
+            title="کافه گیمینگ مودندو"
+          >
+            {/* Top: Official Modendo 3D Isometric Hexagon Emblem */}
+            <div className="relative flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
+              <img
+                src="/tenants/modendo/mark.jpg"
+                alt="Modendo Emblem"
+                className="w-7 h-7 object-contain drop-shadow-[0_0_12px_rgba(16,185,129,0.7)]"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const svgEl = e.currentTarget.nextElementSibling as HTMLElement;
+                  if (svgEl) svgEl.style.display = 'block';
+                }}
+              />
+              <svg className="hidden w-7 h-7 text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.7)]" viewBox="0 0 100 100" fill="none">
+                <polygon points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5" stroke="#10B981" strokeWidth="6" fill="#062219" />
+                <polygon points="50,15 80,32 80,68 50,85 20,68 20,32" stroke="#34D399" strokeWidth="3" fill="#0A382A" />
+                <path d="M50 15 L50 85 M20 32 L80 68 M20 68 L80 32" stroke="#10B981" strokeWidth="2" strokeOpacity="0.4" />
+              </svg>
+            </div>
+            
+            {/* Bottom: Persian Brand Title */}
+            <span className="text-base md:text-lg font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#D1FAE5] via-[#FDE68A] to-[#6EE7B7] drop-shadow-[0_0_14px_rgba(16,185,129,0.5)] font-fa-sans leading-tight mt-0.5 whitespace-nowrap">
+              کافه مودندو
+            </span>
+          </div>
+
+          {/* Right Wing: Floor Plan Pill · POS Pill · Boiler Telemetry · Online Toggle */}
+          <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-nowrap z-20">
             {/* Quick Floor Plan Pill */}
             <button
               onClick={() => {
@@ -411,33 +452,9 @@ export const Header: React.FC<HeaderProps> = ({
               <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-400" />
               <span>صندوق</span>
             </button>
-          </div>
 
-          {/* Center Zone: 3D Hexagonal Green Emblem + Gold/Emerald Calligraphy "کافه مودندو" */}
-          <div
-            onClick={() => onTabChange('pos')}
-            className="flex items-center gap-2 md:gap-3 cursor-pointer shrink-0 select-none group"
-            title="کافه گیمینگ مودندو"
-          >
-            {/* 3D Isometric Hexagon Emblem */}
-            <div className="w-8 h-8 relative flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-              <svg className="w-8 h-8 text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]" viewBox="0 0 100 100" fill="none">
-                <polygon points="50,5 90,27.5 90,72.5 50,95 10,72.5 10,27.5" stroke="#10B981" strokeWidth="6" fill="#062219" />
-                <polygon points="50,15 80,32 80,68 50,85 20,68 20,32" stroke="#34D399" strokeWidth="3" fill="#0A382A" />
-                <path d="M50 15 L50 85 M20 32 L80 68 M20 68 L80 32" stroke="#10B981" strokeWidth="2" strokeOpacity="0.4" />
-              </svg>
-            </div>
-            
-            {/* Persian Brand Title */}
-            <span className="text-xl md:text-2xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#D1FAE5] via-[#FDE68A] to-[#6EE7B7] drop-shadow-[0_0_14px_rgba(16,185,129,0.45)] font-fa-sans">
-              کافه مودندو
-            </span>
-          </div>
-
-          {/* Right Zone: Telemetry Pill (93.5°C • 9.1 Bar • بویلر) · Online Toggle */}
-          <div className="flex items-center gap-2 md:gap-2.5 shrink-0 flex-nowrap">
             {/* Boiler Telemetry Pill */}
-            <div className="hidden sm:flex items-center gap-1.5 rounded-full bg-[#07241C]/80 border border-[#16382F] px-3.5 py-1.5 text-xs font-mono font-bold text-emerald-300 shadow-sm shrink-0">
+            <div className="hidden lg:flex items-center gap-1.5 rounded-full bg-[#07241C]/80 border border-[#16382F] px-3 py-1.5 text-xs font-mono font-bold text-emerald-300 shadow-sm shrink-0">
               <span>93.5°C • 9.1 Bar • بویلر</span>
             </div>
 

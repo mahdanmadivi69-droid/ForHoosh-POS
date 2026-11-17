@@ -556,6 +556,10 @@ function App() {
               setPreselectedTableLabel(tableLabel);
               setCurrentTab('pos');
             }}
+            tenant={tenant}
+            activeShift={activeShift}
+            activeUser={activeUser}
+            onOrderCompleted={handleOrderCompleted}
           />
         )}
 
