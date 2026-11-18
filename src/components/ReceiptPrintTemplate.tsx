@@ -63,7 +63,7 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
     effectiveTenantId.includes('modendo');
 
   const displayTenantName = isModendo ? 'کافه گیمینگ مودندو' : (tenantName || activeTenant.brandNameFa);
-  const displayLogo = logoPath || '/karwand-logo.png';
+  const displayLogo = logoPath || (isModendo ? '/tenants/modendo/modendo-logo-fa.svg' : '/karwand-logo.png');
   const displayHeaderNote = isModendo
     ? (headerNoteFa || 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو')
     : (headerNoteFa || activeTenant.receipt.headerNoteFa);

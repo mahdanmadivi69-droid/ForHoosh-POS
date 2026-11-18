@@ -106,6 +106,8 @@ export function printThermalReceipt(
             html, body {
               width: 80mm !important;
               max-width: 80mm !important;
+              height: auto !important;
+              min-height: 0 !important;
               margin: 0 auto !important;
               padding: 0 !important;
               background: #ffffff !important;

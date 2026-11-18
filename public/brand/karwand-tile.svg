@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" fill="none">
+  <!-- Signature KarWand Crimson Badge with Beveled Border -->
+  <rect x="8" y="8" width="496" height="496" rx="96" fill="#D71921" />
+  <rect x="8" y="8" width="496" height="496" rx="96" stroke="rgba(255,255,255,0.25)" stroke-width="8" />
+  
+  <!-- Crisp Architectural White Outline Geometry -->
+  <g stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Left Stem: Outer Vertical & Left Foot (L) -->
+    <path d="M 50 395 H 175 V 60" />
+    
+    <!-- Left Stem: Inner Vertical Segments -->
+    <path d="M 215 60 V 170" />
+    <path d="M 215 240 V 395" />
+    
+    <!-- Bottom Base Horizontal Runner -->
+    <path d="M 50 435 H 230" />
+
+    <!-- Top Diagonal Arm of K -->
+    <path d="M 215 170 L 410 30" />
+    
+    <!-- Top Floating Parallel Accent Stroke -->
+    <path d="M 335 105 L 410 35" />
+
+    <!-- Lower Branch / W-Ribbon Outer Contour -->
+    <path d="M 250 210 L 430 380 L 355 455 L 290 390 L 225 450" />
+
+    <!-- Lower Branch / W-Ribbon Inner Contour -->
+    <path d="M 245 260 L 385 395 L 355 425 L 290 360 L 215 405" />
+  </g>
+</svg>

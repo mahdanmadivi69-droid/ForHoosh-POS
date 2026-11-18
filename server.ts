@@ -39,6 +39,17 @@ const isProduction = process.env.NODE_ENV === 'production';
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
 function resolveActiveTenant(): 'tenant-100hich-01' | 'tenant-modendo-01' {
+  // DEV SERVER GUARDRAIL (Modendo-only): Never silently default to any tenant in dev mode.
+  if (!isProduction) {
+    if (!process.env.VITE_TENANT_ID) {
+      throw new Error(
+        '🛑 [DEV GUARDRAIL FAILURE] VITE_TENANT_ID environment variable is missing! ' +
+        'Dev server must explicitly specify VITE_TENANT_ID=tenant-modendo-01 (e.g. PORT=3002 npm run dev:modendo). ' +
+        'Silent defaulting to 100hich or any tenant is strictly forbidden.'
+      );
+    }
+  }
+
   if (process.env.VITE_TENANT_ID === 'tenant-modendo-01') return 'tenant-modendo-01';
   if (process.env.VITE_TENANT_ID === 'tenant-100hich-01') return 'tenant-100hich-01';
   if (PORT === 3002) return 'tenant-modendo-01';
@@ -460,6 +471,7 @@ export function createServerApp() {
 }
 
 export async function startServer() {
+  const activeTenant = resolveActiveTenant();
   const app = createServerApp();
   const server = http.createServer(app);
 

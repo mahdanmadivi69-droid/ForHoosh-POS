@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" fill="none">
+  <!-- KarWand Monogram: Crisp High-Contrast Architectural Line Geometry -->
+  <g stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Left Stem: Outer Vertical & Left Foot (L) -->
+    <path d="M 30 395 H 165 V 40" />
+    
+    <!-- Left Stem: Inner Vertical Segments -->
+    <path d="M 205 40 V 160" />
+    <path d="M 205 230 V 395" />
+    
+    <!-- Bottom Base Horizontal Runner -->
+    <path d="M 30 435 H 220" />
+
+    <!-- Top Diagonal Arm of K -->
+    <path d="M 205 160 L 400 20" />
+    
+    <!-- Top Floating Parallel Accent Stroke -->
+    <path d="M 325 95 L 400 25" />
+
+    <!-- Lower Branch / W-Ribbon Outer Contour -->
+    <path d="M 240 200 L 420 370 L 345 445 L 280 380 L 215 440" />
+
+    <!-- Lower Branch / W-Ribbon Inner Contour -->
+    <path d="M 235 250 L 375 385 L 345 415 L 280 350 L 205 395" />
+  </g>
+</svg>

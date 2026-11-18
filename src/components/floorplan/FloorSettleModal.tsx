@@ -27,7 +27,8 @@ import {
   Eye,
   Percent,
 } from 'lucide-react';
-import { FloorNode, TableSession } from './FloorPlanCanvas';
+import { FloorNode, TableSession, computeSettlementLineItems } from './FloorPlanCanvas';
+import { LiquidSurface } from '../liquid/LiquidSurface';
 import { formatToman } from '../../services/financialMath';
 import { playPosBeep } from '../../services/soundEffects';
 
@@ -57,29 +58,39 @@ export const FloorSettleModal: React.FC<FloorSettleModalProps> = ({
   selectedNode,
   activeTableSession,
   sessionTotal,
-  ps5Fee = 0,
+  ps5Fee: _unusedPs5Fee,
   onConfirmSettlement,
   onPrintProforma,
 }) => {
+  const settlement = useMemo(() => {
+    return computeSettlementLineItems(
+      activeTableSession?.cartItems || [],
+      activeTableSession?.ps5Session,
+      selectedNode,
+      activeTableSession?.discountToman || 0,
+      Date.now()
+    );
+  }, [activeTableSession, selectedNode]);
+
+  const payableTotal = settlement.payableToman;
+  const items = settlement.items;
+  const grossAmount = settlement.grossTotalToman;
+  const discountAmount = settlement.discountToman;
+
   const [paymentMethod, setPaymentMethod] = useState<'CARD' | 'CASH' | 'SPLIT'>('CARD');
   const [terminalName, setTerminalName] = useState<string>('پوز ۱ (بانک سامان)');
   const [referenceCode, setReferenceCode] = useState<string>('');
-  const [cashTendered, setCashTendered] = useState<number>(sessionTotal);
+  const [cashTendered, setCashTendered] = useState<number>(payableTotal);
   const [splitCount, setSplitCount] = useState<number>(Math.max(2, activeTableSession?.guestCount || 2));
   const [showReceiptPreview, setShowReceiptPreview] = useState<boolean>(true);
 
-  const changeDue = Math.max(0, cashTendered - sessionTotal);
-  const splitAmountPerPerson = Math.ceil(sessionTotal / splitCount);
+  // Sync cash tendered if payable changes
+  React.useEffect(() => {
+    setCashTendered(payableTotal);
+  }, [payableTotal]);
 
-  const items = useMemo(() => {
-    return activeTableSession?.cartItems || [];
-  }, [activeTableSession?.cartItems]);
-
-  const grossAmount = useMemo(() => {
-    return items.reduce((sum, it) => sum + (it.subtotalToman || 0), 0) + ps5Fee;
-  }, [items, ps5Fee]);
-
-  const discountAmount = activeTableSession?.discountToman || 0;
+  const changeDue = Math.max(0, cashTendered - payableTotal);
+  const splitAmountPerPerson = Math.ceil(payableTotal / splitCount);
 
   if (!isOpen) return null;
 
@@ -101,14 +112,11 @@ export const FloorSettleModal: React.FC<FloorSettleModalProps> = ({
         className="fixed inset-0 z-50 flex items-center justify-center p-3 md:p-6 bg-black/80 backdrop-blur-md select-none overflow-y-auto"
         onClick={onClose}
       >
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+        <LiquidSurface
+          variant="modal"
           onClick={(e) => e.stopPropagation()}
           dir="rtl"
-          className="w-full max-w-xl max-h-[90vh] flex flex-col rounded-[28px] bg-[#0c1411]/95 border border-emerald-500/30 backdrop-blur-2xl shadow-2xl overflow-hidden text-right"
+          className="w-full max-w-xl max-h-[90vh] flex flex-col rounded-2xl bg-[#0c1411]/95 border border-emerald-500/30 backdrop-blur-2xl shadow-2xl overflow-hidden text-right"
         >
           {/* Header */}
           <div className="px-5 py-4 border-b border-white/10 bg-[#06120F]/90 flex items-center justify-between shrink-0">
@@ -144,7 +152,7 @@ export const FloorSettleModal: React.FC<FloorSettleModalProps> = ({
               <div>
                 <span className="text-xs text-[#94A3B8] block">مبلغ کل قابل پرداخت</span>
                 <span className="text-2xl font-black text-emerald-300 font-mono tracking-tight">
-                  {formatToman(sessionTotal)} تومان
+                  {formatToman(payableTotal)} تومان
                 </span>
               </div>
 
@@ -275,7 +283,7 @@ export const FloorSettleModal: React.FC<FloorSettleModalProps> = ({
                   ))}
                   <button
                     type="button"
-                    onClick={() => setCashTendered(sessionTotal)}
+                    onClick={() => setCashTendered(payableTotal)}
                     className="px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-300 border border-emerald-600/50 text-[11px] font-bold cursor-pointer"
                   >
                     مبلغ دقیق
@@ -331,7 +339,7 @@ export const FloorSettleModal: React.FC<FloorSettleModalProps> = ({
               >
                 <div className="flex items-center gap-2">
                   <Eye className="w-4 h-4 text-emerald-400" />
-                  <span>پیش‌نمایش اقلام فاکتور ({items.length + (ps5Fee > 0 ? 1 : 0)} قلم)</span>
+                  <span>پیش‌نمایش اقلام فاکتور ({items.length} قلم)</span>
                 </div>
                 {showReceiptPreview ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
               </button>
@@ -341,19 +349,12 @@ export const FloorSettleModal: React.FC<FloorSettleModalProps> = ({
                   {items.map((it, idx) => (
                     <div key={idx} className="flex justify-between items-center py-1 border-b border-white/[0.04]">
                       <div>
-                        <span className="text-white font-bold">{it.itemNameSnapshot}</span>
-                        <span className="text-[#94A3B8] font-mono text-[11px] mr-2">× {it.quantity}</span>
+                        <span className="text-white font-bold">{it.itemNameSnapshot || it.name}</span>
+                        <span className="text-[#94A3B8] font-mono text-[11px] mr-2">× {it.quantity || 1}</span>
                       </div>
-                      <span className="text-white font-mono tabular-nums">{formatToman(it.subtotalToman)} ت</span>
+                      <span className="text-white font-mono tabular-nums">{formatToman(it.subtotalToman || it.price || 0)} ت</span>
                     </div>
                   ))}
-
-                  {ps5Fee > 0 && (
-                    <div className="flex justify-between items-center py-1 border-b border-white/[0.04] text-sky-300">
-                      <span>تعرفه بازی و کنسول PS5 ({selectedNode.label})</span>
-                      <span className="font-mono tabular-nums">{formatToman(ps5Fee)} ت</span>
-                    </div>
-                  )}
 
                   <div className="pt-2 space-y-1 font-mono text-[11px] text-[#94A3B8]">
                     <div className="flex justify-between">
@@ -368,7 +369,7 @@ export const FloorSettleModal: React.FC<FloorSettleModalProps> = ({
                     )}
                     <div className="flex justify-between text-sm font-bold text-emerald-300 pt-1 border-t border-white/10">
                       <span className="font-sans">مبلغ نهایی:</span>
-                      <span>{formatToman(sessionTotal)} تومان</span>
+                      <span>{formatToman(payableTotal)} تومان</span>
                     </div>
                   </div>
                 </div>
@@ -386,16 +387,17 @@ export const FloorSettleModal: React.FC<FloorSettleModalProps> = ({
               انصراف
             </button>
 
-            <button
-              type="button"
+            <LiquidSurface
+              as="button"
+              magnetic={true}
               onClick={handleFinalConfirm}
-              className="flex-1 py-3 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:brightness-110 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] cursor-pointer transition"
+              className="flex-1 py-3 px-5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:brightness-110 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(16,185,129,0.4)] cursor-pointer transition"
             >
               <CheckCircle2 className="w-5 h-5 text-white" />
               <span>تایید نهایی تسویه و چاپ فیش</span>
-            </button>
+            </LiquidSurface>
           </div>
-        </motion.div>
+        </LiquidSurface>
       </div>
     </AnimatePresence>
   );

@@ -73,7 +73,7 @@ export const TENANT_PROFILES: Record<string, TenantProfile> = {
     receipt: {
       logoPath: '/karwand-logo.png',
       headerNoteFa: 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو',
-      printKitchenTicket: true,
+      printKitchenTicket: false,
     },
   },
 };

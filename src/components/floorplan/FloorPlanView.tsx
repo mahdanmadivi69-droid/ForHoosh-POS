@@ -32,10 +32,14 @@ import {
   MODENDO_FLOOR_NODES,
   getSessionTotalToman,
   calculatePs5ChargeToman,
+  computeSettlementLineItems,
   hasGamingPackage,
   resolvePrimaryNodeId,
   is100HichNode,
   formatElapsedTimer,
+  getDisplayShortLabel,
+  resolveNodeSession,
+  normalizeNodeKey,
 } from './FloorPlanCanvas';
 import { TableSessionModal } from './TableSessionModal';
 import { TableEntity } from '../../types/floor-plan';
@@ -48,6 +52,7 @@ import { OrderItem } from '../../types/domain';
 import { FloorSettleModal } from './FloorSettleModal';
 import { OpenTabsModal } from '../modals/OpenTabsModal';
 import { printThermalReceipt } from '../../services/receiptPrinter';
+import { LiquidSurface } from '../liquid/LiquidSurface';
 
 interface FloorPlanViewProps {
   onBackToPos: () => void;
@@ -202,17 +207,41 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
             if (match && !next[node.id]) {
               hasChanges = true;
+              const flatItems: any[] = ((match as any).rounds || []).flatMap((r: any) =>
+                (r.items || []).map((it: any) => ({
+                  id: it.id,
+                  menuItemId: it.menuItemId,
+                  itemNameSnapshot: it.title || it.itemNameSnapshot || 'آیتم',
+                  unitPriceSnapshotToman: Number(it.unitPrice ?? it.unitPriceSnapshotToman ?? 0),
+                  subtotalToman: Number(it.subtotal ?? it.subtotalToman ?? 0),
+                  quantity: Number(it.quantity ?? 1),
+                  notes: it.notes,
+                }))
+              );
+              if (flatItems.length === 0 && (match as any).items?.length) {
+                for (const it of (match as any).items) {
+                  flatItems.push({
+                    id: it.id || `item-${Date.now()}-${Math.random()}`,
+                    menuItemId: it.menuItemId || it.id || 'item',
+                    itemNameSnapshot: it.itemNameSnapshot || it.title || it.name || 'آیتم',
+                    unitPriceSnapshotToman: Number(it.unitPriceSnapshotToman ?? it.unitPrice ?? 0),
+                    subtotalToman: Number(it.subtotalToman ?? it.subtotal ?? 0),
+                    quantity: Number(it.quantity ?? 1),
+                    notes: it.notes,
+                  });
+                }
+              }
               next[node.id] = {
                 nodeId: node.id,
                 tableLabel: node.label,
                 kind: node.kind,
                 status: 'OCCUPIED',
                 guestCount: (match as any).guest_count || node.seats,
-                customerName: (match as any).customer_name || '',
-                notes: '',
+                customerName: (match as any).customer_name || ((match as any).server_name !== 'صندوق‌دار' ? (match as any).server_name : ''),
+                notes: (match as any).notes || '',
                 openedAt: (match as any).opened_at || new Date().toISOString(),
-                cartItems: (match as any).items || [],
-                discountToman: (match as any).discount_toman || 0,
+                cartItems: flatItems,
+                discountToman: (match as any).discount_toman || (match as any).discount || 0,
                 discountPercent: (match as any).discount_percent || 0,
               };
             }
@@ -474,8 +503,24 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
   const handleNodeClick = (node: FloorNode) => {
     setSelectedTableNodeId(node.id);
+
+    // Auto-resolve session using unified resolver and ensure write-through sync if discovered from tabs
+    const resolved = resolveNodeSession(node, sessions, 'tenant-modendo-01');
+    if (resolved && !sessions[node.id]) {
+      setSessions((prev) => {
+        const next = { ...prev, [node.id]: resolved };
+        try {
+          localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(next));
+          window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: next }));
+        } catch (e) {
+          console.warn('[FloorPlanView] Failed persisting resolved session:', e);
+        }
+        return next;
+      });
+    }
+
     if (moveMode) {
-      const isOccupied = Boolean(sessions[node.id]);
+      const isOccupied = Boolean(sessions[node.id] || resolved);
       if (!moveSourceId) {
         if (!isOccupied) {
           alert('میز انتخابی آزاد است. لطفاً یک میز فعال/اشغال را به عنوان مبدأ انتخاب کنید.');
@@ -512,6 +557,22 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
   const handleOpenTableModal = (node: FloorNode) => {
     setModalNode(node);
+
+    // Auto-resolve session using unified resolver and ensure write-through sync if discovered from tabs
+    const resolved = resolveNodeSession(node, sessions, 'tenant-modendo-01');
+    if (resolved && !sessions[node.id]) {
+      setSessions((prev) => {
+        const next = { ...prev, [node.id]: resolved };
+        try {
+          localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(next));
+          window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: next }));
+        } catch (e) {
+          console.warn('[FloorPlanView] Failed persisting resolved session:', e);
+        }
+        return next;
+      });
+    }
+
     // Find or construct TableEntity for TableSessionModal
     const existing = floorPlanService.getTableById(node.id) || floorPlanService.getTableById(node.tableId || '');
     if (existing) {
@@ -530,7 +591,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
           token_required: node.zone === 'LOUNGE',
           mergeable: node.kind === 'TABLE',
         },
-        status: sessions[node.id] ? 'OCCUPIED' : 'AVAILABLE',
+        status: (sessions[node.id] || resolved) ? 'OCCUPIED' : 'AVAILABLE',
         pricing_tier_id: node.kind === 'PS5' ? 'tier_ps5_standard' : undefined,
       };
       setModalTableEntity(mockEntity);
@@ -609,9 +670,12 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
       // Cancel/void open tab in openTabService if present to prevent ghost tab revival
       try {
+        const short = getDisplayShortLabel(selectedNode);
         const targetTab =
           openTabService.getTabForTable(selectedNode.label, 'tenant-modendo-01') ||
-          openTabService.getTabForTable(nodeId, 'tenant-modendo-01');
+          openTabService.getTabForTable(nodeId, 'tenant-modendo-01') ||
+          (selectedNode.tableId ? openTabService.getTabForTable(selectedNode.tableId, 'tenant-modendo-01') : undefined) ||
+          openTabService.getTabForTable(short, 'tenant-modendo-01');
         if (targetTab) {
           openTabService.voidTab(targetTab.tab_id, 'tenant-modendo-01');
         }
@@ -622,6 +686,14 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
       setSessions((prev) => {
         const next = { ...prev };
         delete next[nodeId];
+        delete next[selectedNode.id];
+        delete next[selectedNode.label];
+        if (selectedNode.tableId) delete next[selectedNode.tableId];
+        for (const [k, v] of Object.entries(next)) {
+          if (v && (v.nodeId === selectedNode.id || v.tableLabel === selectedNode.label)) {
+            delete next[k];
+          }
+        }
         try {
           localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(next));
           window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: next }));
@@ -646,46 +718,19 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
       alert('شیفت کاری فعال نیست. لطفاً ابتدا شیفت را باز کنید.');
       return;
     }
-    const rawItems = activeTableSession?.cartItems || [];
-    const baseItems = rawItems.filter(
-      (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+
+    const settlement = computeSettlementLineItems(
+      activeTableSession?.cartItems || [],
+      activeTableSession?.ps5Session,
+      selectedNode,
+      activeTableSession?.discountToman || 0,
+      Date.now()
     );
-
-    // TASK 2: Prevent Double-Charging via Comprehensive Gaming Package Check
-    const hasPackage = hasGamingPackage(baseItems);
-
-    const ps5Session =
-      activeTableSession?.ps5Session ||
-      (selectedNode.kind === 'PS5' && activeTableSession
-        ? {
-            startedAt: activeTableSession.openedAt || new Date().toISOString(),
-            hourlyRateToman: selectedNode.hourlyRateToman || 180000,
-            controllersCount: 2,
-            accumulatedMs: 0,
-            isPaused: false,
-          }
-        : undefined);
-
-    const ps5Fee = hasPackage || !ps5Session
-      ? 0
-      : calculatePs5ChargeToman(ps5Session, Date.now());
-
-    const items = [...baseItems];
-    if (ps5Fee > 0) {
-      items.push({
-        id: `ps5-hourly-${selectedNode.id}-${Date.now()}`,
-        menuItemId: 'modendo-ps5-charge',
-        itemNameSnapshot: `تعرفه بازی PS5 (${selectedNode.label})`,
-        unitPriceSnapshotToman: ps5Fee,
-        quantity: 1,
-        subtotalToman: ps5Fee,
-        notes: 'شارژ زمانی بازی کنسول',
-      } as any);
-    }
-
-    const grossAmount = items.reduce((sum: number, it: any) => sum + (it.subtotalToman || 0), 0);
-    const discountAmount = activeTableSession?.discountToman || 0;
-    const finalAmount = Math.max(0, grossAmount - discountAmount);
+    const items = settlement.items;
+    const grossAmount = settlement.grossTotalToman;
+    const discountAmount = settlement.discountToman;
+    const finalAmount = settlement.payableToman;
+    const ps5Fee = settlement.ps5Fee;
 
     const splitNote =
       paymentData.paymentMethod === 'SPLIT'
@@ -750,9 +795,12 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
         // Settle open tab in openTabService to eradicate ghost tab resurrection
         try {
+          const short = getDisplayShortLabel(selectedNode);
           const targetTab =
             openTabService.getTabForTable(selectedNode.label, 'tenant-modendo-01') ||
-            openTabService.getTabForTable(selectedNode.id, 'tenant-modendo-01');
+            openTabService.getTabForTable(selectedNode.id, 'tenant-modendo-01') ||
+            (selectedNode.tableId ? openTabService.getTabForTable(selectedNode.tableId, 'tenant-modendo-01') : undefined) ||
+            openTabService.getTabForTable(short, 'tenant-modendo-01');
           if (targetTab) {
             openTabService.settleTab(
               targetTab.tab_id,
@@ -771,6 +819,13 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         setSessions((prev) => {
           const next = { ...prev };
           delete next[selectedNode.id];
+          delete next[selectedNode.label];
+          if (selectedNode.tableId) delete next[selectedNode.tableId];
+          for (const [k, v] of Object.entries(next)) {
+            if (v && (v.nodeId === selectedNode.id || v.tableLabel === selectedNode.label)) {
+              delete next[k];
+            }
+          }
           try {
             localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(next));
             window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: next }));
@@ -790,37 +845,17 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   const handlePrintProforma = () => {
     try {
       playPosBeep('click');
-      const rawItems = activeTableSession?.cartItems || [];
-      const baseItems = rawItems.filter(
-        (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+      const settlement = computeSettlementLineItems(
+        activeTableSession?.cartItems || [],
+        activeTableSession?.ps5Session,
+        selectedNode,
+        activeTableSession?.discountToman || 0,
+        Date.now()
       );
-      const hasPackage = hasGamingPackage(baseItems);
-      const ps5Session =
-        activeTableSession?.ps5Session ||
-        (selectedNode.kind === 'PS5' && activeTableSession
-          ? {
-              startedAt: activeTableSession.openedAt || new Date().toISOString(),
-              hourlyRateToman: selectedNode.hourlyRateToman || 180000,
-              controllersCount: 2,
-              accumulatedMs: 0,
-              isPaused: false,
-            }
-          : undefined);
-      const ps5Fee = hasPackage || !ps5Session ? 0 : calculatePs5ChargeToman(ps5Session, Date.now());
-      const items = [...baseItems];
-      if (ps5Fee > 0) {
-        items.push({
-          id: `ps5-hourly-${selectedNode.id}`,
-          menuItemId: 'modendo-ps5-charge',
-          itemNameSnapshot: `تعرفه بازی PS5 (${selectedNode.label})`,
-          unitPriceSnapshotToman: ps5Fee,
-          quantity: 1,
-          subtotalToman: ps5Fee,
-        } as any);
-      }
-      const gross = items.reduce((sum: number, it: any) => sum + (it.subtotalToman || 0), 0);
-      const discount = activeTableSession?.discountToman || 0;
-      const finalAmount = Math.max(0, gross - discount);
+      const items = settlement.items;
+      const gross = settlement.grossTotalToman;
+      const discount = settlement.discountToman;
+      const finalAmount = settlement.payableToman;
 
       printThermalReceipt({
         invoiceNo: 'پیش‌فاکتور',
@@ -880,9 +915,16 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
       if (session && ps5Session) {
         const rawItems = session.cartItems || [];
-        const baseItems = rawItems.filter(
-          (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
-        );
+        const baseItems = rawItems.filter((it) => {
+          if (it.menuItemId === 'modendo-ps5-charge' || it.id?.startsWith('ps5-hourly-')) {
+            return false;
+          }
+          const name = (it.itemNameSnapshot || (it as any).name || '').trim();
+          if (name.includes('تعرفه بازی') && ((it.unitPriceSnapshotToman || (it as any).price || 0) < 50000)) {
+            return false;
+          }
+          return true;
+        });
 
         // TASK 2: Prevent Double-Charging via Comprehensive Gaming Package Check
         const hasPackage = hasGamingPackage(baseItems);
@@ -929,7 +971,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     return MODENDO_FLOOR_NODES.find((n) => n.id === selectedTableNodeId) || MODENDO_FLOOR_NODES[0];
   }, [selectedTableNodeId]);
 
-  const activeTableSession = sessions[selectedTableNodeId];
+  const activeTableSession = resolveNodeSession(selectedNode, sessions, 'tenant-modendo-01');
   const sessionTotal = getSessionTotalToman(activeTableSession, nowMs);
 
   const zoneTabs: Array<{ id: FloorZone | 'ALL'; label: string; icon: React.ReactNode }> = [
@@ -946,11 +988,11 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         className="flex-1 flex flex-col xl:grid xl:grid-cols-[400px_1fr] gap-4 p-3 md:p-4 max-w-[1780px] mx-auto w-full select-none"
       >
         {/* Left Column: Side-by-side Order Cart Panel (Strictly on LEFT side matching reference) */}
-        <aside dir="rtl" className="hidden xl:flex flex-col modendo-cart-shell rounded-[28px] overflow-hidden max-h-[calc(100vh-6rem)] h-[calc(100vh-6rem)] sticky top-3">
+        <aside dir="rtl" className="hidden xl:flex flex-col modendo-cart-shell rounded-2xl overflow-hidden max-h-[calc(100vh-5rem)] h-[calc(100vh-5rem)] sticky top-2">
           {/* Cart Header */}
           <div className="p-4 border-b border-white/[0.08] bg-black/20 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <span className="font-mono tabular-nums text-xs font-bold text-white/80">
+              <span className="font-mono tabular-nums text-xs font-semibold text-white/70">
                 #10BM-1488
               </span>
               <button
@@ -959,41 +1001,42 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                   playPosBeep('click');
                   setIsTabsModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/40 hover:border-cyan-400 text-[11px] font-bold text-cyan-300 shadow-sm cursor-pointer transition active:scale-95"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/30 text-xs font-medium text-cyan-200 transition cursor-pointer"
                 title="مشاهده لیست تب‌ها و میزهای باز"
               >
-                <span>🪑 تب‌ها: {occupiedCount}</span>
+                <Armchair className="w-3.5 h-3.5 text-cyan-300" />
+                <span>تب‌های باز: {occupiedCount}</span>
               </button>
             </div>
 
             {/* Dine-in vs Takeaway Toggle */}
-            <div className="grid grid-cols-2 gap-2 text-xs font-bold p-1 rounded-full bg-black/40 border border-white/[0.08]">
+            <div className="grid grid-cols-2 gap-2 text-xs font-medium p-1 rounded-xl bg-black/40 border border-white/[0.06]">
               <button
                 type="button"
                 onClick={() => {
                   playPosBeep('click');
                   onSelectTableForOrder('بیرون‌بر');
                 }}
-                className="py-2 rounded-full flex items-center justify-center gap-1.5 transition-all cursor-pointer bg-[#381116] border border-red-900/50 text-[#FCA5A5] hover:text-white"
+                className="h-9 rounded-lg flex items-center justify-center gap-2 transition cursor-pointer bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.05]"
               >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>Takeout</span>
+                <ShoppingBag className="w-4 h-4 text-white/60" />
+                <span>بیرون‌بر</span>
               </button>
 
               <button
                 type="button"
-                className="py-2 rounded-full flex items-center justify-center gap-1.5 transition-all cursor-pointer bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)]"
+                className="h-9 rounded-lg flex items-center justify-center gap-2 transition cursor-pointer bg-[#005A3E] text-white font-semibold border border-emerald-400/40 shadow-sm"
               >
-                <Store className="w-3.5 h-3.5" />
-                <span>Table 🪑</span>
+                <Store className="w-4 h-4 text-emerald-200" />
+                <span>سالن · {getDisplayShortLabel(selectedNode)}</span>
               </button>
             </div>
           </div>
 
           {/* Customer Detail Inputs (Interactive) */}
-          <div className="px-4 py-2.5 border-b border-white/[0.06] bg-black/15 space-y-2 text-xs">
-            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5 focus-within:border-emerald-400/40 focus-within:ring-1 focus-within:ring-emerald-400/20 transition-all duration-150">
-              <span className="text-white/40 text-[11px]">👤</span>
+          <div className="p-3 border-b border-white/[0.06] bg-black/10 space-y-2 text-xs">
+            <div className="flex items-center gap-2 rounded-lg bg-black/25 border border-white/[0.08] px-3 h-9 focus-within:border-emerald-500/50 transition">
+              <User className="w-4 h-4 text-white/40 shrink-0" />
               <input
                 type="text"
                 value={activeTableSession?.customerName || draftCustomerName}
@@ -1001,99 +1044,109 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                   setDraftCustomerName(e.target.value);
                   handleUpdateActiveSession({ customerName: e.target.value });
                 }}
-                placeholder="نام مشتری / مهمان..."
-                className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
+                placeholder="نام مشتری یا مهمان"
+                className="bg-transparent text-white placeholder:text-white/30 text-xs w-full focus:outline-none"
               />
-              <span className="text-[10px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5 shrink-0">
-                {selectedNode.label}
+              <span className="text-[11px] text-emerald-300 font-mono font-medium bg-emerald-950/60 border border-emerald-500/30 rounded px-1.5 py-0.5 shrink-0">
+                {getDisplayShortLabel(selectedNode)}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5 focus-within:border-emerald-400/40 focus-within:ring-1 focus-within:ring-emerald-400/20 transition-all duration-150">
-              <span className="text-white/40 text-[11px]">📞</span>
-              <input
-                type="text"
-                value={activeTableSession?.customerPhone || ''}
-                onChange={(e) => handleUpdateActiveSession({ customerPhone: e.target.value })}
-                placeholder="شماره تماس..."
-                className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
-              />
-            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="flex items-center gap-2 rounded-lg bg-black/25 border border-white/[0.08] px-2.5 h-8 focus-within:border-emerald-500/50 transition">
+                <Phone className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                <input
+                  type="text"
+                  value={activeTableSession?.customerPhone || ''}
+                  onChange={(e) => handleUpdateActiveSession({ customerPhone: e.target.value })}
+                  placeholder="شماره تماس"
+                  className="bg-transparent text-white placeholder:text-white/30 text-xs w-full focus:outline-none font-mono"
+                />
+              </div>
 
-            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5 focus-within:border-emerald-400/40 focus-within:ring-1 focus-within:ring-emerald-400/20 transition-all duration-150">
-              <span className="text-white/40 text-[11px]">📝</span>
-              <input
-                type="text"
-                value={activeTableSession?.notes || draftNotes}
-                onChange={(e) => {
-                  setDraftNotes(e.target.value);
-                  handleUpdateActiveSession({ notes: e.target.value });
-                }}
-                placeholder="یادداشت فاکتور (توضیحات کل سفارش)..."
-                className="bg-transparent text-white placeholder:text-[#94A3B8]/50 text-xs w-full focus:outline-none"
-              />
+              <div className="flex items-center gap-2 rounded-lg bg-black/25 border border-white/[0.08] px-2.5 h-8 focus-within:border-emerald-500/50 transition">
+                <FileText className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                <input
+                  type="text"
+                  value={activeTableSession?.notes || draftNotes}
+                  onChange={(e) => {
+                    setDraftNotes(e.target.value);
+                    handleUpdateActiveSession({ notes: e.target.value });
+                  }}
+                  placeholder="یادداشت فاکتور"
+                  className="bg-transparent text-white placeholder:text-white/30 text-xs w-full focus:outline-none"
+                />
+              </div>
             </div>
           </div>
 
           {/* Cart / Table Items List */}
-          <div className="flex-1 overflow-y-auto min-h-0 p-3.5 space-y-2.5">
+          <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
             {activeTableSession?.cartItems && activeTableSession.cartItems.length > 0 ? (
               <>
-                <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-300 px-1 pb-1 border-b border-white/[0.06]">
-                  <span className="text-[11px] text-white/70">⏱️ زمان باز بودن میز:</span>
-                  <span className="tabular-nums">
-                    {activeTableSession.openedAt
-                      ? formatElapsedTimer(Math.max(0, nowMs - new Date(activeTableSession.openedAt).getTime()))
-                      : '00:00:00'}
-                  </span>
+                <div className="flex items-center justify-between px-1 py-1 border-b border-white/[0.06] text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-emerald-950/60 border border-emerald-500/40 text-[11px] font-mono font-bold text-emerald-300">
+                      {getDisplayShortLabel(selectedNode)}
+                    </span>
+                    <span className="text-white/80 font-medium truncate max-w-[150px]">
+                      {selectedNode.titleFa || selectedNode.label}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-white/60 font-mono text-xs">
+                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="tabular-nums font-semibold text-emerald-300">
+                      {activeTableSession.openedAt
+                        ? formatElapsedTimer(Math.max(0, nowMs - new Date(activeTableSession.openedAt).getTime()))
+                        : '00:00:00'}
+                    </span>
+                  </div>
                 </div>
 
                 {activeTableSession.cartItems.map((item) => (
                   <div
                     key={item.id}
-                    className="p-3 rounded-2xl bg-black/35 border border-red-500/15 flex flex-col gap-2 shadow-inner"
+                    className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.12] flex items-center justify-between gap-3 transition"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-bold text-white truncate">{item.itemNameSnapshot}</h4>
-                        <div className="mt-1 text-xs font-black text-emerald-300 num-heavy tabular-nums">
-                          {formatToman(item.subtotalToman)} تومان
-                        </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs font-medium text-white truncate">{item.itemNameSnapshot}</h4>
+                      <div className="mt-0.5 text-xs font-mono font-bold text-emerald-400 tabular-nums">
+                        {formatToman(item.subtotalToman)} <span className="text-[10px] font-normal text-white/50">تومان</span>
                       </div>
-                      <div className="flex items-center rounded-full bg-[#3B1218] border border-red-900/60 p-0.5">
-                        <span className="w-6 text-center font-bold text-xs text-white num-heavy tabular-nums">
-                          {item.quantity}
-                        </span>
-                      </div>
+                    </div>
+                    <div className="flex items-center h-7 px-2.5 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+                      <span className="font-mono text-xs font-bold text-white tabular-nums">
+                        {item.quantity}×
+                      </span>
                     </div>
                   </div>
                 ))}
               </>
             ) : (
-              <div className="p-4 rounded-2xl bg-black/35 border border-red-500/15 space-y-3">
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="font-extrabold text-white text-xs">
+                  <div className="font-medium text-white text-xs">
                     میز {selectedNode.label} ({selectedNode.titleFa})
                   </div>
                   <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                    className={`px-2 py-0.5 rounded text-[11px] font-medium ${
                       activeTableSession
-                        ? 'bg-rose-500/30 text-rose-300 border border-rose-400/40'
-                        : 'bg-emerald-500/25 text-emerald-300 border border-emerald-400/40'
+                        ? 'bg-rose-950/60 text-rose-300 border border-rose-500/40'
+                        : 'bg-emerald-950/60 text-emerald-300 border border-emerald-500/40'
                     }`}
                   >
                     {activeTableSession ? 'اشغال' : 'آماده پذیرش'}
                   </span>
                 </div>
 
-                <div className="text-[10.5px] text-[#94A3B8]/80">
+                <div className="text-xs text-white/50">
                   ظرفیت: {selectedNode.seats} نفر · زون: {selectedNode.zone}
                 </div>
 
                 {activeTableSession?.openedAt && (
-                  <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-300 pt-1 border-t border-white/5">
-                    <span className="text-[11px] text-white/70">⏱️ زمان جاری:</span>
-                    <span className="tabular-nums">
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-white/[0.06]">
+                    <span className="text-white/60">زمان جاری:</span>
+                    <span className="font-mono font-bold text-emerald-300 tabular-nums">
                       {formatElapsedTimer(Math.max(0, nowMs - new Date(activeTableSession.openedAt).getTime()))}
                     </span>
                   </div>
@@ -1109,52 +1162,53 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
           </div>
 
           {/* Quick discount pills */}
-          <div className="px-4 py-2 border-t border-white/[0.06] bg-black/15">
-            <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
-              <span className="py-1.5 text-[10.5px] rounded-xl text-center bg-[#991B1B] text-white border border-[#DC2626]/70 shadow-sm transition-all duration-150">
+          <div className="px-4 py-2 border-t border-white/[0.06] bg-black/10">
+            <div className="grid grid-cols-4 gap-1.5 text-xs font-medium">
+              <span className="h-7 text-[11px] rounded-lg text-center flex items-center justify-center bg-[#8B1A1A] text-white border border-red-500/40">
                 ۰٪
               </span>
-              <span className="py-1.5 text-[10.5px] rounded-xl text-center bg-white/[0.05] text-[#94A3B8] border border-white/[0.08] transition-all duration-150">
+              <span className="h-7 text-[11px] rounded-lg text-center flex items-center justify-center bg-white/[0.04] text-white/60 border border-white/[0.06]">
                 ۵٪ ویژه
               </span>
-              <span className="py-1.5 text-[10.5px] rounded-xl text-center bg-white/[0.05] text-[#94A3B8] border border-white/[0.08] transition-all duration-150">
+              <span className="h-7 text-[11px] rounded-lg text-center flex items-center justify-center bg-white/[0.04] text-white/60 border border-white/[0.06]">
                 ۱۰٪ باریستا
               </span>
-              <span className="py-1.5 text-[10.5px] rounded-xl text-center bg-white/[0.05] text-[#94A3B8] border border-white/[0.08] transition-all duration-150">
+              <span className="h-7 text-[11px] rounded-lg text-center flex items-center justify-center bg-white/[0.04] text-white/60 border border-white/[0.06]">
                 ۱۵٪ همکار
               </span>
             </div>
           </div>
 
           {/* Price & Action Controls */}
-          <div className="p-4 border-t border-white/[0.06] bg-black/25 space-y-3">
+          <div className="p-4 border-t border-white/[0.08] bg-black/20 space-y-3">
             <div className="flex justify-between items-baseline">
-              <span className="text-xs font-semibold text-white/70 tracking-wide">مبلغ نهایی:</span>
-              <div className="text-right flex items-baseline gap-1">
-                <span className="text-2xl font-black text-emerald-400 num-heavy tabular-nums tracking-tight">
+              <span className="text-xs font-medium text-white/60">مبلغ نهایی:</span>
+              <div className="text-right flex items-baseline gap-1.5">
+                <span className="text-2xl font-mono font-bold text-emerald-400 tabular-nums">
                   {formatToman(sessionTotal || 0)}
                 </span>
-                <span className="text-[11px] text-[#94A3B8]/90 font-medium">تومان</span>
+                <span className="text-xs text-white/40 font-medium">تومان</span>
               </div>
             </div>
 
             {/* Dynamic Actions based on Table Session State */}
             {activeTableSession && activeTableSession.cartItems && activeTableSession.cartItems.length > 0 ? (
               <div className="space-y-2">
-                <button
-                  type="button"
+                <LiquidSurface
+                  as="button"
+                  magnetic={true}
                   onClick={() => setIsSettleModalOpen(true)}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#DC2626] via-[#B91C1C] to-[#991B1B] text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(220,38,38,0.5)] border border-red-500/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+                  className="w-full h-11 px-4 rounded-xl bg-[#005A3E] hover:bg-[#007A54] text-white font-semibold text-sm flex items-center justify-center gap-2 border border-emerald-400/40 shadow-sm transition cursor-pointer"
                 >
-                  <CreditCard className="w-5 h-5" />
+                  <CreditCard className="w-4 h-4 text-emerald-200" />
                   <span>تسویه فاکتور و پرداخت</span>
-                </button>
+                </LiquidSurface>
 
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => handleTransitionToPos(selectedNode)}
-                    className="py-2.5 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/30 text-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    className="h-9 px-3 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-white/80 hover:text-white text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>افزودن آیتم</span>
@@ -1163,7 +1217,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                   <button
                     type="button"
                     onClick={() => handleReleaseTable(selectedNode.id)}
-                    className="py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                    className="h-9 px-3 rounded-lg bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>آزاد کردن میز</span>
@@ -1172,19 +1226,20 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               </div>
             ) : activeTableSession ? (
               <div className="space-y-2">
-                <button
-                  type="button"
+                <LiquidSurface
+                  as="button"
+                  magnetic={true}
                   onClick={() => handleTransitionToPos(selectedNode)}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(16,185,129,0.35)] border border-emerald-400/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+                  className="w-full h-11 px-4 rounded-xl bg-[#005A3E] hover:bg-[#007A54] text-white font-semibold text-sm flex items-center justify-center gap-2 border border-emerald-400/40 shadow-sm transition cursor-pointer"
                 >
-                  <UtensilsCrossed className="w-4 h-4" />
+                  <UtensilsCrossed className="w-4 h-4 text-emerald-200" />
                   <span>ثبت سفارش در صندوق</span>
-                </button>
+                </LiquidSurface>
 
                 <button
                   type="button"
                   onClick={() => handleReleaseTable(selectedNode.id)}
-                  className="w-full py-2.5 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  className="w-full h-9 px-3 rounded-lg bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>آزاد کردن و لغو پذیرش</span>
@@ -1192,22 +1247,23 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               </div>
             ) : (
               <div className="space-y-2">
-                <button
-                  type="button"
+                <LiquidSurface
+                  as="button"
+                  magnetic={true}
                   onClick={() => handleQuickAcceptTable(selectedNode)}
-                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(16,185,129,0.4)] border border-emerald-400/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
+                  className="w-full h-11 px-4 rounded-xl bg-[#005A3E] hover:bg-[#007A54] text-white font-semibold text-sm flex items-center justify-center gap-2 border border-emerald-400/40 shadow-sm transition cursor-pointer"
                 >
                   <Play className="w-4 h-4 text-emerald-200 fill-emerald-200" />
                   <span>پذیرش سریع میز و شروع زمان</span>
-                </button>
+                </LiquidSurface>
 
                 <button
                   type="button"
                   onClick={() => handleTransitionToPos(selectedNode)}
-                  className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-emerald-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 border border-emerald-500/30 transition-all cursor-pointer"
+                  className="w-full h-9 px-4 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white font-medium text-xs flex items-center justify-center gap-2 border border-white/[0.06] transition cursor-pointer"
                 >
                   <UtensilsCrossed className="w-3.5 h-3.5" />
-                  <span>ثبت فاکتور در صندوق (انتخاب اقلام)</span>
+                  <span>ثبت فاکتور در صندوق</span>
                 </button>
               </div>
             )}
@@ -1302,8 +1358,9 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             {/* Action Buttons: Merge Tables + Move Table + Takeaway */}
             <div className="flex items-center gap-1.5 md:gap-2 mr-auto flex-nowrap">
               {/* Merge Tables Button */}
-              <button
-                type="button"
+              <LiquidSurface
+                as="button"
+                magnetic={true}
                 onClick={() => {
                   playPosBeep('click');
                   setMoveMode(false);
@@ -1321,11 +1378,12 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               >
                 <Link2 className="w-3.5 h-3.5 text-cyan-300" />
                 <span>{mergeMode ? 'لغو ادغام' : 'ادغام میزها'}</span>
-              </button>
+              </LiquidSurface>
 
               {/* Move Table Button */}
-              <button
-                type="button"
+              <LiquidSurface
+                as="button"
+                magnetic={true}
                 onClick={() => {
                   playPosBeep('click');
                   setMergeMode(false);
@@ -1343,11 +1401,12 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               >
                 <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
                 <span>{moveMode ? 'لغو جابجایی' : 'جابجایی میز'}</span>
-              </button>
+              </LiquidSurface>
 
               {/* Takeaway Order Button */}
-              <button
-                type="button"
+              <LiquidSurface
+                as="button"
+                magnetic={true}
                 onClick={() => {
                   playPosBeep('click');
                   onSelectTableForOrder('بیرون‌بر');
@@ -1356,7 +1415,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               >
                 <ShoppingBag className="w-3.5 h-3.5" />
                 <span>سفارش بیرون‌بر</span>
-              </button>
+              </LiquidSurface>
             </div>
         </div>
 

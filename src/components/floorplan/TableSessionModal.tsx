@@ -25,7 +25,7 @@ import {
   ArrowLeftRight,
 } from 'lucide-react';
 import { TableEntity } from '../../types/floor-plan';
-import { FloorNode } from './FloorPlanCanvas';
+import { FloorNode, MODENDO_FLOOR_NODES } from './FloorPlanCanvas';
 import { floorPlanService } from '../../services/floorPlanService';
 import { openTabService } from '../../services/openTabService';
 import { SmartOrdersStore } from '../../services/storage';
@@ -36,6 +36,7 @@ import {
 } from '../../services/financialMath';
 import { playPosBeep } from '../../services/soundEffects';
 import { ZERO_G_PHYSICS, MotionConfig } from '../../modules/smart-orders/utils/zeroGMotionTokens';
+import { LiquidSurface } from '../liquid/LiquidSurface';
 
 interface TableSessionModalProps {
   table: TableEntity | null;
@@ -107,10 +108,55 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
   // Open F&B tab bound to this station/table (by floor-plan id or display label)
   const fbTab = useMemo(() => {
     if (!table) return undefined;
-    return (
+    const fromTab =
+      openTabService.getTabForTable(table.id, 'tenant-modendo-01') ||
+      openTabService.getTabForTable(table.display_name, 'tenant-modendo-01') ||
       openTabService.getTabForTable(table.id) ||
-      openTabService.getTabForTable(table.display_name)
-    );
+      openTabService.getTabForTable(table.display_name);
+    if (fromTab) return fromTab;
+
+    // Also check floorSessions storage
+    try {
+      const raw = localStorage.getItem('cafeos_modendo_floor_sessions_v2');
+      if (raw) {
+        const sessions = JSON.parse(raw);
+        const node = MODENDO_FLOOR_NODES.find((n) => n.id === table.id || n.label === table.display_name);
+        const sess = node ? sessions[node.id] : sessions[table.id] || sessions[table.display_name];
+        if (sess && sess.cartItems && sess.cartItems.length > 0) {
+          const subtotal = sess.cartItems.reduce((acc: number, it: any) => acc + (it.subtotalToman || (it.unitPriceSnapshotToman || 0) * (it.quantity || 1)), 0);
+          return {
+            tab_id: `session-${table.id}`,
+            table_id: table.id,
+            table_label: table.display_name,
+            server_name: sess.customerName || 'صندوق‌دار',
+            guest_count: sess.guestCount || 2,
+            status: 'active',
+            opened_at: sess.openedAt || new Date().toISOString(),
+            rounds: [
+              {
+                round_number: 1,
+                dispatched_at: sess.openedAt || new Date().toISOString(),
+                items: sess.cartItems.map((ci: any) => ({
+                  id: ci.id,
+                  menuItemId: ci.menuItemId,
+                  title: ci.itemNameSnapshot,
+                  unitPrice: ci.unitPriceSnapshotToman,
+                  quantity: ci.quantity,
+                  subtotal: ci.subtotalToman,
+                })),
+                inventory_deducted: true,
+                status: 'delivered',
+              },
+            ],
+            subtotal,
+            vat: 0,
+            discount: sess.discountToman || 0,
+            total_due: Math.max(0, subtotal - (sess.discountToman || 0)),
+          } as any;
+        }
+      }
+    } catch {}
+    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table, nowTick]);
 
@@ -293,11 +339,8 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md select-none" onClick={onClose}>
-        <motion.div
-          initial={{ opacity: 0, scale: 0.94, y: 15 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.94, y: 15 }}
-          transition={ZERO_G_PHYSICS.buoyant}
+        <LiquidSurface
+          variant="modal"
           onClick={(e) => e.stopPropagation()}
           className="bg-[#12161D]/95 border border-white/[0.08] rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl flex flex-col text-right backdrop-blur-2xl"
         >
@@ -574,7 +617,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
               </motion.button>
             </div>
           </div>
-        </motion.div>
+        </LiquidSurface>
       </div>
     </AnimatePresence>
   );

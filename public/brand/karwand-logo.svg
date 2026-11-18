@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 240" width="100%" height="100%" fill="none">
+  <!-- KarWand Horizontal Lockup: Crimson Monogram + Smart Orders Wordmark -->
+  <g transform="translate(20, 20) scale(0.4)" stroke="#E11D48" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 30 395 H 165 V 40" />
+    <path d="M 205 40 V 160" />
+    <path d="M 205 230 V 395" />
+    <path d="M 30 435 H 220" />
+    <path d="M 205 160 L 400 20" />
+    <path d="M 325 95 L 400 25" />
+    <path d="M 240 200 L 420 370 L 345 445 L 280 380 L 215 440" />
+    <path d="M 235 250 L 375 385 L 345 415 L 280 350 L 205 395" />
+  </g>
+  <text x="210" y="115" font-family="'Inter', system-ui, sans-serif" font-weight="900" font-size="64" fill="#E11D48" letter-spacing="1">KARWAND</text>
+  <text x="215" y="160" font-family="'Inter', system-ui, sans-serif" font-weight="700" font-size="28" fill="#64748B" letter-spacing="4">SMART ORDERS</text>
+</svg>

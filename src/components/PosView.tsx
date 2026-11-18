@@ -28,6 +28,10 @@ import {
   Settings2,
   Map as MapIcon,
   Clock,
+  Armchair,
+  Phone,
+  FileText,
+  User as UserIcon,
 } from 'lucide-react';
 import {
   Category,
@@ -63,11 +67,12 @@ import {
 } from '../services/escposThermalPrinter';
 import { playPosBeep } from '../services/soundEffects';
 import { printThermalReceipt } from '../services/receiptPrinter';
-import { MODENDO_FLOOR_NODES, TableSession, calculatePs5ChargeToman, hasGamingPackage } from './FloorPlanCanvas';
+import { MODENDO_FLOOR_NODES, TableSession, calculatePs5ChargeToman, hasGamingPackage, getDisplayShortLabel } from './FloorPlanCanvas';
 import { openTabService } from '../services/openTabService';
 import { TabCartItem } from '../types/inventory-tab';
 import { getProductWallpaper } from '../utils/productWallpapers';
 import { OpenTabsModal } from './modals/OpenTabsModal';
+import { LiquidSurface } from './liquid/LiquidSurface';
 
 const MODENDO_FLOOR_SESSIONS_STORAGE_KEY = 'cafeos_modendo_floor_sessions_v2';
 
@@ -1758,7 +1763,7 @@ export const PosView: React.FC<PosViewProps> = ({
         id="pos-cart-panel"
         className={`hidden xl:flex flex-col w-[420px] sticky top-3 max-h-[calc(100vh-5rem)] h-[calc(100vh-5rem)] transition-all overflow-hidden ${
           isModendo
-            ? 'modendo-cart-shell rounded-[28px]'
+            ? 'modendo-cart-shell rounded-2xl'
             : 'bg-[#1B222C] border border-[#293444] rounded-xl shadow-2xl'
         }`}
       >
@@ -1771,7 +1776,7 @@ export const PosView: React.FC<PosViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between">
-            <span className="font-mono tabular-nums text-xs font-bold text-white/80">
+            <span className="font-mono tabular-nums text-xs font-semibold text-white/70">
               #{isModendo ? '10BM' : '100H'}-{activeShift ? activeShift.id.slice(-4) : '1488'}
             </span>
             <button
@@ -1780,18 +1785,19 @@ export const PosView: React.FC<PosViewProps> = ({
                 playPosBeep('click');
                 setIsTabsModalOpen(true);
               }}
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/40 hover:border-cyan-400 text-[11px] font-bold text-cyan-300 shadow-sm cursor-pointer transition active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/30 text-xs font-medium text-cyan-200 transition cursor-pointer"
               title="مشاهده لیست تب‌ها و میزهای باز"
             >
-              <span>🪑 تب‌ها: {cartItems.length > 0 ? '۱' : '۰'}</span>
+              <Armchair className="w-3.5 h-3.5 text-cyan-300" />
+              <span>تب‌های باز: {cartItems.length > 0 ? '۱' : '۰'}</span>
             </button>
           </div>
 
           {/* Dine-in vs Takeaway Toggle */}
           <div
-            className={`grid grid-cols-2 gap-2 text-xs font-bold p-1 ${
+            className={`grid grid-cols-2 gap-2 text-xs font-medium p-1 ${
               isModendo
-                ? 'rounded-full bg-black/40 border border-white/[0.08]'
+                ? 'rounded-xl bg-black/40 border border-white/[0.06]'
                 : 'bg-[#121417]/90 rounded-lg border border-white/[0.08]'
             }`}
           >
@@ -1801,14 +1807,14 @@ export const PosView: React.FC<PosViewProps> = ({
                 playPosBeep('click');
                 setOrderType('TAKEAWAY');
               }}
-              className={`py-2 rounded-full flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`h-9 rounded-lg flex items-center justify-center gap-2 transition cursor-pointer ${
                 orderType === 'TAKEAWAY'
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
-                  : 'bg-[#381116] border border-red-900/50 text-[#FCA5A5] hover:text-white'
+                  ? 'bg-[#005A3E] text-white font-semibold border border-emerald-400/40 shadow-sm'
+                  : 'bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.05]'
               }`}
             >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Takeout</span>
+              <ShoppingBag className="w-4 h-4 text-white/60" />
+              <span>بیرون‌بر</span>
             </button>
 
             <button
@@ -1817,74 +1823,102 @@ export const PosView: React.FC<PosViewProps> = ({
                 playPosBeep('click');
                 setOrderType('DINE_IN');
               }}
-              className={`py-2 rounded-full flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              className={`h-9 rounded-lg flex items-center justify-center gap-2 transition cursor-pointer ${
                 orderType === 'DINE_IN'
-                  ? 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold border border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
-                  : 'bg-[#381116] border border-red-900/50 text-[#FCA5A5] hover:text-white'
+                  ? 'bg-[#005A3E] text-white font-semibold border border-emerald-400/40 shadow-sm'
+                  : 'bg-white/[0.04] hover:bg-white/[0.08] text-white/70 hover:text-white border border-white/[0.05]'
               }`}
             >
-              <Store className="w-3.5 h-3.5" />
-              <span>Table 🪑</span>
+              <Store className="w-4 h-4 text-emerald-200" />
+              <span>سالن · {tableLabel}</span>
             </button>
           </div>
         </div>
 
-        {/* Customer Detail & Invoice Notes */}
-        <div className="px-4 py-2.5 border-b border-white/[0.08] bg-black/15 space-y-2 text-xs">
-          <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
-            <span className="text-white/40">👤</span>
+        {/* Customer Detail Inputs (Interactive) */}
+        <div className="p-3 border-b border-white/[0.06] bg-black/10 space-y-2 text-xs">
+          <div className="flex items-center gap-2 rounded-lg bg-black/25 border border-white/[0.08] px-3 h-9 focus-within:border-emerald-500/50 transition">
+            <UserIcon className="w-4 h-4 text-white/40 shrink-0" />
             <input
               type="text"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder={orderType === 'DINE_IN' ? 'نام مشتری / مهمان سالن...' : 'نام مشتری بیرون‌بر...'}
-              className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
+              className="bg-transparent text-white placeholder:text-white/40 text-xs w-full focus:outline-none"
             />
             {orderType === 'DINE_IN' && (
               <select
                 value={tableLabel}
                 onChange={(e) => switchActiveTable(e.target.value)}
-                className="text-[11px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5 focus:outline-none cursor-pointer"
+                className="text-[11px] text-emerald-300 font-medium bg-[#0A1F18] border border-emerald-500/30 rounded-md px-2 py-0.5 focus:outline-none cursor-pointer"
               >
-                {Array.from(
-                  new Set([
-                    ...(boundTable ? [boundTable.label] : []),
-                    ...(isModendo
-                      ? MODENDO_FLOOR_NODES.map((n) => n.label)
-                      : ['میز ۱', 'میز ۲', 'میز ۳', 'میز ۴', 'میز ۵', 'میز ۶', 'میز ۷', 'کانتر بار']),
-                  ])
-                ).map((tbl) => (
-                  <option key={tbl} value={tbl} className="bg-[#12161d] text-white">
-                    {tbl}
-                  </option>
-                ))}
+                {isModendo ? (
+                  <>
+                    <optgroup label="سالن اصلی (تراز بالا)" className="bg-[#0b1411] text-emerald-300 font-bold">
+                      {MODENDO_FLOOR_NODES.filter((n) => n.zone === 'MAIN_HALL').map((n) => (
+                        <option key={n.id} value={n.label} className="bg-[#12161d] text-white">
+                          {getDisplayShortLabel(n)} · {n.titleFa || n.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="تراس فضای باز" className="bg-[#0b1411] text-emerald-300 font-bold">
+                      {MODENDO_FLOOR_NODES.filter((n) => n.zone === 'TERRACE').map((n) => (
+                        <option key={n.id} value={n.label} className="bg-[#12161d] text-white">
+                          {getDisplayShortLabel(n)} · {n.titleFa || n.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="لانژ (سفارش ژتونی)" className="bg-[#0b1411] text-emerald-300 font-bold">
+                      {MODENDO_FLOOR_NODES.filter((n) => n.zone === 'LOUNGE').map((n) => (
+                        <option key={n.id} value={n.label} className="bg-[#12161d] text-white">
+                          {getDisplayShortLabel(n)} · {n.titleFa || n.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="اتاق اختصاصی گیمینگ PS5" className="bg-[#0b1411] text-sky-300 font-bold">
+                      {MODENDO_FLOOR_NODES.filter((n) => n.zone === 'PS_ROOM').map((n) => (
+                        <option key={n.id} value={n.label} className="bg-[#12161d] text-white">
+                          {getDisplayShortLabel(n)} · {n.titleFa || n.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </>
+                ) : (
+                  ['میز ۱', 'میز ۲', 'میز ۳', 'میز ۴', 'میز ۵', 'میز ۶', 'میز ۷', 'کانتر بار'].map((tbl) => (
+                    <option key={tbl} value={tbl} className="bg-[#12161d] text-white">
+                      {tbl}
+                    </option>
+                  ))
+                )}
               </select>
             )}
           </div>
 
-          <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
-            <span className="text-white/40">📞</span>
-            <input
-              type="text"
-              placeholder="شماره تماس..."
-              className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-1.5 rounded-lg bg-black/25 border border-white/[0.08] px-2.5 h-8 focus-within:border-emerald-500/50 transition">
+              <Phone className="w-3.5 h-3.5 text-white/40 shrink-0" />
+              <input
+                type="text"
+                placeholder="شماره تماس..."
+                className="bg-transparent text-white placeholder:text-white/40 text-xs w-full focus:outline-none"
+              />
+            </div>
 
-          <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
-            <span className="text-white/40">📝</span>
-            <input
-              type="text"
-              value={orderNotes}
-              onChange={(e) => setOrderNotes(e.target.value)}
-              placeholder="یادداشت فاکتور (توضیحات کل سفارش)..."
-              className="bg-transparent text-white placeholder:text-[#94A3B8]/50 text-xs w-full focus:outline-none"
-            />
+            <div className="flex items-center gap-1.5 rounded-lg bg-black/25 border border-white/[0.08] px-2.5 h-8 focus-within:border-emerald-500/50 transition">
+              <FileText className="w-3.5 h-3.5 text-white/40 shrink-0" />
+              <input
+                type="text"
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="یادداشت فاکتور..."
+                className="bg-transparent text-white placeholder:text-white/40 text-xs w-full focus:outline-none"
+              />
+            </div>
           </div>
         </div>
 
         {/* Cart Items List (Scrollable Area) */}
-        <div className="flex-1 overflow-y-auto min-h-0 p-3.5 space-y-2.5">
+        <div className="flex-1 overflow-y-auto min-h-0 p-3 space-y-2">
           {cartItems.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#94A3B8]">
               <div
@@ -1909,15 +1943,15 @@ export const PosView: React.FC<PosViewProps> = ({
             cartItems.map((item) => (
               <div
                 key={item.id}
-                className={`p-3 flex flex-col gap-2 transition animate-ticket-item-spring ${
+                className={`p-3 flex flex-col gap-2 transition ${
                   isModendo
-                    ? 'rounded-2xl bg-black/35 border border-red-500/15'
+                    ? 'rounded-xl bg-[#0E1613]/80 border border-white/[0.06] hover:border-white/[0.12]'
                     : 'bg-[#121417] border border-white/[0.08] rounded-lg hover:border-white/[0.16]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-xs font-bold text-white truncate">
+                    <h4 className="text-xs font-semibold text-white truncate">
                       {item.itemNameSnapshot}
                     </h4>
                     {item.modifiers && item.modifiers.length > 0 && (
@@ -1948,16 +1982,16 @@ export const PosView: React.FC<PosViewProps> = ({
                   <div
                     className={`flex items-center overflow-hidden ${
                       isModendo
-                        ? 'rounded-full bg-[#3B1218] border border-red-900/60 p-0.5'
+                        ? 'rounded-lg bg-black/40 border border-white/[0.08] p-0.5'
                         : 'bg-[#1B222C] border border-white/[0.08] rounded-md'
                     }`}
                   >
                     <button
                       type="button"
                       onClick={() => handleUpdateQuantity(item.id, -1)}
-                      className={`w-6 h-6 flex items-center justify-center font-black text-sm cursor-pointer transition ${
+                      className={`w-6 h-6 flex items-center justify-center font-bold text-sm cursor-pointer transition ${
                         isModendo
-                          ? 'rounded-full text-red-200 hover:text-white active:bg-red-800'
+                          ? 'rounded-md text-white/70 hover:text-white hover:bg-white/[0.08]'
                           : 'text-[#94A3B8] hover:text-white active:bg-[#D71921]'
                       }`}
                     >
@@ -1969,9 +2003,9 @@ export const PosView: React.FC<PosViewProps> = ({
                     <button
                       type="button"
                       onClick={() => handleUpdateQuantity(item.id, 1)}
-                      className={`w-6 h-6 flex items-center justify-center font-black text-sm cursor-pointer transition ${
+                      className={`w-6 h-6 flex items-center justify-center font-bold text-sm cursor-pointer transition ${
                         isModendo
-                          ? 'rounded-full text-red-200 hover:text-white active:bg-red-800'
+                          ? 'rounded-md text-white/70 hover:text-white hover:bg-white/[0.08]'
                           : 'text-[#94A3B8] hover:text-white active:bg-[#D71921]'
                       }`}
                     >
@@ -1980,10 +2014,10 @@ export const PosView: React.FC<PosViewProps> = ({
                   </div>
 
                   <div className="text-left">
-                    <span className="text-xs font-black text-emerald-300 num-heavy tabular-nums">
+                    <span className="text-xs font-semibold text-emerald-300 tabular-nums">
                       {formatToman(item.subtotalToman)}
                     </span>
-                    <span className="text-[9px] text-[#94A3B8] mr-1">تومان</span>
+                    <span className="text-[10px] text-white/40 mr-1">تومان</span>
                   </div>
                 </div>
               </div>
@@ -1992,10 +2026,10 @@ export const PosView: React.FC<PosViewProps> = ({
         </div>
 
         {/* Discount & POS Keypad Accelerators */}
-        <div className="px-4 pt-2.5 pb-2 border-t border-white/[0.08] bg-black/15">
-          <div className="flex items-center justify-between text-[11px] text-[#94A3B8] mb-2">
+        <div className="p-3 border-t border-white/[0.06] bg-black/10">
+          <div className="flex items-center justify-between text-xs text-white/60 mb-2">
             <span className="flex items-center gap-1.5">
-              <span>تخفیف سریع فاکتور</span>
+              <span>تخفیف سریع فاکتور:</span>
               {!canEditFinancials && (
                 <span className="flex items-center gap-0.5 text-[10px] text-amber-300 font-bold">
                   <Lock className="w-2.5 h-2.5" />
@@ -2003,18 +2037,18 @@ export const PosView: React.FC<PosViewProps> = ({
                 </span>
               )}
             </span>
-            <span className="text-[#F3E9DD] font-bold">
+            <span className="text-white/80 font-medium">
               {discountPercent > 0 ? `${discountPercent}٪ تخفیف فعال` : 'بدون تخفیف'}
             </span>
           </div>
-          <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
+          <div className="grid grid-cols-4 gap-1.5 text-xs font-medium">
             <button
               type="button"
               onClick={() => handleApplyDiscountPercent(0)}
-              className={`py-1.5 text-[11px] cursor-pointer transition rounded-full ${
+              className={`h-7 text-xs cursor-pointer transition rounded-lg ${
                 discountPercent === 0
-                  ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.4)]'
-                  : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white'
+                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                  : 'bg-black/30 border border-white/[0.06] text-white/60 hover:text-white'
               }`}
             >
               ۰٪
@@ -2024,12 +2058,12 @@ export const PosView: React.FC<PosViewProps> = ({
               disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(5)}
               title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1.5 text-[11px] transition rounded-full ${
+              className={`h-7 text-xs transition rounded-lg ${
                 !canEditFinancials
                   ? 'opacity-40 cursor-not-allowed text-[#94A3B8]'
                   : discountPercent === 5
-                  ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.4)]'
-                  : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
+                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                  : 'bg-black/30 border border-white/[0.06] text-white/60 hover:text-white cursor-pointer'
               }`}
             >
               ۵٪ ویژه
@@ -2039,12 +2073,12 @@ export const PosView: React.FC<PosViewProps> = ({
               disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(10)}
               title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1.5 text-[11px] transition rounded-full ${
+              className={`h-7 text-xs transition rounded-lg ${
                 !canEditFinancials
                   ? 'opacity-40 cursor-not-allowed text-[#94A3B8]'
                   : discountPercent === 10
-                  ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.4)]'
-                  : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
+                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                  : 'bg-black/30 border border-white/[0.06] text-white/60 hover:text-white cursor-pointer'
               }`}
             >
               ۱۰٪ باریستا
@@ -2054,12 +2088,12 @@ export const PosView: React.FC<PosViewProps> = ({
               disabled={!canEditFinancials}
               onClick={() => handleApplyDiscountPercent(15)}
               title={!canEditFinancials ? 'تدوین تخفیف فقط با دسترسی مدیر و مالک مجاز است' : undefined}
-              className={`py-1.5 text-[11px] transition rounded-full ${
+              className={`h-7 text-xs transition rounded-lg ${
                 !canEditFinancials
                   ? 'opacity-40 cursor-not-allowed text-[#94A3B8]'
                   : discountPercent === 15
-                  ? 'bg-[#991B1B] text-white border border-[#DC2626] shadow-[0_0_10px_rgba(220,38,38,0.4)]'
-                  : 'bg-[#1B222C] border-white/[0.08] text-[#94A3B8] hover:text-white cursor-pointer'
+                  ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                  : 'bg-black/30 border border-white/[0.06] text-white/60 hover:text-white cursor-pointer'
               }`}
             >
               ۱۵٪ همکار
@@ -2073,16 +2107,16 @@ export const PosView: React.FC<PosViewProps> = ({
             isModendo ? 'bg-black/25' : 'bg-[#121417] rounded-b-xl'
           }`}
         >
-          <div className="flex justify-between items-center text-xs text-[#94A3B8]">
+          <div className="flex justify-between items-center text-xs text-white/60">
             <span>جمع اقلام:</span>
-            <span className="font-bold text-white num-heavy tabular-nums">
+            <span className="font-semibold text-white tabular-nums">
               {formatToman(grossAmountToman)} تومان
             </span>
           </div>
 
-          <div className="flex justify-between items-center text-xs text-[#94A3B8]">
+          <div className="flex justify-between items-center text-xs text-white/60">
             <span>کسر تخفیف:</span>
-            <span className="text-[#F3E9DD] num-heavy tabular-nums">
+            <span className="text-white/80 tabular-nums">
               {discountAmountToman > 0
                 ? `-${formatToman(discountAmountToman)} تومان`
                 : '۰ تومان'}
@@ -2092,16 +2126,16 @@ export const PosView: React.FC<PosViewProps> = ({
           <div className="h-[1px] bg-white/[0.08] my-1"></div>
 
           <div className="flex justify-between items-baseline">
-            <span className="text-sm font-extrabold text-white">مبلغ نهایی فاکتور:</span>
+            <span className="text-xs font-bold text-white/90">مبلغ نهایی فاکتور:</span>
             <div className="text-right">
               <span
-                className={`text-xl font-black num-heavy tabular-nums tracking-tight ${
+                className={`text-xl font-bold tabular-nums tracking-tight ${
                   isModendo ? 'text-emerald-300' : 'text-[#D71921]'
                 }`}
               >
                 {formatToman(netTotalToman)}
               </span>
-              <span className="text-xs text-[#94A3B8] mr-1">تومان</span>
+              <span className="text-xs text-white/40 mr-1">تومان</span>
             </div>
           </div>
 
@@ -2111,7 +2145,7 @@ export const PosView: React.FC<PosViewProps> = ({
               <button
                 type="button"
                 onClick={handleSaveAsOpenTable}
-                className="w-full py-2.5 px-4 rounded-2xl liquid-glass-pill border border-emerald-400/40 hover:border-emerald-400/80 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 hover:text-white font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99] shadow-sm"
+                className="w-full h-9 px-4 rounded-xl border border-emerald-400/40 hover:border-emerald-400/70 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-200 hover:text-white font-medium text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-[0.99] shadow-sm"
               >
                 <Clock className="w-4 h-4 text-emerald-400" />
                 <span>ثبت روی میز باز (شروع زمان)</span>
@@ -2123,28 +2157,29 @@ export const PosView: React.FC<PosViewProps> = ({
                 type="button"
                 onClick={handleClearCart}
                 title="پاک کردن سبد"
-                className={`col-span-1 text-[#94A3B8] hover:text-rose-400 flex items-center justify-center transition cursor-pointer ${
+                className={`col-span-1 h-11 flex items-center justify-center transition cursor-pointer ${
                   isModendo
-                    ? 'liquid-glass-pill rounded-2xl'
-                    : 'bg-[#1B222C] hover:bg-[#222B38] border border-white/[0.08] rounded-lg'
+                    ? 'rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white/50 hover:text-rose-400'
+                    : 'bg-[#1B222C] hover:bg-[#222B38] border border-white/[0.08] rounded-lg text-[#94A3B8] hover:text-rose-400'
                 }`}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
 
-              <button
-                type="button"
+              <LiquidSurface
+                as="button"
+                magnetic={isModendo}
                 onClick={handleStartCheckout}
                 disabled={cartItems.length === 0}
-                className={`col-span-4 py-3.5 px-4 flex items-center justify-center gap-2 transition transform active:scale-[0.98] cursor-pointer disabled:opacity-45 disabled:cursor-not-allowed ${
+                className={`col-span-4 h-11 px-4 flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                   isModendo
-                    ? 'rounded-2xl bg-gradient-to-r from-[#DC2626] via-[#B91C1C] to-[#991B1B] text-white font-black text-sm shadow-[0_4px_25px_rgba(220,38,38,0.5)] border border-red-500/40 hover:brightness-110'
+                    ? 'rounded-xl bg-[#005A3E] hover:bg-[#006847] text-white font-semibold text-xs border border-emerald-400/40 shadow-sm'
                     : 'bg-[#D71921] hover:bg-[#B8141B] disabled:bg-stone-700 text-white font-black rounded-lg shadow-[0_0_20px_-3px_rgba(215,25,33,0.45)]'
                 }`}
               >
-                <CreditCard className="w-5 h-5" />
+                <CreditCard className="w-4 h-4" />
                 <span>ثبت سفارش و پرداخت</span>
-              </button>
+              </LiquidSurface>
             </div>
           </div>
         </div>
@@ -2588,7 +2623,7 @@ export const PosView: React.FC<PosViewProps> = ({
         <div className="relative">
           {/* Hardware Direct Thermal Print Bar (WebUSB & Bluetooth) */}
           <div
-            className={`fixed top-4 left-1/2 -translate-x-1/2 z-[60] p-3 flex flex-wrap items-center justify-between gap-3 text-xs w-full max-w-xl animate-spatial-modal ${
+            className={`fixed top-20 left-1/2 -translate-x-1/2 z-[60] p-3 flex flex-wrap items-center justify-between gap-3 text-xs w-full max-w-xl animate-spatial-modal ${
               isModendo
                 ? 'liquid-glass-shell rounded-2xl'
                 : 'bg-[#0F223D] border border-[#D71921]/60 rounded-2xl shadow-2xl'

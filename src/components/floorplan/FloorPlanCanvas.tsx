@@ -20,6 +20,9 @@ import {
 import { OrderItem } from '../../types/domain';
 import { formatToman, calculateOrderTotals } from '../../services/financialMath';
 import { playPosBeep } from '../../services/soundEffects';
+import { openTabService } from '../../services/openTabService';
+import { CatalogService } from '../../services/catalog/catalogService';
+import { LiquidSurface } from '../liquid/LiquidSurface';
 
 export type FloorZone = 'MAIN_HALL' | 'LOUNGE' | 'TERRACE' | 'PS_ROOM';
 export type FloorNodeKind = 'TABLE' | 'PS5';
@@ -95,6 +98,14 @@ export const MODENDO_DISPLAY_SHORT_NAMES: Record<string, string> = {
   'BAR-5': 'B5',
   'BAR-6': 'B6',
   'BAR-01': 'بار',
+  'L-01': 'L-01',
+  'L-02': 'L-02',
+  'L-03': 'L-03',
+  'L-04': 'L-04',
+  'L-05': 'L-05',
+  'L-06': 'L-06',
+  'L-07': 'L-07',
+  'L-08': 'L-08',
   'PS5-1': 'PS1',
   'PS5-2': 'PS2',
   'PS5-3': 'PS3',
@@ -106,6 +117,7 @@ export const getDisplayShortLabel = (node: FloorNode): string => {
   if (MODENDO_DISPLAY_SHORT_NAMES[node.id]) return MODENDO_DISPLAY_SHORT_NAMES[node.id];
   if (MODENDO_DISPLAY_SHORT_NAMES[node.label]) return MODENDO_DISPLAY_SHORT_NAMES[node.label];
   if (/بوفه/i.test(node.label) || /بوفه/i.test(node.titleFa || '')) return 'بوفه';
+  if (/^L-?0?(\d)/i.test(node.label) || /^L-?0?(\d)/i.test(node.id)) return `L-0${node.label.match(/\d+/)?.[0] || node.id.match(/\d+/)?.[0] || ''}`;
   if (/^M-?0?(\d)/i.test(node.label)) return `M${node.label.match(/\d+/)?.[0] || ''}`;
   if (/^T-?0?(\d)/i.test(node.label)) return `T${node.label.match(/\d+/)?.[0] || ''}`;
   if (/^BAR-?0?(\d)/i.test(node.label) || /^بار\s*(\d)/i.test(node.label)) return `B${node.label.match(/\d+/)?.[0] || ''}`;
@@ -117,6 +129,15 @@ export const MODENDO_FLOOR_NODES: FloorNode[] = [
   // =========================================================================
   // 1. Main Hall (سالن اصلی - تراز بالا)
   // =========================================================================
+  {
+    id: 'BUFFET',
+    tableId: 'BUFFET',
+    label: 'بوفه',
+    titleFa: 'بوفه سالن اصلی',
+    zone: 'MAIN_HALL',
+    kind: 'TABLE',
+    seats: 1,
+  },
   {
     id: 'M-01',
     tableId: 'M-01',
@@ -471,15 +492,263 @@ export function hasGamingPackage(
   });
 }
 
+export interface SettlementComputation {
+  items: any[];
+  grossTotalToman: number;
+  discountToman: number;
+  payableToman: number;
+  ps5Fee: number;
+  hasPackage: boolean;
+}
+
+/**
+ * Single source of truth for settlement calculation and receipt preview lines.
+ * Guarantees financial invariant: sum(items.map(it => it.subtotalToman)) - discount === payable
+ * Eradicates placeholder / base 3,000 Toman charges before synthesizing dynamic hourly PS5 fees.
+ */
+export function computeSettlementLineItems(
+  cartItems: any[] = [],
+  ps5Session?: Ps5SessionState,
+  node?: FloorNode,
+  discountToman: number = 0,
+  nowMs: number = Date.now()
+): SettlementComputation {
+  const nonPs5Items = (cartItems || []).filter((it) => {
+    if (it.menuItemId === 'modendo-ps5-charge' || it.id?.startsWith('ps5-hourly-')) {
+      return false;
+    }
+    const name = (it.itemNameSnapshot || it.name || '').trim();
+    // Filter out obsolete/conflicting base 3,000 Toman placeholder "تعرفه بازی"
+    if (name.includes('تعرفه بازی') && ((it.unitPriceSnapshotToman || it.price || 0) < 50000)) {
+      return false;
+    }
+    return true;
+  });
+
+  const hasPackage = hasGamingPackage(nonPs5Items);
+  const effectivePs5Session =
+    ps5Session ||
+    (node?.kind === 'PS5'
+      ? {
+          startedAt: new Date(nowMs).toISOString(),
+          hourlyRateToman: node.hourlyRateToman || 180000,
+          controllersCount: 2,
+          accumulatedMs: 0,
+          isPaused: false,
+        }
+      : undefined);
+
+  const ps5Fee = hasPackage || !effectivePs5Session
+    ? 0
+    : calculatePs5ChargeToman(effectivePs5Session, nowMs);
+
+  const items = [...nonPs5Items];
+  if (ps5Fee > 0) {
+    items.push({
+      id: `ps5-hourly-${node?.id || 'ps5'}-${nowMs}`,
+      menuItemId: 'modendo-ps5-charge',
+      itemNameSnapshot: `تعرفه کنسول PS5 (${node?.label || 'کنسول'})`,
+      unitPriceSnapshotToman: ps5Fee,
+      quantity: 1,
+      subtotalToman: ps5Fee,
+      notes: 'شارژ زمانی بازی کنسول',
+    });
+  }
+
+  const grossTotalToman = items.reduce((sum, it) => sum + (it.subtotalToman || it.price || 0), 0);
+  const discount = Math.max(0, discountToman || 0);
+  const payableToman = Math.max(0, grossTotalToman - discount);
+
+  return {
+    items,
+    grossTotalToman,
+    discountToman: discount,
+    payableToman,
+    ps5Fee,
+    hasPackage,
+  };
+}
+
+/**
+ * Normalizes label/id strings for fuzzy matching across Persian & English numerals
+ * e.g. 'بار ۱' -> 'بار 1', 'BAR-1' -> 'bar-1'
+ */
+export function normalizeNodeKey(key: string): string {
+  if (!key) return '';
+  return key
+    .trim()
+    .toLowerCase()
+    .replace(/[۰-۹]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1728))
+    .replace(/[٠-٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1584));
+}
+
+/**
+ * Unified Session Resolver:
+ * Reconciles across floorSessions store (localStorage) and openTabService / CatalogService
+ * for ALL floor nodes (tables, bar stools, buffet, terrace, lounge).
+ */
+export function resolveNodeSession(
+  node: FloorNode,
+  sessions: Record<string, TableSession>,
+  tenantId: string = 'tenant-modendo-01'
+): TableSession | undefined {
+  if (!node) return undefined;
+
+  // 1. Direct hit on node.id (e.g. 'BAR-1', 'M-01')
+  if (sessions && sessions[node.id]) {
+    return sessions[node.id];
+  }
+
+  // 2. Direct hit on node.label (e.g. 'بار ۱', 'میز ۱')
+  if (sessions && node.label && sessions[node.label]) {
+    return sessions[node.label];
+  }
+
+  // 3. Direct hit on node.tableId (e.g. 'BAR-1')
+  if (sessions && node.tableId && sessions[node.tableId]) {
+    return sessions[node.tableId];
+  }
+
+  // 4. Fuzzy match in sessions across normalized keys (e.g. 'بار 1' vs 'بار ۱', 'B1')
+  const normId = normalizeNodeKey(node.id);
+  const normLabel = normalizeNodeKey(node.label);
+  const shortLabel = getDisplayShortLabel(node);
+  const normShort = normalizeNodeKey(shortLabel);
+
+  if (sessions) {
+    for (const [key, sess] of Object.entries(sessions)) {
+      if (!sess) continue;
+      const nk = normalizeNodeKey(key);
+      const nTableLabel = normalizeNodeKey(sess.tableLabel || '');
+      const nNodeId = normalizeNodeKey(sess.nodeId || '');
+      if (
+        nk === normId ||
+        nk === normLabel ||
+        nk === normShort ||
+        nTableLabel === normLabel ||
+        nTableLabel === normId ||
+        nTableLabel === normShort ||
+        nNodeId === normId ||
+        nNodeId === normLabel ||
+        nNodeId === normShort
+      ) {
+        return sess;
+      }
+    }
+  }
+
+  // 5. Query openTabService for this node
+  try {
+    const effectiveTenantId = tenantId === 'modendo' ? 'tenant-modendo-01' : tenantId;
+    const allActive = openTabService.getAllActiveTabs(effectiveTenantId);
+    const tab =
+      openTabService.getTabForTable(node.id, effectiveTenantId) ||
+      openTabService.getTabForTable(node.label, effectiveTenantId) ||
+      (node.tableId ? openTabService.getTabForTable(node.tableId, effectiveTenantId) : undefined) ||
+      openTabService.getTabForTable(shortLabel, effectiveTenantId) ||
+      allActive.find((t) => {
+        const tId = normalizeNodeKey(t.table_id || '');
+        const tLabel = normalizeNodeKey(t.table_label || '');
+        return (
+          tId === normId ||
+          tId === normLabel ||
+          tId === normShort ||
+          tLabel === normLabel ||
+          tLabel === normId ||
+          tLabel === normShort
+        );
+      });
+
+    if (tab && tab.status !== 'settled') {
+      const flatItems: OrderItem[] = (tab.rounds || []).flatMap((r) =>
+        (r.items || []).map((it) => ({
+          id: it.id,
+          menuItemId: it.menuItemId,
+          itemNameSnapshot: it.title,
+          unitPriceSnapshotToman: it.unitPrice,
+          subtotalToman: it.subtotal,
+          quantity: it.quantity,
+          notes: it.notes,
+          station: it.station || 'BAR',
+        }))
+      );
+
+      if (flatItems.length === 0 && (tab as any).items?.length) {
+        for (const it of (tab as any).items) {
+          flatItems.push({
+            id: it.id || `item-${Date.now()}-${Math.random()}`,
+            menuItemId: it.menuItemId || it.id || 'item',
+            itemNameSnapshot: it.itemNameSnapshot || it.title || it.name || 'آیتم',
+            unitPriceSnapshotToman: Number(it.unitPriceSnapshotToman ?? it.unitPrice ?? 0),
+            subtotalToman: Number(it.subtotalToman ?? it.subtotal ?? 0),
+            quantity: Number(it.quantity ?? 1),
+            notes: it.notes,
+          });
+        }
+      }
+
+      return {
+        nodeId: node.id,
+        tableLabel: node.label,
+        kind: node.kind,
+        status: 'OCCUPIED',
+        guestCount: tab.guest_count || node.seats,
+        customerName: tab.server_name !== 'صندوق‌دار' ? tab.server_name : undefined,
+        openedAt: tab.opened_at,
+        cartItems: flatItems,
+        discountToman: tab.discount || 0,
+      };
+    }
+  } catch (err) {
+    console.warn('[resolveNodeSession] openTabService query failed:', err);
+  }
+
+  // 6. Query CatalogService open tabs
+  try {
+    const effectiveTenantId = tenantId === 'modendo' ? 'tenant-modendo-01' : tenantId;
+    const catTabs = CatalogService.getOpenTabs(effectiveTenantId);
+    const catMatch = catTabs.find((t: any) => {
+      const label = normalizeNodeKey(t.table_or_customer || t.tableOrCustomer || t.tableId || '');
+      return label === normId || label === normLabel || label === normShort;
+    });
+    if (catMatch) {
+      const items: OrderItem[] = ((catMatch as any).items || []).map((it: any) => ({
+        id: it.id || `item-${Date.now()}-${Math.random()}`,
+        menuItemId: it.menuItemId || it.id || 'item',
+        itemNameSnapshot: it.itemNameSnapshot || it.title || it.name || 'آیتم',
+        unitPriceSnapshotToman: Number(it.unitPriceSnapshotToman ?? it.unitPrice ?? 0),
+        subtotalToman: Number(it.subtotalToman ?? it.subtotal ?? 0),
+        quantity: Number(it.quantity ?? 1),
+        notes: it.notes,
+      }));
+      return {
+        nodeId: node.id,
+        tableLabel: node.label,
+        kind: node.kind,
+        status: 'OCCUPIED',
+        guestCount: (catMatch as any).guest_count || node.seats,
+        customerName: (catMatch as any).customer_name || '',
+        openedAt: (catMatch as any).opened_at || new Date().toISOString(),
+        cartItems: items,
+        discountToman: (catMatch as any).discount_toman || 0,
+      };
+    }
+  } catch (err) {
+    console.warn('[resolveNodeSession] CatalogService query failed:', err);
+  }
+
+  return undefined;
+}
+
 export function getSessionTotalToman(session?: TableSession, nowMs = Date.now()): number {
   if (!session) return 0;
-  const nonPs5Items = (session.cartItems || []).filter(
-    (i) => i.menuItemId !== 'modendo-ps5-charge' && !i.id.startsWith('ps5-hourly-')
-  );
-  const hasPackage = hasGamingPackage(nonPs5Items);
-  const { netTotalToman } = calculateOrderTotals(nonPs5Items, session.discountToman || 0);
-  const ps5Fee = hasPackage || !session.ps5Session ? 0 : calculatePs5ChargeToman(session.ps5Session, nowMs);
-  return netTotalToman + ps5Fee;
+  return computeSettlementLineItems(
+    session.cartItems || [],
+    session.ps5Session,
+    undefined,
+    session.discountToman || 0,
+    nowMs
+  ).payableToman;
 }
 
 export function resolvePrimaryNodeId(
@@ -776,7 +1045,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
 
       const dist = Math.hypot(e.clientX - pending.startX, e.clientY - pending.startY);
       if (!pending.activated) {
-        if (dist < 10) return;
+        if (dist < 16) return;
         pending.activated = true;
         suppressNextClickRef.current = true;
       }
@@ -947,8 +1216,8 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     if (!node) return null;
 
     const primaryId = resolvePrimaryNodeId(sessions, node.id);
-    const rawSession = sessions[node.id];
-    const effectiveSession = sessions[primaryId];
+    const rawSession = sessions[node.id] || resolveNodeSession(node, sessions, 'tenant-modendo-01');
+    const effectiveSession = sessions[primaryId] || rawSession;
     const isChildMerged = Boolean(rawSession?.mergedIntoNodeId);
     const groupIds = getMergedGroupNodeIds(sessions, node.id);
     const isMerged = groupIds.length > 1;
@@ -982,30 +1251,30 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     // SELECTED: white ring (ring-2 ring-white border-2 border-white)
     // MOVE-MODE: amber halo
     const surfaceStyle = isMoveSource
-      ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.6)] scale-[1.02] text-amber-100'
+      ? 'bg-amber-500/20 border-amber-400 ring-1 ring-amber-400 shadow-[0_2px_12px_rgba(245,158,11,0.3)] scale-[1.01] text-amber-100'
       : isMoveTargetCandidate
-      ? 'bg-[#1B222C]/90 border-emerald-400/80 hover:border-emerald-300 ring-2 ring-emerald-400/50 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(16,185,129,0.3)]'
+      ? 'bg-[#1B222C]/90 border-emerald-400/60 hover:border-emerald-300 ring-1 ring-emerald-400/40 hover:scale-[1.01] text-white shadow-sm'
       : isMoveSourceCandidate
-      ? 'bg-[#10B981]/25 border-amber-400/80 hover:border-amber-300 ring-2 ring-amber-400/60 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(245,158,11,0.3)]'
+      ? 'bg-[#10B981]/20 border-amber-400/60 hover:border-amber-300 ring-1 ring-amber-400/40 hover:scale-[1.01] text-white shadow-sm'
       : isDragMergeTarget
-      ? 'bg-cyan-500/25 border-cyan-300 ring-2 ring-cyan-300 shadow-[0_0_30px_-4px_rgba(34,211,238,0.7)] scale-[1.03]'
+      ? 'bg-cyan-500/20 border-cyan-300 ring-1 ring-cyan-300 shadow-[0_2px_14px_rgba(34,211,238,0.35)] scale-[1.02]'
       : isDragSource
-      ? 'bg-cyan-500/15 border-cyan-400/70 ring-2 ring-cyan-400/50 opacity-80'
+      ? 'bg-cyan-500/15 border-cyan-400/60 ring-1 ring-cyan-400/40 opacity-80'
       : isMergeChecked
-      ? 'bg-cyan-500/20 border-cyan-300/80 ring-2 ring-cyan-400/60 shadow-[0_0_26px_-6px_rgba(34,211,238,0.55)]'
+      ? 'bg-cyan-500/20 border-cyan-300/70 ring-1 ring-cyan-400/50 shadow-sm'
       : isSelected && isOccupied
-      ? 'bg-gradient-to-b from-[#881337]/90 to-[#4C0519]/95 border-2 border-white ring-2 ring-white shadow-[0_0_24px_rgba(255,255,255,0.45)] text-white scale-[1.02]'
+      ? 'bg-[#5C0D20] border border-white/80 ring-1 ring-white/60 shadow-[0_4px_16px_rgba(0,0,0,0.6)] text-white scale-[1.01]'
       : isSelected
-      ? 'bg-gradient-to-b from-[#064E3B]/80 to-[#022C22]/90 border-2 border-white ring-2 ring-white shadow-[0_0_24px_rgba(255,255,255,0.45)] text-white scale-[1.02]'
+      ? 'bg-[#063828] border border-white/80 ring-1 ring-white/60 shadow-[0_4px_16px_rgba(0,0,0,0.6)] text-white scale-[1.01]'
       : isPaymentPending
-      ? 'bg-gradient-to-b from-amber-500/25 to-amber-900/40 border border-amber-400/80 shadow-[0_0_18px_rgba(245,158,11,0.45)] text-amber-100'
+      ? 'bg-gradient-to-b from-amber-500/20 to-amber-900/30 border border-amber-400/60 shadow-sm text-amber-100'
       : variant === 'bar-counter'
-      ? 'bg-gradient-to-b from-[#78350F]/70 to-[#451A03]/80 border border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.4)] text-amber-100'
+      ? 'bg-[#241306]/90 border border-amber-600/40 shadow-sm text-amber-200'
       : isOccupied
-      ? `bg-gradient-to-b from-[#881337]/80 to-[#4C0519]/90 border border-rose-500/80 shadow-[0_0_22px_rgba(244,63,94,0.5)] text-white ${
+      ? `bg-[#4C091A]/90 border border-rose-500/40 shadow-[0_2px_10px_rgba(244,63,94,0.15)] text-white ${
           accent ? `${accent.border} ring-1 ${accent.ring}` : ''
         }`
-      : 'bg-gradient-to-b from-[#064E3B]/65 to-[#022C22]/80 border border-emerald-400/40 shadow-[0_0_16px_rgba(16,185,129,0.3)] text-emerald-100 hover:border-emerald-300/70 hover:shadow-[0_0_22px_rgba(16,185,129,0.45)]';
+      : 'bg-[#07241A]/90 border border-emerald-500/30 hover:border-emerald-400/50 shadow-[0_2px_8px_rgba(0,0,0,0.35)] text-emerald-100';
 
     if (variant === 'round-3') {
       return (
@@ -1016,24 +1285,29 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
           <span className={`absolute left-0 w-3.5 h-3.5 rounded-full ${CHAIR_DOT_CLS} shadow-sm`} />
           <span className={`absolute right-0 w-3.5 h-3.5 rounded-full ${CHAIR_DOT_CLS} shadow-sm`} />
 
-          <motion.div
+          <LiquidSurface
+            variant="node"
+            enableTilt={!dragState}
             data-floor-node={node.id}
             data-table-id={node.tableId}
             dir="rtl"
             role="button"
             tabIndex={0}
-            whileHover={dragState ? undefined : { y: -2, scale: 1.025 }}
-            whileTap={dragState ? undefined : { scale: 0.975 }}
-            transition={{ type: 'spring', stiffness: 460, damping: 32 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 26 }}
             onClick={() => handleCardClick(node)}
-            onDoubleClick={() => onConfirmTableOrder?.(node)}
-            className={`w-[84px] h-[84px] rounded-full backdrop-blur-xl flex flex-col items-center justify-center p-2 select-none ${surfaceStyle} transition-all duration-200 cursor-pointer shadow-lg`}
+            onDoubleClick={() => (onOpenSessionModal || onInspectNode || onConfirmTableOrder)?.(node)}
+            className={`w-[84px] h-[84px] rounded-full flex flex-col items-center justify-center p-2 select-none ${surfaceStyle} transition-colors duration-200 cursor-pointer shadow-lg`}
           >
             <span className="font-black text-sm text-white tracking-tight">{getDisplayShortLabel(node)}</span>
             <span className={`text-[10px] font-bold mt-0.5 ${isOccupied ? 'text-rose-200' : 'text-emerald-300'}`}>
-              {isOccupied ? 'اشغال' : 'خالی'}
+              {isOccupied ? (elapsedText ? `اشغال · ${elapsedText}` : 'اشغال') : 'خالی'}
             </span>
-          </motion.div>
+            {isOccupied && itemsCount > 0 && (
+              <span className="text-[9px] text-white/70 font-mono mt-0.5 tabular-nums">
+                {itemsCount} قلم
+              </span>
+            )}
+          </LiquidSurface>
         </div>
       );
     }
@@ -1059,22 +1333,26 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
             </div>
           )}
 
-          <motion.div
+          <LiquidSurface
+            variant="node"
+            enableTilt={!dragState}
             data-floor-node={node.id}
             data-table-id={node.tableId}
             data-station-id={node.stationId}
             dir="rtl"
             role="button"
             tabIndex={0}
-            whileHover={dragState ? undefined : { y: -2, scale: 1.015 }}
-            whileTap={dragState ? undefined : { scale: 0.975 }}
-            transition={{ type: 'spring', stiffness: 460, damping: 32 }}
+            transition={{ type: 'spring', stiffness: 260, damping: 26 }}
             onPointerDown={(e) =>
               handleTablePointerDown(e, node, primaryId, isMerged, isChildMerged)
             }
             onClick={() => handleCardClick(node)}
             onDoubleClick={() => {
-              if (onConfirmTableOrder) {
+              if (onOpenSessionModal) {
+                onOpenSessionModal(node);
+              } else if (onInspectNode) {
+                onInspectNode(node);
+              } else if (onConfirmTableOrder) {
                 onConfirmTableOrder(node);
               }
             }}
@@ -1084,11 +1362,11 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                 handleCardClick(node);
               }
             }}
-            className={`group relative flex-1 h-full rounded-[15px] backdrop-blur-xl select-none flex flex-col justify-between overflow-hidden ${
+            className={`group relative flex-1 h-full rounded-[15px] select-none flex flex-col justify-between overflow-hidden ${
               dragState ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing'
             } ${
               isWide ? 'px-3.5 py-2' : 'p-2.5'
-            } ${surfaceStyle} transition-all duration-200`}
+            } ${surfaceStyle} transition-colors duration-200`}
           >
             {/* Specular hairline sheen */}
             <div
@@ -1181,7 +1459,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                 </span>
               )}
             </div>
-          </motion.div>
+          </LiquidSurface>
 
           {showSideChairs && (
             <div className="flex flex-col justify-around h-full py-2 shrink-0">
@@ -1210,7 +1488,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     const node = nodeMap.get(nodeId);
     if (!node) return null;
 
-    const session = sessions[node.id];
+    const session = sessions[node.id] || resolveNodeSession(node, sessions, 'tenant-modendo-01');
     const isOccupied = Boolean(session && (session.status === 'OCCUPIED' || session.ps5Session));
     const isPaymentPending = session?.status === 'PAYMENT_PENDING';
     const isSelected = activeSelectedId === node.id;
@@ -1227,42 +1505,47 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     // Translucent glass pod with status glow:
     // Occupied = rose glow (or live emerald active session); Free = emerald/obsidian glass; Selected = white ring
     const boothStyle = isMoveSource
-      ? 'cursor-pointer bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.6)] scale-[1.02]'
+      ? 'cursor-pointer bg-amber-500/20 border-amber-400 ring-1 ring-amber-400 shadow-[0_2px_12px_rgba(245,158,11,0.3)] scale-[1.01]'
       : isMoveTargetCandidate
-      ? 'cursor-pointer bg-[#1B222C]/90 border-emerald-400/80 hover:border-emerald-300 ring-2 ring-emerald-400/50 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(16,185,129,0.3)]'
+      ? 'cursor-pointer bg-[#1B222C]/90 border-emerald-400/60 hover:border-emerald-300 ring-1 ring-emerald-400/40 hover:scale-[1.01] text-white shadow-sm'
       : isMoveSourceCandidate
-      ? 'cursor-pointer bg-[#10B981]/25 border-amber-400/80 hover:border-amber-300 ring-2 ring-amber-400/60 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(245,158,11,0.3)]'
+      ? 'cursor-pointer bg-[#10B981]/20 border-amber-400/60 hover:border-amber-300 ring-1 ring-amber-400/40 hover:scale-[1.01] text-white shadow-sm'
       : mergeMode
       ? 'opacity-45 cursor-not-allowed border-white/10 bg-[#1B222C]/70 text-[#94A3B8]'
       : isSelected && isOccupied
-      ? 'cursor-pointer bg-gradient-to-b from-[#881337]/90 to-[#4C0519]/95 border-2 border-white ring-2 ring-white shadow-[0_0_24px_rgba(255,255,255,0.45)] text-white scale-[1.02]'
+      ? 'cursor-pointer bg-[#5C0D20] border border-white/80 ring-1 ring-white/60 shadow-[0_4px_16px_rgba(0,0,0,0.6)] text-white scale-[1.01]'
       : isSelected
-      ? 'cursor-pointer bg-gradient-to-b from-[#064E3B]/80 to-[#022C22]/90 border-2 border-white ring-2 ring-white shadow-[0_0_24px_rgba(255,255,255,0.45)] text-white scale-[1.02]'
+      ? 'cursor-pointer bg-[#063828] border border-white/80 ring-1 ring-white/60 shadow-[0_4px_16px_rgba(0,0,0,0.6)] text-white scale-[1.01]'
       : isPaymentPending
-      ? 'cursor-pointer bg-amber-500/15 border-amber-400/60 shadow-[0_0_16px_rgba(245,158,11,0.35)] text-amber-200'
+      ? 'cursor-pointer bg-amber-500/15 border-amber-400/60 shadow-sm text-amber-200'
       : isOccupied
-      ? 'cursor-pointer bg-gradient-to-b from-[#881337]/80 to-[#4C0519]/90 border border-rose-500/80 shadow-[0_0_22px_rgba(244,63,94,0.5)] text-white'
-      : 'cursor-pointer bg-gradient-to-b from-[#064E3B]/55 to-[#022C22]/75 border border-emerald-400/40 hover:border-emerald-300/70 shadow-[0_0_16px_rgba(16,185,129,0.3)] text-[#E2E8F0]';
+      ? 'cursor-pointer bg-[#4C091A]/90 border border-rose-500/40 shadow-[0_2px_10px_rgba(244,63,94,0.15)] text-white'
+      : 'cursor-pointer bg-[#07241A]/90 border border-emerald-500/30 hover:border-emerald-400/50 shadow-[0_2px_8px_rgba(0,0,0,0.35)] text-[#E2E8F0]';
 
     return (
-      <motion.div
+      <LiquidSurface
         key={node.id}
+        variant="node"
+        enableTilt={!mergeMode}
         data-floor-node={node.id}
         data-station-id={node.stationId}
         dir="rtl"
         role="button"
         tabIndex={0}
-        whileHover={{ y: -2, scale: 1.015 }}
-        whileTap={{ scale: 0.975 }}
-        transition={{ type: 'spring', stiffness: 460, damping: 32 }}
+        transition={{ type: 'spring', stiffness: 260, damping: 26 }}
         onClick={() => !mergeMode && handleCardClick(node)}
+        onDoubleClick={() => {
+          if (!mergeMode) {
+            (onOpenSessionModal || onInspectNode)?.(node);
+          }
+        }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             if (!mergeMode) handleCardClick(node);
           }
         }}
-        className={`relative rounded-[14px] p-2.5 flex flex-col justify-between min-h-[126px] select-none transition-colors duration-200 backdrop-blur-xl overflow-hidden ${boothStyle}`}
+        className={`relative rounded-[14px] p-2.5 flex flex-col justify-between min-h-[126px] select-none transition-colors duration-200 overflow-hidden ${boothStyle}`}
       >
         {/* Ambient Top Glow Line */}
         <div
@@ -1337,7 +1620,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
             </span>
           )}
         </div>
-      </motion.div>
+      </LiquidSurface>
     );
   };
 
@@ -1614,17 +1897,64 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                   <div className="flex-1 grid grid-cols-[28fr_72fr] gap-3 min-h-0">
                     {/* Left Strip: Buffet + Main Hall Title + Spiral Stairs */}
                     <div className="flex flex-col justify-between border-r border-white/[0.08] pr-2.5">
-                      {/* Buffet (بوفه) */}
-                      <div
-                        dir="rtl"
-                        className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-2 flex flex-col items-center text-center gap-1"
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <Coffee className="w-3.5 h-3.5 text-[#10B981]" />
-                          <span className="text-xs font-black text-white">بوفه</span>
-                        </div>
-                        <span className="text-[10px] text-[#94A3B8]">سرویس</span>
-                      </div>
+                      {/* Buffet (بوفه) Interactive Card */}
+                      {(() => {
+                        const buffetNode = nodeMap.get('BUFFET');
+                        if (!buffetNode) {
+                          return (
+                            <div
+                              dir="rtl"
+                              className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-2 flex flex-col items-center text-center gap-1"
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Coffee className="w-3.5 h-3.5 text-[#10B981]" />
+                                <span className="text-xs font-black text-white">بوفه</span>
+                              </div>
+                              <span className="text-[10px] text-[#94A3B8]">سرویس</span>
+                            </div>
+                          );
+                        }
+                        const bSession = sessions[buffetNode.id] || resolveNodeSession(buffetNode, sessions, 'tenant-modendo-01');
+                        const bOccupied = Boolean(bSession);
+                        const bSelected = activeSelectedId === buffetNode.id;
+                        const bElapsed = bSession?.openedAt
+                          ? formatElapsedTimer(Math.max(0, nowMs - new Date(bSession.openedAt).getTime()))
+                          : null;
+                        const bItemsCount = bSession?.cartItems?.reduce((sum, it) => sum + (it.quantity || 1), 0) || 0;
+
+                        return (
+                          <LiquidSurface
+                            as="button"
+                            variant="node"
+                            data-floor-node={buffetNode.id}
+                            dir="rtl"
+                            transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                            onClick={() => handleCardClick(buffetNode)}
+                            onDoubleClick={() => (onOpenSessionModal || onInspectNode)?.(buffetNode)}
+                            className={`rounded-2xl p-2.5 flex flex-col items-center text-center gap-1 cursor-pointer transition-all border select-none ${
+                              bSelected
+                                ? 'bg-gradient-to-b from-[#064E3B]/90 to-[#022C22]/95 border-2 border-white ring-2 ring-white text-white shadow-[0_0_16px_rgba(255,255,255,0.6)]'
+                                : bOccupied
+                                ? 'bg-gradient-to-b from-[#881337]/80 to-[#4C0519]/90 border border-rose-500/80 text-white shadow-[0_0_14px_rgba(244,63,94,0.5)]'
+                                : 'bg-gradient-to-b from-[#064E3B]/65 to-[#022C22]/80 border border-emerald-400/40 text-emerald-100 hover:border-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                            }`}
+                            title={`بوفه سالن اصلی ${bOccupied ? '(سفارش فعال)' : '(آزاد)'}`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <Coffee className={`w-3.5 h-3.5 ${bOccupied ? 'text-rose-300' : 'text-[#10B981]'}`} />
+                              <span className="text-xs font-black text-white">بوفه</span>
+                            </div>
+                            <span className={`text-[10px] font-bold ${bOccupied ? 'text-rose-200' : 'text-emerald-300'}`}>
+                              {bOccupied ? (bElapsed ? `فعال · ${bElapsed}` : 'سفارش فعال') : 'سرویس / آزاد'}
+                            </span>
+                            {bOccupied && bItemsCount > 0 && (
+                              <span className="text-[9px] font-mono text-white/80 tabular-nums">
+                                {bItemsCount} قلم
+                              </span>
+                            )}
+                          </LiquidSurface>
+                        );
+                      })()}
 
                       {/* Main Hall Level Label */}
                       <div dir="rtl" className="text-center my-auto py-2">
@@ -1695,7 +2025,10 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                           <span>کانتر بار (۶ صندلی / فیش مستقل)</span>
                         </span>
                         <span className="text-[9.5px] text-amber-300 font-mono tabular-nums">
-                          {['BAR-1', 'BAR-2', 'BAR-3', 'BAR-4', 'BAR-5', 'BAR-6'].filter((id) => Boolean(sessions[id])).length} / ۶ فعال
+                          {['BAR-1', 'BAR-2', 'BAR-3', 'BAR-4', 'BAR-5', 'BAR-6'].filter((id) => {
+                            const bNode = nodeMap.get(id);
+                            return bNode && (Boolean(sessions[id]) || Boolean(resolveNodeSession(bNode, sessions, 'tenant-modendo-01')));
+                          }).length} / ۶ فعال
                         </span>
                       </div>
 
@@ -1705,8 +2038,8 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                           const barNode = nodeMap.get(barId);
                           if (!barNode) return null;
                           const primaryId = resolvePrimaryNodeId(sessions, barNode.id);
-                          const rawSession = sessions[barNode.id];
-                          const effectiveSession = sessions[primaryId];
+                          const rawSession = sessions[barNode.id] || resolveNodeSession(barNode, sessions, 'tenant-modendo-01');
+                          const effectiveSession = sessions[primaryId] || rawSession;
                           const isOccupied = Boolean(effectiveSession);
                           const isSelected = activeSelectedId === primaryId || activeSelectedId === barNode.id;
                           const isMergeChecked = mergeSelectedIds.includes(barNode.id);
@@ -1716,31 +2049,31 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                           const isMoveSourceCandidate = moveMode && !moveSourceId && isOccupied;
 
                           return (
-                            <motion.button
+                            <LiquidSurface
+                              as="button"
                               key={barId}
-                              type="button"
+                              variant="node"
                               data-floor-node={barNode.id}
                               data-table-id={barNode.tableId}
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                              onClick={() => onNodeClick(barNode)}
-                              onDoubleClick={() => onOpenModal(barNode)}
+                              transition={{ type: 'spring', stiffness: 260, damping: 26 }}
+                              onClick={() => handleCardClick(barNode)}
+                              onDoubleClick={() => (onOpenSessionModal || onInspectNode)?.(barNode)}
                               className={`h-full min-h-[38px] py-1 px-1 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all border ${
                                 isMoveSource
-                                  ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_16px_rgba(245,158,11,0.6)] scale-[1.05] text-amber-100'
+                                  ? 'bg-amber-500/20 border-amber-400 ring-1 ring-amber-400 text-amber-100 shadow-sm'
                                   : isMoveTargetCandidate
-                                  ? 'bg-[#1B222C]/90 border-emerald-400/80 hover:border-emerald-300 ring-2 ring-emerald-400/50 hover:scale-[1.05] text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                                  ? 'bg-[#1B222C]/90 border-emerald-400/60 hover:border-emerald-300 ring-1 ring-emerald-400/40 text-white shadow-sm'
                                   : isMoveSourceCandidate
-                                  ? 'bg-[#10B981]/25 border-amber-400/80 hover:border-amber-300 ring-2 ring-amber-400/60 hover:scale-[1.05] text-white shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                                  ? 'bg-[#10B981]/20 border-amber-400/60 hover:border-amber-300 ring-1 ring-amber-400/40 text-white shadow-sm'
                                   : isMergeChecked
-                                  ? 'bg-cyan-500/25 border-cyan-300 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.5)] text-cyan-100'
+                                  ? 'bg-cyan-500/20 border-cyan-300 ring-1 ring-cyan-400 text-cyan-100 shadow-sm'
                                   : isSelected && isOccupied
-                                  ? 'bg-gradient-to-b from-[#881337]/90 to-[#4C0519]/95 border-2 border-white ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.6)] text-white'
+                                  ? 'bg-[#5C0D20] border border-white/80 ring-1 ring-white/60 text-white shadow-sm'
                                   : isSelected
-                                  ? 'bg-gradient-to-b from-[#064E3B]/80 to-[#022C22]/90 border-2 border-white ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.6)] text-white'
+                                  ? 'bg-[#063828] border border-white/80 ring-1 ring-white/60 text-white shadow-sm'
                                   : isOccupied
-                                  ? 'bg-gradient-to-b from-[#881337]/90 to-[#4C0519]/90 border border-rose-500/80 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
-                                  : 'bg-gradient-to-b from-[#064E3B]/60 to-[#022C22]/80 hover:bg-[#064E3B]/80 border border-emerald-400/40 text-emerald-100 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
+                                  ? 'bg-[#4C091A]/90 border border-rose-500/40 text-white shadow-sm'
+                                  : 'bg-[#07241A]/90 hover:bg-[#0A2E22] border border-emerald-500/30 text-emerald-100 shadow-sm'
                               }`}
                               title={`${barNode.titleFa} ${isOccupied ? '(اشغال)' : '(آزاد)'}`}
                             >
@@ -1748,9 +2081,13 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                                 {isMerged ? `🔗 B${idx + 1}` : `B${idx + 1}`}
                               </span>
                               <span className={`text-[8.5px] font-bold ${isOccupied ? 'text-rose-200' : 'text-emerald-300/80'}`}>
-                                {isOccupied ? 'اشغال' : 'آزاد'}
+                                {isOccupied
+                                  ? (effectiveSession?.openedAt
+                                      ? formatElapsedTimer(Math.max(0, nowMs - new Date(effectiveSession.openedAt).getTime()))
+                                      : 'اشغال')
+                                  : 'آزاد'}
                               </span>
-                            </motion.button>
+                            </LiquidSurface>
                           );
                         })}
                       </div>

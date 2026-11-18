@@ -160,19 +160,21 @@ export const Header: React.FC<HeaderProps> = ({
    * ============================================================================ */
   if (isModendo) {
     return (
-      <header className="sticky top-0 md:top-2 z-40 md:mx-auto md:w-[calc(100%-1.5rem)] max-w-[1780px] md:rounded-full bg-gradient-to-r from-[#072019]/92 via-[#0A2E24]/92 to-[#072019]/92 backdrop-blur-2xl border border-[#164538]/70 shadow-[0_12px_36px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(167,243,208,0.15)] transition-all duration-200 select-none">
+      <header className="sticky top-0 md:top-2 z-40 md:mx-auto md:w-[calc(100%-1.5rem)] max-w-[1780px] md:rounded-full bg-gradient-to-r from-[#072019]/92 via-[#0A2E24]/92 to-[#072019]/92 backdrop-blur-2xl border border-[#164538]/70 shadow-[0_12px_36px_rgba(0,0,0,0.65),inset_0_1px_0_rgba(167,243,208,0.15)] transition-all duration-200 select-none overflow-hidden">
+        {/* Ambient Header Sheen Sweep (~14s loop) */}
+        <div aria-hidden="true" className="ambient-header-sheen" />
         <div dir="ltr" className="relative px-3 md:px-5 py-2 flex items-center justify-between gap-2 md:gap-4 min-w-0">
           {/* Left Wing: KarWand Cafe OS · Exit · User Capsule · Clock/Date · Launcher */}
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-nowrap z-20">
-            {/* KarWand Cafe OS Crimson Pill */}
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#5B0E14] via-[#40080D] to-[#250407] border border-[#DC2626]/70 shadow-[0_0_16px_rgba(220,38,38,0.4)] shrink-0 select-none">
+            {/* KarWand Smart Orders Crimson Pill */}
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1A0A0E] border border-rose-500/30 shadow-[0_2px_8px_rgba(0,0,0,0.5)] shrink-0 select-none">
               <img
-                src="/karwand-logo.png"
+                src="/brand/karwand-monogram.svg"
                 alt="KarWand"
-                className="w-5 h-5 object-contain filter drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]"
+                className="w-5 h-5 object-contain"
               />
-              <span className="font-display-latin text-xs font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#FDE68A] via-[#F59E0B] to-[#FBBF24] drop-shadow-[0_0_8px_rgba(245,158,11,0.5)]">
-                Cafe OS
+              <span className="font-display-latin text-xs font-bold tracking-wide text-amber-300">
+                Smart Orders
               </span>
             </div>
 
@@ -386,125 +388,23 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
-          {/* Absolute Center Anchor: Hand-Crafted Premium Modendo Emblem (top) + Persian Calligraphy (bottom) */}
+          {/* Absolute Center Anchor: Premium Modendo Emblem (top) + Persian Calligraphy (bottom) */}
           <div
             onClick={() => onTabChange('pos')}
             className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center cursor-pointer pointer-events-auto select-none group z-10 transition-transform duration-200 active:scale-95"
             title="کافه گیمینگ مودندو"
           >
-            {/* Top: Hand-Crafted Inline SVG Gem Hexagon Emblem */}
-            <div className="relative flex items-center justify-center group-hover:scale-105 transition-transform duration-300">
-              <svg
-                className="w-8 h-8 filter drop-shadow-[0_0_12px_rgba(16,185,129,0.45)]"
-                viewBox="0 0 100 100"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <defs>
-                  {/* Layered Gem/Hexagon Emerald Gradients (#064E3B -> #10B981 -> #6EE7B7) */}
-                  <linearGradient id="modendoGemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#064E3B" />
-                    <stop offset="50%" stopColor="#10B981" />
-                    <stop offset="100%" stopColor="#6EE7B7" />
-                  </linearGradient>
-
-                  <linearGradient id="gemFacetTop" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#34D399" />
-                    <stop offset="55%" stopColor="#10B981" />
-                    <stop offset="100%" stopColor="#064E3B" />
-                  </linearGradient>
-
-                  <linearGradient id="gemFacetLeft" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#0D6E54" />
-                    <stop offset="100%" stopColor="#032D22" />
-                  </linearGradient>
-
-                  <linearGradient id="gemFacetRight" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#10B981" />
-                    <stop offset="100%" stopColor="#064E3B" />
-                  </linearGradient>
-
-                  {/* Thin metallic base ring gradient */}
-                  <linearGradient id="baseRingMetallic" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="rgba(16,185,129,0.2)" />
-                    <stop offset="50%" stopColor="rgba(253,230,138,0.75)" />
-                    <stop offset="100%" stopColor="rgba(16,185,129,0.2)" />
-                  </linearGradient>
-
-                  {/* Specular highlight gradient (white ~20% opacity ellipse) */}
-                  <radialGradient id="specularHighlightGrad" cx="30%" cy="30%" r="50%">
-                    <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.28" />
-                    <stop offset="60%" stopColor="#FFFFFF" stopOpacity="0.18" />
-                    <stop offset="100%" stopColor="#FFFFFF" stopOpacity="0" />
-                  </radialGradient>
-                </defs>
-
-                {/* Thin metallic base ring */}
-                <ellipse cx="50" cy="87" rx="36" ry="6.5" stroke="url(#baseRingMetallic)" strokeWidth="1.2" fill="none" opacity="0.65" />
-
-                {/* Outer Layered Hexagon with 1px inner bevel stroke rgba(255,255,255,0.25) */}
-                <polygon
-                  points="50,11 87,30 87,70 50,89 13,70 13,30"
-                  fill="url(#modendoGemGrad)"
-                  stroke="rgba(255,255,255,0.25)"
-                  strokeWidth="1"
-                  strokeLinejoin="round"
-                />
-
-                {/* Top Facet (Diamond) */}
-                <polygon
-                  points="50,11 87,30 50,50 13,30"
-                  fill="url(#gemFacetTop)"
-                  stroke="rgba(255,255,255,0.25)"
-                  strokeWidth="0.8"
-                />
-
-                {/* Left Facet */}
-                <polygon
-                  points="13,30 50,50 50,89 13,70"
-                  fill="url(#gemFacetLeft)"
-                  stroke="rgba(255,255,255,0.2)"
-                  strokeWidth="0.8"
-                />
-
-                {/* Right Facet */}
-                <polygon
-                  points="50,50 87,30 87,70 50,89"
-                  fill="url(#gemFacetRight)"
-                  stroke="rgba(255,255,255,0.22)"
-                  strokeWidth="0.8"
-                />
-
-                {/* Geometric Inner Ribbon Core */}
-                <path
-                  d="M50 23 L72 35 L72 61 L50 73 L28 61 L28 35 Z"
-                  fill="none"
-                  stroke="#A7F3D0"
-                  strokeWidth="3"
-                  strokeLinejoin="round"
-                  opacity="0.85"
-                />
-                <path
-                  d="M50 33 L62 40 L62 54 L50 61 L38 54 L38 40 Z"
-                  fill="#05271E"
-                  stroke="rgba(255,255,255,0.3)"
-                  strokeWidth="0.8"
-                />
-
-                {/* Specular Highlight: white ~20% opacity ellipse, top-left */}
-                <ellipse
-                  cx="35"
-                  cy="25"
-                  rx="13"
-                  ry="7"
-                  transform="rotate(-22 35 25)"
-                  fill="url(#specularHighlightGrad)"
-                />
-              </svg>
+            {/* Top: Modendo Vector Emblem with Quiet Glass Pod */}
+            <div className="relative flex items-center justify-center p-1.5 rounded-xl bg-[#092219]/90 border border-emerald-500/30 shadow-[0_2px_10px_rgba(0,0,0,0.5)] group-hover:scale-105 transition-transform duration-300">
+              <img
+                src="/tenants/modendo/modendo-mark.svg"
+                alt="Modendo"
+                className="w-7 h-7 object-contain"
+              />
             </div>
             
-            {/* Bottom: Wordmark in subtle gradient text */}
-            <span className="text-sm md:text-base font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-[#D1FAE5] via-[#FDE68A] to-[#6EE7B7] drop-shadow-[0_0_12px_rgba(16,185,129,0.45)] font-fa-sans leading-tight mt-0.5 whitespace-nowrap">
+            {/* Bottom: Wordmark */}
+            <span className="text-sm md:text-base font-bold tracking-normal text-emerald-100 font-fa-sans leading-tight mt-1 whitespace-nowrap">
               کافه مودندو
             </span>
           </div>

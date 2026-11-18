@@ -2045,6 +2045,23 @@ export class SmartOrdersStore {
             synced: (o as any).synced === 1 || (o as any).synced === true ? 1 : 0,
           }))
         ).catch(() => {});
+
+        const allItems = orders.flatMap((o) =>
+          (o.items || []).map((it, idx) => ({
+            id: it.id || `${o.id}-item-${idx}`,
+            orderId: o.id,
+            tenantId: o.tenantId || tenantId,
+            menuItemId: it.menuItemId,
+            name: it.itemNameSnapshot,
+            quantity: it.quantity,
+            priceToman: it.unitPriceSnapshotToman,
+            subtotalToman: it.subtotalToman,
+            notes: it.notes,
+          }))
+        );
+        if (allItems.length > 0) {
+          db.orderItems.bulkPut(allItems as any).catch(() => {});
+        }
       } catch {
         // ignore
       }
