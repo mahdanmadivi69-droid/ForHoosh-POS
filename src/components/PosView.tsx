@@ -63,7 +63,7 @@ import {
 } from '../services/escposThermalPrinter';
 import { playPosBeep } from '../services/soundEffects';
 import { printThermalReceipt } from '../services/receiptPrinter';
-import { MODENDO_FLOOR_NODES, TableSession } from './FloorPlanCanvas';
+import { MODENDO_FLOOR_NODES, TableSession, calculatePs5ChargeToman } from './FloorPlanCanvas';
 import { openTabService } from '../services/openTabService';
 import { TabCartItem } from '../types/inventory-tab';
 import { getProductWallpaper } from '../utils/productWallpapers';
@@ -250,14 +250,27 @@ export const PosView: React.FC<PosViewProps> = ({
             const session = node
               ? sessions[node.id]
               : Object.values(sessions).find((s) => s.tableLabel === preselectedTableLabel);
-            if (session && Array.isArray(session.cartItems) && session.cartItems.length > 0) {
-              setCartItems(session.cartItems);
-              setCustomerName(session.customerName || '');
-              setOrderNotes(session.notes || '');
-              setDiscountToman(session.discountToman || 0);
-              setDiscountPercent(session.discountPercent || 0);
-            } else if (session) {
-              setCartItems([]);
+            if (session) {
+              const baseItems = (session.cartItems || []).filter(
+                (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+              );
+              // Calculate and inject synthesized PS5 charge item if PS5 session exists
+              if (session.ps5Session) {
+                const ps5Fee = calculatePs5ChargeToman(session.ps5Session, Date.now());
+                if (ps5Fee > 0) {
+                  const ps5Item: OrderItem = {
+                    id: `ps5-hourly-${session.nodeId || preselectedTableLabel}-${Date.now()}`,
+                    menuItemId: 'modendo-ps5-charge',
+                    itemNameSnapshot: `تعرفه بازی PS5 (${session.tableLabel || preselectedTableLabel})`,
+                    unitPriceSnapshotToman: ps5Fee,
+                    quantity: 1,
+                    subtotalToman: ps5Fee,
+                    notes: 'شارژ زمانی بازی کنسول',
+                  };
+                  baseItems.unshift(ps5Item);
+                }
+              }
+              setCartItems(baseItems);
               setCustomerName(session.customerName || '');
               setOrderNotes(session.notes || '');
               setDiscountToman(session.discountToman || 0);

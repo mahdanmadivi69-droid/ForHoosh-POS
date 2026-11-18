@@ -43,6 +43,7 @@ import { CatalogService } from '../../services/catalog/catalogService';
 import { openTabService } from '../../services/openTabService';
 import { formatToman } from '../../services/financialMath';
 import { playPosBeep } from '../../services/soundEffects';
+import { OrderItem } from '../../types/domain';
 
 interface FloorPlanViewProps {
   onBackToPos: () => void;
@@ -500,7 +501,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
     // On smaller screens where sidebar is hidden, route directly to POS
     if (typeof window !== 'undefined' && window.innerWidth < 1280) {
-      onSelectTableForOrder(node.label);
+      handleTransitionToPos(node);
     }
   };
 
@@ -711,7 +712,55 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         setIsSettleModalOpen(false);
       }
     } else {
-      onSelectTableForOrder(selectedNode.label);
+      handleTransitionToPos(selectedNode);
+    }
+  };
+
+  // Transition to POS view with synthesized PS5 fee line item injected
+  const handleTransitionToPos = (nodeOrLabel: FloorNode | string) => {
+    playPosBeep('click');
+    const node =
+      typeof nodeOrLabel === 'string'
+        ? MODENDO_FLOOR_NODES.find((n) => n.label === nodeOrLabel || n.id === nodeOrLabel)
+        : nodeOrLabel;
+
+    if (node) {
+      const session = sessions[node.id];
+      if (session?.ps5Session) {
+        const ps5Fee = calculatePs5ChargeToman(session.ps5Session, nowMs);
+        if (ps5Fee > 0) {
+          const baseItems = (session.cartItems || []).filter(
+            (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+          );
+          const ps5Item: OrderItem = {
+            id: `ps5-hourly-${node.id}-${Date.now()}`,
+            menuItemId: 'modendo-ps5-charge',
+            itemNameSnapshot: `تعرفه بازی PS5 (${node.label})`,
+            unitPriceSnapshotToman: ps5Fee,
+            quantity: 1,
+            subtotalToman: ps5Fee,
+            notes: 'شارژ زمانی بازی کنسول',
+          };
+          const updatedSessions: Record<string, TableSession> = {
+            ...sessions,
+            [node.id]: {
+              ...session,
+              cartItems: [ps5Item, ...baseItems],
+            },
+          };
+          try {
+            localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(updatedSessions));
+            window.dispatchEvent(
+              new CustomEvent('cafeos_floor_sessions_changed', { detail: updatedSessions })
+            );
+          } catch (e) {
+            console.warn('[FloorPlanView] Error saving PS5 fee to session:', e);
+          }
+        }
+      }
+      onSelectTableForOrder(node.label);
+    } else {
+      onSelectTableForOrder(typeof nodeOrLabel === 'string' ? nodeOrLabel : 'بیرون‌بر');
     }
   };
 
@@ -935,7 +984,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => onSelectTableForOrder(selectedNode.label)}
+                    onClick={() => handleTransitionToPos(selectedNode)}
                     className="py-2.5 px-3 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/30 text-emerald-200 text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -956,7 +1005,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               <div className="space-y-2">
                 <button
                   type="button"
-                  onClick={() => onSelectTableForOrder(selectedNode.label)}
+                  onClick={() => handleTransitionToPos(selectedNode)}
                   className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_25px_rgba(16,185,129,0.35)] border border-emerald-400/40 hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer"
                 >
                   <UtensilsCrossed className="w-4 h-4" />
@@ -985,7 +1034,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => onSelectTableForOrder(selectedNode.label)}
+                  onClick={() => handleTransitionToPos(selectedNode)}
                   className="w-full py-2.5 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-emerald-300 hover:text-white font-bold text-xs flex items-center justify-center gap-2 border border-emerald-500/30 transition-all cursor-pointer"
                 >
                   <UtensilsCrossed className="w-3.5 h-3.5" />
@@ -1309,7 +1358,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             onInspectNode={handleOpenTableModal}
             onOpenSessionModal={handleOpenTableModal}
             onConfirmTableOrder={(node) => {
-              onSelectTableForOrder(node.label || node.display_name);
+              handleTransitionToPos(node);
             }}
           />
         </div>
@@ -1327,7 +1376,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             onSelectForPosOrder={(label) => {
               setModalTableEntity(null);
               setModalNode(null);
-              onSelectTableForOrder(label);
+              handleTransitionToPos(label);
             }}
             onMoveTableSession={handleMoveTableSession}
             availableNodes={MODENDO_FLOOR_NODES}
