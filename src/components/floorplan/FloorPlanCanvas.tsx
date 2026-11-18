@@ -381,20 +381,63 @@ export function calculatePs5ChargeToman(ps5?: Ps5SessionState, nowMs = Date.now(
   return Math.round(raw / 1000) * 1000;
 }
 
+export function hasGamingPackage(
+  items?: readonly { menuItemId?: string; itemNameSnapshot?: string; id?: string }[]
+): boolean {
+  if (!items || items.length === 0) return false;
+  return items.some((item) => {
+    // Exclude the synthesized time-based fee itself so it doesn't falsely flag as a package
+    if (item.menuItemId === 'modendo-ps5-charge' || item.id?.startsWith('ps5-hourly-')) {
+      return false;
+    }
+    const mid = (item.menuItemId || '').toLowerCase();
+    const rawName = item.itemNameSnapshot || '';
+    const nameLower = rawName.toLowerCase();
+
+    // Check category or ID markers
+    if (
+      mid.includes('ps4') ||
+      mid.includes('ps5') ||
+      mid.includes('xbox') ||
+      mid.includes('console') ||
+      mid.includes('gaming') ||
+      mid.includes('mod-cat-lounge') ||
+      mid.includes('mod-cat-gaming') ||
+      mid.startsWith('mod-item-08') ||
+      mid.startsWith('mod-item-009') ||
+      mid.startsWith('mod-item-010') ||
+      mid.startsWith('mod-item-011') ||
+      mid.startsWith('mod-item-013')
+    ) {
+      return true;
+    }
+
+    // Check broad keyword patterns across Persian and English
+    return (
+      nameLower.includes('ps4') ||
+      nameLower.includes('ps5') ||
+      nameLower.includes('xbox') ||
+      nameLower.includes('console') ||
+      nameLower.includes('gaming') ||
+      rawName.includes('کابین') ||
+      rawName.includes('پی اس') ||
+      rawName.includes('پلی') ||
+      rawName.includes('ایکس') ||
+      rawName.includes('دسته') ||
+      rawName.includes('گیم') ||
+      rawName.includes('بازی')
+    );
+  });
+}
+
 export function getSessionTotalToman(session?: TableSession, nowMs = Date.now()): number {
   if (!session) return 0;
   const nonPs5Items = (session.cartItems || []).filter(
     (i) => i.menuItemId !== 'modendo-ps5-charge' && !i.id.startsWith('ps5-hourly-')
   );
-  const hasPs5Package = nonPs5Items.some(
-    (item) =>
-      item.menuItemId?.toLowerCase().includes('ps5') ||
-      item.menuItemId?.toLowerCase().includes('playstation') ||
-      item.itemNameSnapshot?.includes('PS5') ||
-      item.itemNameSnapshot?.includes('پلی')
-  );
+  const hasPackage = hasGamingPackage(nonPs5Items);
   const { netTotalToman } = calculateOrderTotals(nonPs5Items, session.discountToman || 0);
-  const ps5Fee = hasPs5Package || !session.ps5Session ? 0 : calculatePs5ChargeToman(session.ps5Session, nowMs);
+  const ps5Fee = hasPackage || !session.ps5Session ? 0 : calculatePs5ChargeToman(session.ps5Session, nowMs);
   return netTotalToman + ps5Fee;
 }
 

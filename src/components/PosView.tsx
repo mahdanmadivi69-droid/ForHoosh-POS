@@ -63,7 +63,7 @@ import {
 } from '../services/escposThermalPrinter';
 import { playPosBeep } from '../services/soundEffects';
 import { printThermalReceipt } from '../services/receiptPrinter';
-import { MODENDO_FLOOR_NODES, TableSession, calculatePs5ChargeToman } from './FloorPlanCanvas';
+import { MODENDO_FLOOR_NODES, TableSession, calculatePs5ChargeToman, hasGamingPackage } from './FloorPlanCanvas';
 import { openTabService } from '../services/openTabService';
 import { TabCartItem } from '../types/inventory-tab';
 import { getProductWallpaper } from '../utils/productWallpapers';
@@ -255,14 +255,8 @@ export const PosView: React.FC<PosViewProps> = ({
                 (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
               );
 
-              // TASK 2: Prevent Double-Charging (The Package Logic)
-              const hasPs5Package = baseItems.some(
-                (item) =>
-                  item.menuItemId?.toLowerCase().includes('ps5') ||
-                  item.menuItemId?.toLowerCase().includes('playstation') ||
-                  item.itemNameSnapshot?.includes('PS5') ||
-                  item.itemNameSnapshot?.includes('پلی')
-              );
+              // TASK 2: Prevent Double-Charging via Comprehensive Gaming Package Check
+              const hasPackage = hasGamingPackage(baseItems);
 
               const ps5Session =
                 session.ps5Session ||
@@ -277,7 +271,7 @@ export const PosView: React.FC<PosViewProps> = ({
                   : undefined);
 
               // Calculate and inject synthesized PS5 charge item if PS5 session exists and no package selected
-              if (!hasPs5Package && ps5Session) {
+              if (!hasPackage && ps5Session) {
                 const ps5Fee = calculatePs5ChargeToman(ps5Session, Date.now());
                 if (ps5Fee > 0) {
                   const ps5Item: OrderItem = {
@@ -499,14 +493,11 @@ export const PosView: React.FC<PosViewProps> = ({
     playPosBeep('click');
 
     setCartItems((prev) => {
-      // If adding a PS5 package, purge synthesized hourly fee to prevent double charging
-      const isPs5Package =
+      // If adding a PS5 / gaming package, purge synthesized hourly fee to prevent double charging
+      const isGamingPackage =
         isModendo &&
-        (item.id?.toLowerCase().includes('ps5') ||
-          item.id?.toLowerCase().includes('playstation') ||
-          item.nameFa?.includes('PS5') ||
-          item.nameFa?.includes('پلی'));
-      const cleanPrev = isPs5Package
+        hasGamingPackage([{ menuItemId: item.id, itemNameSnapshot: item.nameFa }]);
+      const cleanPrev = isGamingPackage
         ? prev.filter((i) => i.menuItemId !== 'modendo-ps5-charge' && !i.id.startsWith('ps5-hourly-'))
         : prev;
 
@@ -551,15 +542,12 @@ export const PosView: React.FC<PosViewProps> = ({
     const modifiersDelta = selectedModifiers.reduce((sum, m) => sum + m.priceDeltaToman, 0);
     const unitPrice = item.priceToman + modifiersDelta;
 
-    const isPs5Package =
+    const isGamingPackage =
       isModendo &&
-      (item.id?.toLowerCase().includes('ps5') ||
-        item.id?.toLowerCase().includes('playstation') ||
-        item.nameFa?.includes('PS5') ||
-        item.nameFa?.includes('پلی'));
+      hasGamingPackage([{ menuItemId: item.id, itemNameSnapshot: item.nameFa }]);
 
     setCartItems((prev) => [
-      ...(isPs5Package
+      ...(isGamingPackage
         ? prev.filter((i) => i.menuItemId !== 'modendo-ps5-charge' && !i.id.startsWith('ps5-hourly-'))
         : prev),
       {

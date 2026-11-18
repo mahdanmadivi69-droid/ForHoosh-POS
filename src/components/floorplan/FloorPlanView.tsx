@@ -32,6 +32,7 @@ import {
   MODENDO_FLOOR_NODES,
   getSessionTotalToman,
   calculatePs5ChargeToman,
+  hasGamingPackage,
   resolvePrimaryNodeId,
   is100HichNode,
   formatElapsedTimer,
@@ -639,14 +640,8 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
       (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
     );
 
-    // TASK 2: Prevent Double-Charging (The Package Logic)
-    const hasPs5Package = baseItems.some(
-      (item) =>
-        item.menuItemId?.toLowerCase().includes('ps5') ||
-        item.menuItemId?.toLowerCase().includes('playstation') ||
-        item.itemNameSnapshot?.includes('PS5') ||
-        item.itemNameSnapshot?.includes('پلی')
-    );
+    // TASK 2: Prevent Double-Charging via Comprehensive Gaming Package Check
+    const hasPackage = hasGamingPackage(baseItems);
 
     const ps5Session =
       activeTableSession?.ps5Session ||
@@ -660,7 +655,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
           }
         : undefined);
 
-    const ps5Fee = hasPs5Package || !ps5Session
+    const ps5Fee = hasPackage || !ps5Session
       ? 0
       : calculatePs5ChargeToman(ps5Session, Date.now());
 
@@ -781,16 +776,9 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
           (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
         );
 
-        // TASK 2: Prevent Double-Charging (The Package Logic)
-        const hasPs5Package = baseItems.some(
-          (item) =>
-            item.menuItemId?.toLowerCase().includes('ps5') ||
-            item.menuItemId?.toLowerCase().includes('playstation') ||
-            item.itemNameSnapshot?.includes('PS5') ||
-            item.itemNameSnapshot?.includes('پلی')
-        );
-
-        const ps5Fee = hasPs5Package ? 0 : calculatePs5ChargeToman(ps5Session, Date.now());
+        // TASK 2: Prevent Double-Charging via Comprehensive Gaming Package Check
+        const hasPackage = hasGamingPackage(baseItems);
+        const ps5Fee = hasPackage ? 0 : calculatePs5ChargeToman(ps5Session, Date.now());
 
         const updatedCartItems = [...baseItems];
         if (ps5Fee > 0) {
