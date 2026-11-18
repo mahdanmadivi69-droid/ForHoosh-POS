@@ -123,6 +123,10 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
   // Explicit tenant context: prop takes precedence over canonical store
   const activeTenantId = tenantId || SmartOrdersStore.getActiveTenantId();
   const isTenantValid = isValidTenantId(activeTenantId);
+  const isModendo =
+    activeTenantId === 'modendo' ||
+    activeTenantId === 'tenant-modendo-01' ||
+    (typeof tenantName === 'string' && /modendo|مودندو/i.test(tenantName));
 
   // Realtime LAN order receiver hook
   const { isConnected: isLanConnected } = useLanOrderReceiver({
@@ -350,24 +354,52 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
         } flex flex-col overflow-hidden transition-all`}
       >
         {/* KDS Header */}
-        <div className="px-5 py-3.5 bg-gradient-to-r from-[#061813] via-[#0A2E24] to-[#061813] border-b border-[#164538] flex items-center justify-between gap-4">
+        <div
+          className={`px-5 py-3.5 flex items-center justify-between gap-4 border-b ${
+            isModendo
+              ? 'bg-gradient-to-r from-[#061813] via-[#0A2E24] to-[#061813] border-[#164538]'
+              : 'bg-gradient-to-r from-[#0F172A] via-[#1E293B] to-[#0F172A] border-[#334155]'
+          }`}
+        >
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-emerald-600/20 text-emerald-400 border border-emerald-500/40 shadow-inner">
+            <div
+              className={`p-2.5 rounded-xl border shadow-inner ${
+                isModendo
+                  ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/40'
+                  : 'bg-amber-600/20 text-amber-400 border-amber-500/40'
+              }`}
+            >
               <Coffee className="w-6 h-6 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-black tracking-wide text-white flex items-center gap-2">
                   <span>سیستم نمایشگر باریستا</span>
-                  <span className="text-xs font-mono text-emerald-300 font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-500/40">
+                  <span
+                    className={`text-xs font-mono font-bold px-1.5 py-0.5 rounded border ${
+                      isModendo
+                        ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                        : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
+                    }`}
+                  >
                     BAR KDS
                   </span>
                 </h1>
-                <span className="text-[11px] bg-[#07241C] text-emerald-300 border border-emerald-500/40 px-2.5 py-0.5 rounded-full font-bold">
+                <span
+                  className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold border ${
+                    isModendo
+                      ? 'bg-[#07241C] text-emerald-300 border-emerald-500/40'
+                      : 'bg-[#1E293B] text-amber-300 border-amber-500/40'
+                  }`}
+                >
                   {tenantName}
                 </span>
               </div>
-              <p className="text-xs text-emerald-200/70 mt-0.5 flex items-center gap-3">
+              <p
+                className={`text-xs mt-0.5 flex items-center gap-3 ${
+                  isModendo ? 'text-emerald-200/70' : 'text-slate-300/70'
+                }`}
+              >
                 <span>نمایش زنده صف آماده‌سازی، کنترل SLA سفارش و نظارت بر تاخیرات</span>
               </p>
             </div>
@@ -413,9 +445,17 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
               type="button"
               onClick={toggleFullscreen}
               title={isFullScreen ? 'خروج از تمام‌صفحه' : 'حالت تمام‌صفحه تبلت و کیوسک (F11)'}
-              className="p-2.5 rounded-xl border border-[#164538] bg-[#07241C]/80 hover:bg-[#0A2E24] text-emerald-200 hover:text-white transition cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-semibold"
+              className={`p-2.5 rounded-xl border transition cursor-pointer active:scale-95 flex items-center gap-1.5 text-xs font-semibold ${
+                isModendo
+                  ? 'border-[#164538] bg-[#07241C]/80 hover:bg-[#0A2E24] text-emerald-200 hover:text-white'
+                  : 'border-[#334155] bg-[#1E293B]/80 hover:bg-[#334155] text-slate-200 hover:text-white'
+              }`}
             >
-              {isFullScreen ? <Minimize2 className="w-4 h-4 text-emerald-300" /> : <Maximize2 className="w-4 h-4 text-emerald-300" />}
+              {isFullScreen ? (
+                <Minimize2 className={`w-4 h-4 ${isModendo ? 'text-emerald-300' : 'text-slate-300'}`} />
+              ) : (
+                <Maximize2 className={`w-4 h-4 ${isModendo ? 'text-emerald-300' : 'text-slate-300'}`} />
+              )}
               <span className="hidden sm:inline">{isFullScreen ? 'پنجره‌ای' : 'تمام‌صفحه'}</span>
             </button>
 
@@ -425,7 +465,9 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
               title={soundEnabled ? 'قطع صدای اعلان' : 'فعال‌سازی صدای اعلان'}
               className={`p-2.5 rounded-xl border transition cursor-pointer active:scale-95 ${
                 soundEnabled
-                  ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-300 hover:bg-emerald-900/50'
+                  ? isModendo
+                    ? 'bg-emerald-950/60 border-emerald-600/50 text-emerald-300 hover:bg-emerald-900/50'
+                    : 'bg-amber-950/60 border-amber-600/50 text-amber-300 hover:bg-amber-900/50'
                   : 'bg-stone-850 border-stone-750 text-stone-400 hover:bg-stone-800'
               }`}
             >
@@ -436,9 +478,13 @@ export const BaristaKdsModal: React.FC<BaristaKdsModalProps> = ({
               type="button"
               onClick={handleTestSound}
               title="تست آکوستیک زنگ باریستا"
-              className="px-3 py-2 rounded-xl bg-[#07241C]/80 hover:bg-[#0A2E24] border border-[#164538] text-emerald-200 text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+              className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                isModendo
+                  ? 'bg-[#07241C]/80 hover:bg-[#0A2E24] border-[#164538] text-emerald-200'
+                  : 'bg-[#1E293B]/80 hover:bg-[#334155] border-[#334155] text-slate-200'
+              }`}
             >
-              <Bell className="w-3.5 h-3.5 text-emerald-300" />
+              <Bell className={`w-3.5 h-3.5 ${isModendo ? 'text-emerald-300' : 'text-amber-300'}`} />
               <span className="hidden sm:inline">تست زنگ</span>
             </button>
 

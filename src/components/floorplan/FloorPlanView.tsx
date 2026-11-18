@@ -31,6 +31,7 @@ import {
   TableSession,
   MODENDO_FLOOR_NODES,
   getSessionTotalToman,
+  calculatePs5ChargeToman,
   resolvePrimaryNodeId,
   is100HichNode,
   formatElapsedTimer,
@@ -599,6 +600,19 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   const handleReleaseTable = (nodeId: string) => {
     if (confirm(`آیا از آزادسازی و تخلیه میز ${selectedNode.label} اطمینان دارید؟`)) {
       playPosBeep('delete');
+
+      // Cancel/void open tab in openTabService if present to prevent ghost tab revival
+      try {
+        const targetTab =
+          openTabService.getTabForTable(selectedNode.label, 'tenant-modendo-01') ||
+          openTabService.getTabForTable(nodeId, 'tenant-modendo-01');
+        if (targetTab) {
+          openTabService.voidTab(targetTab.tab_id, 'tenant-modendo-01');
+        }
+      } catch (e) {
+        console.warn('[FloorPlanView] voidTab on release failed:', e);
+      }
+
       setSessions((prev) => {
         const next = { ...prev };
         delete next[nodeId];
@@ -619,7 +633,28 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
       alert('شیفت کاری فعال نیست. لطفاً ابتدا شیفت را باز کنید.');
       return;
     }
+    const ps5Fee = activeTableSession?.ps5Session
+      ? calculatePs5ChargeToman(activeTableSession.ps5Session, nowMs)
+      : 0;
     const finalAmount = sessionTotal || 0;
+    const baseItems = activeTableSession?.cartItems || [];
+    const items = [...baseItems];
+
+    if (ps5Fee > 0) {
+      items.push({
+        id: `ps5-hourly-${selectedNode.id}-${Date.now()}`,
+        menuItemId: 'modendo-ps5-charge',
+        itemNameSnapshot: `تعرفه بازی PS5 (${selectedNode.label})`,
+        unitPriceSnapshotToman: ps5Fee,
+        quantity: 1,
+        subtotalToman: ps5Fee,
+        notes: 'شارژ زمانی بازی کنسول',
+      } as any);
+    }
+
+    const grossAmount = items.reduce((sum: number, it: any) => sum + (it.subtotalToman || 0), 0);
+    const discountAmount = activeTableSession?.discountToman || 0;
+
     if (onOrderCompleted) {
       const orderPayload: any = {
         tenantId: activeShift.tenantId,
@@ -632,15 +667,36 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         customerName: activeTableSession?.customerName || undefined,
         notes: activeTableSession?.notes || undefined,
         status: 'COMPLETED',
-        items: activeTableSession?.cartItems || [],
-        grossAmountToman: finalAmount,
-        discountAmountToman: activeTableSession?.discountToman || 0,
+        items,
+        grossAmountToman: grossAmount,
+        discountAmountToman: discountAmount,
         netTotalToman: finalAmount,
       };
 
       const result = onOrderCompleted(orderPayload, paymentMethod, '', 'صندوق سالن');
       if (result) {
         playPosBeep('success');
+
+        // Settle open tab in openTabService to eradicate ghost tab resurrection
+        try {
+          const targetTab =
+            openTabService.getTabForTable(selectedNode.label, 'tenant-modendo-01') ||
+            openTabService.getTabForTable(selectedNode.id, 'tenant-modendo-01');
+          if (targetTab) {
+            openTabService.settleTab(
+              targetTab.tab_id,
+              {
+                paymentMethod: paymentMethod === 'CASH' ? 'CASH' : 'CARD',
+                referenceCode: '',
+                sessionChargeToman: ps5Fee,
+              },
+              'tenant-modendo-01'
+            );
+          }
+        } catch (e) {
+          console.warn('[FloorPlanView] settleTab error:', e);
+        }
+
         setSessions((prev) => {
           const next = { ...prev };
           delete next[selectedNode.id];

@@ -1618,6 +1618,9 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                           const isSelected = activeSelectedId === primaryId || activeSelectedId === barNode.id;
                           const isMergeChecked = mergeSelectedIds.includes(barNode.id);
                           const isMerged = Boolean(rawSession?.mergedIntoNodeId) || Boolean(rawSession?.mergedNodeIds?.length);
+                          const isMoveSource = moveMode && moveSourceId === barNode.id;
+                          const isMoveTargetCandidate = moveMode && Boolean(moveSourceId) && !isOccupied;
+                          const isMoveSourceCandidate = moveMode && !moveSourceId && isOccupied;
 
                           return (
                             <motion.button
@@ -1630,7 +1633,13 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                               onClick={() => onNodeClick(barNode)}
                               onDoubleClick={() => onOpenModal(barNode)}
                               className={`h-full min-h-[38px] py-1 px-1 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-all border ${
-                                isMergeChecked
+                                isMoveSource
+                                  ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_16px_rgba(245,158,11,0.6)] scale-[1.05] text-amber-100'
+                                  : isMoveTargetCandidate
+                                  ? 'bg-[#1B222C]/90 border-emerald-400/80 hover:border-emerald-300 ring-2 ring-emerald-400/50 hover:scale-[1.05] text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                                  : isMoveSourceCandidate
+                                  ? 'bg-[#10B981]/25 border-amber-400/80 hover:border-amber-300 ring-2 ring-amber-400/60 hover:scale-[1.05] text-white shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                                  : isMergeChecked
                                   ? 'bg-cyan-500/25 border-cyan-300 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.5)] text-cyan-100'
                                   : isSelected && isOccupied
                                   ? 'bg-rose-900/90 border-2 border-white ring-2 ring-rose-400 shadow-[0_0_16px_rgba(239,68,68,0.7)] text-white'
