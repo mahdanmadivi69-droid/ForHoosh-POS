@@ -45,6 +45,9 @@ import { openTabService } from '../../services/openTabService';
 import { formatToman } from '../../services/financialMath';
 import { playPosBeep } from '../../services/soundEffects';
 import { OrderItem } from '../../types/domain';
+import { FloorSettleModal } from './FloorSettleModal';
+import { OpenTabsModal } from '../modals/OpenTabsModal';
+import { printThermalReceipt } from '../../services/receiptPrinter';
 
 interface FloorPlanViewProps {
   onBackToPos: () => void;
@@ -81,6 +84,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   const [modalTableEntity, setModalTableEntity] = useState<TableEntity | null>(null);
   const [selectedTableNodeId, setSelectedTableNodeId] = useState<string>(selectedNodeId || 'M-01');
   const [isSettleModalOpen, setIsSettleModalOpen] = useState<boolean>(false);
+  const [isTabsModalOpen, setIsTabsModalOpen] = useState<boolean>(false);
   const [draftCustomerName, setDraftCustomerName] = useState<string>('');
   const [draftNotes, setDraftNotes] = useState<string>('');
 
@@ -629,8 +633,15 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     }
   };
 
-  // Direct settlement from FloorPlan side panel
-  const handleSettleFromSidePanel = (paymentMethod: 'CARD' | 'CASH') => {
+  // Direct settlement from FloorPlan side panel (Full payment method + Split-bill + Receipt Preview support)
+  const handleSettleFromSidePanel = (paymentData: {
+    paymentMethod: 'CARD' | 'CASH' | 'SPLIT';
+    terminalName: string;
+    referenceCode?: string;
+    cashTendered?: number;
+    splitCount?: number;
+    splitAmountPerPerson?: number;
+  }) => {
     if (!activeShift) {
       alert('شیفت کاری فعال نیست. لطفاً ابتدا شیفت را باز کنید.');
       return;
@@ -676,6 +687,11 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
     const discountAmount = activeTableSession?.discountToman || 0;
     const finalAmount = Math.max(0, grossAmount - discountAmount);
 
+    const splitNote =
+      paymentData.paymentMethod === 'SPLIT'
+        ? `تسویه دنگی (${paymentData.splitCount} نفر، هر نفر ${formatToman(paymentData.splitAmountPerPerson || 0)} تومان)`
+        : undefined;
+
     if (onOrderCompleted) {
       const orderPayload: any = {
         tenantId: activeShift.tenantId,
@@ -686,7 +702,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         orderType: 'DINE_IN',
         tableLabel: selectedNode.label,
         customerName: activeTableSession?.customerName || undefined,
-        notes: activeTableSession?.notes || undefined,
+        notes: splitNote ? (activeTableSession?.notes ? `${activeTableSession.notes} • ${splitNote}` : splitNote) : activeTableSession?.notes || undefined,
         status: 'COMPLETED',
         items,
         grossAmountToman: grossAmount,
@@ -694,9 +710,43 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         netTotalToman: finalAmount,
       };
 
-      const result = onOrderCompleted(orderPayload, paymentMethod, '', 'صندوق سالن');
+      const pMethod = paymentData.paymentMethod === 'SPLIT' ? 'SPLIT' : paymentData.paymentMethod;
+      const result = onOrderCompleted(orderPayload, pMethod as any, paymentData.referenceCode || '', paymentData.terminalName || 'صندوق سالن');
       if (result) {
         playPosBeep('success');
+
+        // Print thermal receipt automatically on settlement
+        try {
+          printThermalReceipt({
+            invoiceNo: Math.floor(1000 + Math.random() * 9000),
+            dateTime: new Date().toISOString(),
+            orderType: 'سالن (Dine-In)',
+            cashier: activeUser?.fullName || 'صندوق‌دار',
+            customerName: activeTableSession?.customerName || `میز ${selectedNode.label}`,
+            tableLabel: selectedNode.label,
+            items: items.map((it: any) => ({
+              name: it.itemNameSnapshot,
+              qty: it.quantity || 1,
+              price: it.unitPriceSnapshotToman || it.subtotalToman || 0,
+              modifiers: it.modifiers?.map((m: any) => m.nameFa || m.name),
+              notes: it.notes,
+            })),
+            subtotalAmount: grossAmount,
+            discountAmount: discountAmount,
+            totalAmount: finalAmount,
+            paymentMethod:
+              paymentData.paymentMethod === 'CASH'
+                ? 'نقدی'
+                : paymentData.paymentMethod === 'CARD'
+                ? paymentData.terminalName
+                : `به ایرانی / دنگی (${paymentData.splitCount} نفر - سهم هر نفر ${formatToman(paymentData.splitAmountPerPerson || 0)} تومان)`,
+            referenceCode: paymentData.referenceCode,
+            cashTendered: paymentData.cashTendered,
+            changeDue: paymentData.cashTendered ? Math.max(0, paymentData.cashTendered - finalAmount) : undefined,
+          });
+        } catch (printErr) {
+          console.warn('[FloorPlanView] Thermal print failed:', printErr);
+        }
 
         // Settle open tab in openTabService to eradicate ghost tab resurrection
         try {
@@ -707,8 +757,8 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             openTabService.settleTab(
               targetTab.tab_id,
               {
-                paymentMethod: paymentMethod === 'CASH' ? 'CASH' : 'CARD',
-                referenceCode: '',
+                paymentMethod: paymentData.paymentMethod === 'CASH' ? 'CASH' : paymentData.paymentMethod === 'SPLIT' ? 'SPLIT' : 'CARD',
+                referenceCode: paymentData.referenceCode || '',
                 sessionChargeToman: ps5Fee,
               },
               'tenant-modendo-01'
@@ -733,6 +783,64 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
       }
     } else {
       handleTransitionToPos(selectedNode);
+    }
+  };
+
+  // Print Proforma Receipt
+  const handlePrintProforma = () => {
+    try {
+      playPosBeep('click');
+      const rawItems = activeTableSession?.cartItems || [];
+      const baseItems = rawItems.filter(
+        (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+      );
+      const hasPackage = hasGamingPackage(baseItems);
+      const ps5Session =
+        activeTableSession?.ps5Session ||
+        (selectedNode.kind === 'PS5' && activeTableSession
+          ? {
+              startedAt: activeTableSession.openedAt || new Date().toISOString(),
+              hourlyRateToman: selectedNode.hourlyRateToman || 180000,
+              controllersCount: 2,
+              accumulatedMs: 0,
+              isPaused: false,
+            }
+          : undefined);
+      const ps5Fee = hasPackage || !ps5Session ? 0 : calculatePs5ChargeToman(ps5Session, Date.now());
+      const items = [...baseItems];
+      if (ps5Fee > 0) {
+        items.push({
+          id: `ps5-hourly-${selectedNode.id}`,
+          menuItemId: 'modendo-ps5-charge',
+          itemNameSnapshot: `تعرفه بازی PS5 (${selectedNode.label})`,
+          unitPriceSnapshotToman: ps5Fee,
+          quantity: 1,
+          subtotalToman: ps5Fee,
+        } as any);
+      }
+      const gross = items.reduce((sum: number, it: any) => sum + (it.subtotalToman || 0), 0);
+      const discount = activeTableSession?.discountToman || 0;
+      const finalAmount = Math.max(0, gross - discount);
+
+      printThermalReceipt({
+        invoiceNo: 'پیش‌فاکتور',
+        dateTime: new Date().toISOString(),
+        orderType: 'پیش‌فاکتور سالن',
+        cashier: activeUser?.fullName || 'صندوق‌دار',
+        customerName: activeTableSession?.customerName || `میز ${selectedNode.label}`,
+        tableLabel: selectedNode.label,
+        items: items.map((it: any) => ({
+          name: it.itemNameSnapshot,
+          qty: it.quantity || 1,
+          price: it.unitPriceSnapshotToman || it.subtotalToman || 0,
+        })),
+        subtotalAmount: gross,
+        discountAmount: discount,
+        totalAmount: finalAmount,
+        paymentMethod: 'پیش‌فاکتور (تسویه نشده)',
+      });
+    } catch (e) {
+      console.warn('[FloorPlanView] Proforma print error:', e);
     }
   };
 
@@ -845,9 +953,17 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               <span className="font-mono tabular-nums text-xs font-bold text-white/80">
                 #10BM-1488
               </span>
-              <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-[11px] font-bold text-cyan-300 shadow-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  playPosBeep('click');
+                  setIsTabsModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/40 hover:border-cyan-400 text-[11px] font-bold text-cyan-300 shadow-sm cursor-pointer transition active:scale-95"
+                title="مشاهده لیست تب‌ها و میزهای باز"
+              >
                 <span>🪑 تب‌ها: {occupiedCount}</span>
-              </div>
+              </button>
             </div>
 
             {/* Dine-in vs Takeaway Toggle */}
@@ -1436,87 +1552,40 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             occupiedNodeIds={Object.keys(sessions)}
           />
         )}
-        {/* Direct Settle & Receipt Modal for Side Panel */}
-        <AnimatePresence>
-          {isSettleModalOpen && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                dir="rtl"
-                className="w-full max-w-md liquid-glass-modal rounded-[28px] p-6 space-y-4 border border-emerald-500/30 shadow-2xl"
-              >
-                <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    <Receipt className="w-5 h-5 text-emerald-400" />
-                    <h3 className="text-base font-black text-white">
-                      تسویه و صدور فیش میز {selectedNode.label}
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setIsSettleModalOpen(false)}
-                    className="p-1 rounded-full text-white/50 hover:text-white cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+        {/* Comprehensive Settle, Split-Bill & Receipt Preview Modal for Floor Plan */}
+        <FloorSettleModal
+          isOpen={isSettleModalOpen}
+          onClose={() => setIsSettleModalOpen(false)}
+          selectedNode={selectedNode}
+          activeTableSession={activeTableSession}
+          sessionTotal={sessionTotal}
+          ps5Fee={
+            hasGamingPackage(
+              (activeTableSession?.cartItems || []).filter(
+                (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+              )
+            ) || !activeTableSession?.ps5Session
+              ? 0
+              : calculatePs5ChargeToman(activeTableSession.ps5Session, Date.now())
+          }
+          onConfirmSettlement={handleSettleFromSidePanel}
+          onPrintProforma={handlePrintProforma}
+        />
 
-                <div className="liquid-glass-well rounded-2xl p-4 space-y-2 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-[#94A3B8]">میز:</span>
-                    <span className="text-white font-bold">{selectedNode.titleFa}</span>
-                  </div>
-                  {activeTableSession?.customerName && (
-                    <div className="flex justify-between">
-                      <span className="text-[#94A3B8]">مشتری:</span>
-                      <span className="text-white font-bold">{activeTableSession.customerName}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-[#94A3B8]">تعداد اقلام:</span>
-                    <span className="text-white font-bold">{activeTableSession?.cartItems?.length || 0} قلم</span>
-                  </div>
-                  <div className="h-px bg-white/10 my-2" />
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-sm font-bold text-white">مبلغ کل قابل پرداخت:</span>
-                    <span className="text-xl font-black text-emerald-300 num-heavy tabular-nums">
-                      {formatToman(sessionTotal || 0)} تومان
-                    </span>
-                  </div>
-                </div>
-
-                <div className="space-y-2 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleSettleFromSidePanel('CARD')}
-                    className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg border border-emerald-400/40 hover:brightness-110 cursor-pointer"
-                  >
-                    <CreditCard className="w-5 h-5" />
-                    <span>پرداخت با کارت‌خوان بانکی (POS)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSettleFromSidePanel('CASH')}
-                    className="w-full py-3 px-4 rounded-2xl bg-white/10 hover:bg-white/15 text-emerald-200 text-xs font-bold flex items-center justify-center gap-2 border border-white/10 cursor-pointer"
-                  >
-                    <DollarSign className="w-4 h-4 text-emerald-300" />
-                    <span>پرداخت نقدی (وجه نقد)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setIsSettleModalOpen(false)}
-                    className="w-full py-2.5 text-xs text-[#94A3B8] hover:text-white cursor-pointer"
-                  >
-                    انصراف
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
+        {/* Live Open Tabs Modal */}
+        <OpenTabsModal
+          isOpen={isTabsModalOpen}
+          onClose={() => setIsTabsModalOpen(false)}
+          onSelectTab={(tableLabel, nodeId) => {
+            if (nodeId) {
+              setSelectedTableNodeId(nodeId);
+            } else {
+              const matched = MODENDO_FLOOR_NODES.find((n) => n.label === tableLabel || n.id === tableLabel);
+              if (matched) setSelectedTableNodeId(matched.id);
+            }
+          }}
+          tenantId="tenant-modendo-01"
+        />
       </div>
     </MotionConfig>
   );

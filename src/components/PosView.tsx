@@ -67,6 +67,7 @@ import { MODENDO_FLOOR_NODES, TableSession, calculatePs5ChargeToman, hasGamingPa
 import { openTabService } from '../services/openTabService';
 import { TabCartItem } from '../types/inventory-tab';
 import { getProductWallpaper } from '../utils/productWallpapers';
+import { OpenTabsModal } from './modals/OpenTabsModal';
 
 const MODENDO_FLOOR_SESSIONS_STORAGE_KEY = 'cafeos_modendo_floor_sessions_v2';
 
@@ -203,7 +204,152 @@ export const PosView: React.FC<PosViewProps> = ({
   const [discountToman, setDiscountToman] = useState<number>(() => initialDiscountToman ?? 0);
   const [discountPercent, setDiscountPercent] = useState<number>(() => initialDiscountPercent ?? 0);
   const [isMobileCartOpen, setIsMobileCartOpen] = useState<boolean>(false);
+  const [isTabsModalOpen, setIsTabsModalOpen] = useState<boolean>(false);
   const skipSessionSyncRef = useRef<boolean>(false);
+
+  const activeTableLabelRef = useRef<string>(tableLabel);
+  const activeCartRef = useRef<OrderItem[]>(cartItems);
+  const customerNameRef = useRef<string>(customerName);
+  const orderNotesRef = useRef<string>(orderNotes);
+  const discountTomanRef = useRef<number>(discountToman);
+  const discountPercentRef = useRef<number>(discountPercent);
+
+  useEffect(() => {
+    activeTableLabelRef.current = tableLabel;
+  }, [tableLabel]);
+
+  useEffect(() => {
+    activeCartRef.current = cartItems;
+  }, [cartItems]);
+
+  useEffect(() => {
+    customerNameRef.current = customerName;
+  }, [customerName]);
+
+  useEffect(() => {
+    orderNotesRef.current = orderNotes;
+  }, [orderNotes]);
+
+  useEffect(() => {
+    discountTomanRef.current = discountToman;
+  }, [discountToman]);
+
+  useEffect(() => {
+    discountPercentRef.current = discountPercent;
+  }, [discountPercent]);
+
+  // CRITICAL MONEY FIX: Scoped Table Switching with automatic cart persistence and clean isolation
+  const switchActiveTable = useCallback((newLabel: string) => {
+    if (!newLabel) return;
+    const prevLabel = activeTableLabelRef.current;
+
+    // 1. Persist previous table's cart if Modendo and table changed
+    if (isModendo && prevLabel && prevLabel !== newLabel) {
+      try {
+        const raw = localStorage.getItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY);
+        if (raw) {
+          const sessions: Record<string, TableSession> = JSON.parse(raw);
+          const prevNode = MODENDO_FLOOR_NODES.find((n) => n.label === prevLabel || n.id === prevLabel);
+          const prevNodeId = prevNode?.id || prevLabel;
+          const currentItems = activeCartRef.current || [];
+          const cleanItems = currentItems.filter(
+            (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+          );
+
+          if (cleanItems.length > 0 || sessions[prevNodeId]) {
+            sessions[prevNodeId] = {
+              ...(sessions[prevNodeId] || {
+                nodeId: prevNodeId,
+                tableLabel: prevLabel,
+                status: 'occupied',
+                openedAt: new Date().toISOString(),
+                kind: prevNode?.kind || 'TABLE',
+              }),
+              cartItems: cleanItems,
+              customerName: customerNameRef.current,
+              notes: orderNotesRef.current,
+              discountToman: discountTomanRef.current,
+              discountPercent: discountPercentRef.current,
+            };
+            localStorage.setItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+            window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: sessions }));
+          }
+        }
+      } catch (e) {
+        console.warn('[PosView] Failed saving previous table cart on switch:', e);
+      }
+    }
+
+    // 2. Set new table label and DINE_IN type
+    setTableLabel(newLabel);
+    activeTableLabelRef.current = newLabel;
+    if (newLabel !== 'بیرون‌بر') {
+      setOrderType('DINE_IN');
+    }
+
+    // 3. Load new table's session or CLEAR completely to avoid cart contamination
+    if (isModendo) {
+      try {
+        const raw = localStorage.getItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY);
+        let session: TableSession | undefined = undefined;
+        const node = MODENDO_FLOOR_NODES.find((n) => n.label === newLabel || n.id === newLabel);
+        if (raw) {
+          const sessions: Record<string, TableSession> = JSON.parse(raw);
+          session = node ? sessions[node.id] : Object.values(sessions).find((s) => s.tableLabel === newLabel);
+        }
+
+        if (session && session.cartItems && session.cartItems.length > 0) {
+          // Has existing items: load them
+          const baseItems = (session.cartItems || []).filter(
+            (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+          );
+          const hasPackage = hasGamingPackage(baseItems);
+          const ps5Session =
+            session.ps5Session ||
+            (node?.kind === 'PS5'
+              ? {
+                  startedAt: session.openedAt || new Date().toISOString(),
+                  hourlyRateToman: node.hourlyRateToman || 180000,
+                  controllersCount: 2,
+                  accumulatedMs: 0,
+                  isPaused: false,
+                }
+              : undefined);
+
+          if (!hasPackage && ps5Session) {
+            const ps5Fee = calculatePs5ChargeToman(ps5Session, Date.now());
+            if (ps5Fee > 0) {
+              const ps5Item: OrderItem = {
+                id: `ps5-hourly-${session.nodeId || newLabel}-${Date.now()}`,
+                menuItemId: 'modendo-ps5-charge',
+                itemNameSnapshot: `تعرفه بازی PS5 (${session.tableLabel || newLabel})`,
+                unitPriceSnapshotToman: ps5Fee,
+                quantity: 1,
+                subtotalToman: ps5Fee,
+                notes: 'شارژ زمانی بازی کنسول',
+              };
+              baseItems.unshift(ps5Item);
+            }
+          }
+          setCartItems(baseItems);
+          setCustomerName(session.customerName || '');
+          setOrderNotes(session.notes || '');
+          setDiscountToman(session.discountToman || 0);
+          setDiscountPercent(session.discountPercent || 0);
+        } else {
+          // No session or empty cart: CLEAR CART COMPLETELY
+          setCartItems([]);
+          setCustomerName(session?.customerName || '');
+          setOrderNotes(session?.notes || '');
+          setDiscountToman(0);
+          setDiscountPercent(0);
+        }
+      } catch (e) {
+        console.warn('[PosView] Failed loading session on switch:', e);
+        setCartItems([]);
+      }
+    }
+  }, [isModendo]);
 
   // Hydrate cart when switching bound table or entering Takeaway mode
   const boundNodeKey = boundTable ? boundTable.nodeId : 'TAKEAWAY';
@@ -235,70 +381,9 @@ export const PosView: React.FC<PosViewProps> = ({
 
   useEffect(() => {
     if (preselectedTableLabel) {
-      setTableLabel(preselectedTableLabel);
-      setOrderType('DINE_IN');
-      if (isModendo) {
-        try {
-          const raw =
-            localStorage.getItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY) ||
-            localStorage.getItem('modendo_floor_sessions_v1');
-          if (raw) {
-            const sessions: Record<string, TableSession> = JSON.parse(raw);
-            const node = MODENDO_FLOOR_NODES.find(
-              (n) => n.label === preselectedTableLabel || n.id === preselectedTableLabel
-            );
-            const session = node
-              ? sessions[node.id]
-              : Object.values(sessions).find((s) => s.tableLabel === preselectedTableLabel);
-            if (session) {
-              const baseItems = (session.cartItems || []).filter(
-                (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
-              );
-
-              // TASK 2: Prevent Double-Charging via Comprehensive Gaming Package Check
-              const hasPackage = hasGamingPackage(baseItems);
-
-              const ps5Session =
-                session.ps5Session ||
-                (node?.kind === 'PS5'
-                  ? {
-                      startedAt: session.openedAt || new Date().toISOString(),
-                      hourlyRateToman: node.hourlyRateToman || 180000,
-                      controllersCount: 2,
-                      accumulatedMs: 0,
-                      isPaused: false,
-                    }
-                  : undefined);
-
-              // Calculate and inject synthesized PS5 charge item if PS5 session exists and no package selected
-              if (!hasPackage && ps5Session) {
-                const ps5Fee = calculatePs5ChargeToman(ps5Session, Date.now());
-                if (ps5Fee > 0) {
-                  const ps5Item: OrderItem = {
-                    id: `ps5-hourly-${session.nodeId || preselectedTableLabel}-${Date.now()}`,
-                    menuItemId: 'modendo-ps5-charge',
-                    itemNameSnapshot: `تعرفه بازی PS5 (${session.tableLabel || preselectedTableLabel})`,
-                    unitPriceSnapshotToman: ps5Fee,
-                    quantity: 1,
-                    subtotalToman: ps5Fee,
-                    notes: 'شارژ زمانی بازی کنسول',
-                  };
-                  baseItems.unshift(ps5Item);
-                }
-              }
-              setCartItems(baseItems);
-              setCustomerName(session.customerName || '');
-              setOrderNotes(session.notes || '');
-              setDiscountToman(session.discountToman || 0);
-              setDiscountPercent(session.discountPercent || 0);
-            }
-          }
-        } catch (e) {
-          console.warn('Failed loading session for preselected table:', e);
-        }
-      }
+      switchActiveTable(preselectedTableLabel);
     }
-  }, [preselectedTableLabel, isModendo]);
+  }, [preselectedTableLabel, switchActiveTable]);
 
   // Persist open-tab edits live back to FloorPlan session
   useEffect(() => {
@@ -941,6 +1026,46 @@ export const PosView: React.FC<PosViewProps> = ({
     }
   };
 
+  const handleBackToFloorPlanAction = () => {
+    playPosBeep('click');
+    if (isModendo && tableLabel) {
+      try {
+        const raw = localStorage.getItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY);
+        if (raw) {
+          const sessions: Record<string, TableSession> = JSON.parse(raw);
+          const node = MODENDO_FLOOR_NODES.find((n) => n.label === tableLabel || n.id === tableLabel);
+          const nodeId = node?.id || tableLabel;
+          const cleanItems = cartItems.filter(
+            (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+          );
+          if (cleanItems.length > 0 || sessions[nodeId]) {
+            sessions[nodeId] = {
+              ...(sessions[nodeId] || {
+                nodeId,
+                tableLabel,
+                status: 'occupied',
+                openedAt: new Date().toISOString(),
+                kind: node?.kind || 'TABLE',
+              }),
+              cartItems: cleanItems,
+              customerName,
+              notes: orderNotes,
+              discountToman,
+              discountPercent,
+            };
+            localStorage.setItem(MODENDO_FLOOR_SESSIONS_STORAGE_KEY, JSON.stringify(sessions));
+            window.dispatchEvent(new CustomEvent('cafeos_floor_sessions_changed', { detail: sessions }));
+          }
+        }
+      } catch (e) {
+        console.warn('[PosView] Failed saving cart before back to floor:', e);
+      }
+    }
+    if (onBackToFloorPlan) {
+      onBackToFloorPlan();
+    }
+  };
+
   const totalCartCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
 
   return (
@@ -955,10 +1080,7 @@ export const PosView: React.FC<PosViewProps> = ({
                 {onBackToFloorPlan && (
                   <button
                     type="button"
-                    onClick={() => {
-                      playPosBeep('click');
-                      onBackToFloorPlan();
-                    }}
+                    onClick={handleBackToFloorPlanAction}
                     className="px-4 py-2 rounded-full liquid-glass-cta font-black text-xs flex items-center gap-1.5 cursor-pointer"
                   >
                     <ArrowRight className="w-4 h-4" />
@@ -1652,9 +1774,17 @@ export const PosView: React.FC<PosViewProps> = ({
             <span className="font-mono tabular-nums text-xs font-bold text-white/80">
               #{isModendo ? '10BM' : '100H'}-{activeShift ? activeShift.id.slice(-4) : '1488'}
             </span>
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 border border-cyan-500/40 text-[11px] font-bold text-cyan-300 shadow-sm">
+            <button
+              type="button"
+              onClick={() => {
+                playPosBeep('click');
+                setIsTabsModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/40 hover:border-cyan-400 text-[11px] font-bold text-cyan-300 shadow-sm cursor-pointer transition active:scale-95"
+              title="مشاهده لیست تب‌ها و میزهای باز"
+            >
               <span>🪑 تب‌ها: {cartItems.length > 0 ? '۱' : '۰'}</span>
-            </div>
+            </button>
           </div>
 
           {/* Dine-in vs Takeaway Toggle */}
@@ -1713,8 +1843,8 @@ export const PosView: React.FC<PosViewProps> = ({
             {orderType === 'DINE_IN' && (
               <select
                 value={tableLabel}
-                onChange={(e) => setTableLabel(e.target.value)}
-                className="text-[11px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5 focus:outline-none"
+                onChange={(e) => switchActiveTable(e.target.value)}
+                className="text-[11px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5 focus:outline-none cursor-pointer"
               >
                 {Array.from(
                   new Set([
@@ -2515,6 +2645,16 @@ export const PosView: React.FC<PosViewProps> = ({
           />
         </div>
       )}
+
+      {/* Live Open Tabs Modal */}
+      <OpenTabsModal
+        isOpen={isTabsModalOpen}
+        onClose={() => setIsTabsModalOpen(false)}
+        onSelectTab={(newTabLabel) => {
+          switchActiveTable(newTabLabel);
+        }}
+        tenantId={isModendo ? 'tenant-modendo-01' : tenant.id}
+      />
     </div>
   );
 };

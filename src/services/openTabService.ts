@@ -343,8 +343,23 @@ export class OpenTabService {
 
   public getAllActiveTabs(tenantId?: string): TableSessionTab[] {
     const tId = this.getActiveTenantId(tenantId);
+    try {
+      if (typeof localStorage !== 'undefined' && localStorage) {
+        const storedTabs = localStorage.getItem(OPEN_TAB_STORAGE_KEYS.TABLE_TABS(tId));
+        if (storedTabs) {
+          this.tenantTabs.set(tId, JSON.parse(storedTabs));
+        }
+      }
+    } catch (e) {
+      console.warn('[OpenTabService] getAllActiveTabs reload failed:', e);
+    }
     this.loadStateForTenant(tId);
-    return (this.tenantTabs.get(tId) || []).filter((t) => t.status !== 'settled');
+    const active = (this.tenantTabs.get(tId) || []).filter((t) => t.status !== 'settled');
+    return active;
+  }
+
+  public getOpenTabs(tenantId?: string): TableSessionTab[] {
+    return this.getAllActiveTabs(tenantId);
   }
 
   public getTabForTable(tableIdOrLabel: string, tenantId?: string): TableSessionTab | undefined {
