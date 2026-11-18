@@ -72,6 +72,47 @@ export interface TableSession {
  * - 6 Main Hall tables (M-01 to M-04, M-07, BAR-01)
  * - 5 Terrace tables (M-05, M-06, T-01 to T-03)
  */
+/**
+ * Modendo Display-Only Short Labels Mapping
+ * Internal IDs and data structures remain completely untouched.
+ * Aesthetic Short Names: M1–M6, T1–T3, B1–B6, PS1–PS4, بوفه
+ */
+export const MODENDO_DISPLAY_SHORT_NAMES: Record<string, string> = {
+  'M-01': 'M1',
+  'M-02': 'M2',
+  'M-03': 'M3',
+  'M-04': 'M4',
+  'M-05': 'M5',
+  'M-06': 'M6',
+  'M-07': 'M7',
+  'T-01': 'T1',
+  'T-02': 'T2',
+  'T-03': 'T3',
+  'BAR-1': 'B1',
+  'BAR-2': 'B2',
+  'BAR-3': 'B3',
+  'BAR-4': 'B4',
+  'BAR-5': 'B5',
+  'BAR-6': 'B6',
+  'BAR-01': 'بار',
+  'PS5-1': 'PS1',
+  'PS5-2': 'PS2',
+  'PS5-3': 'PS3',
+  'PS5-4': 'PS4',
+  'BUFFET': 'بوفه',
+};
+
+export const getDisplayShortLabel = (node: FloorNode): string => {
+  if (MODENDO_DISPLAY_SHORT_NAMES[node.id]) return MODENDO_DISPLAY_SHORT_NAMES[node.id];
+  if (MODENDO_DISPLAY_SHORT_NAMES[node.label]) return MODENDO_DISPLAY_SHORT_NAMES[node.label];
+  if (/بوفه/i.test(node.label) || /بوفه/i.test(node.titleFa || '')) return 'بوفه';
+  if (/^M-?0?(\d)/i.test(node.label)) return `M${node.label.match(/\d+/)?.[0] || ''}`;
+  if (/^T-?0?(\d)/i.test(node.label)) return `T${node.label.match(/\d+/)?.[0] || ''}`;
+  if (/^BAR-?0?(\d)/i.test(node.label) || /^بار\s*(\d)/i.test(node.label)) return `B${node.label.match(/\d+/)?.[0] || ''}`;
+  if (/^PS5?-?0?(\d)/i.test(node.label) || /PS5\s*#?(\d)/i.test(node.label)) return `PS${node.label.match(/\d+/)?.[0] || ''}`;
+  return node.label;
+};
+
 export const MODENDO_FLOOR_NODES: FloorNode[] = [
   // =========================================================================
   // 1. Main Hall (سالن اصلی - تراز بالا)
@@ -935,12 +976,13 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     const isMoveTargetCandidate = moveMode && Boolean(moveSourceId) && !isOccupied;
     const isMoveSourceCandidate = moveMode && !moveSourceId && isOccupied;
 
-    // Strict styling discipline matching Image 2 reference:
-    // OCCUPIED: glowing red capsule (bg-[#881337]/85 border-2 border-rose-500 shadow-[0_0_22px_rgba(239,68,68,0.6)] text-white)
-    // VACANT: glowing emerald capsule (bg-[#064E3B]/70 border border-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.45)] text-emerald-100)
-    // BAR: glowing amber counter (bg-[#78350F]/70 border-2 border-amber-500 shadow-[0_0_22px_rgba(245,158,11,0.5)])
+    // Visual-only glass cards matching premium aesthetic target:
+    // OCCUPIED: translucent rose glow (bg-gradient from rose-900 to rose-950, 1px rose-500 border, soft rose shadow)
+    // VACANT: translucent emerald glow (bg-gradient from emerald-900 to emerald-950, 1px emerald-400 border, soft emerald shadow)
+    // SELECTED: white ring (ring-2 ring-white border-2 border-white)
+    // MOVE-MODE: amber halo
     const surfaceStyle = isMoveSource
-      ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.6)] scale-[1.02]'
+      ? 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.6)] scale-[1.02] text-amber-100'
       : isMoveTargetCandidate
       ? 'bg-[#1B222C]/90 border-emerald-400/80 hover:border-emerald-300 ring-2 ring-emerald-400/50 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(16,185,129,0.3)]'
       : isMoveSourceCandidate
@@ -952,18 +994,18 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
       : isMergeChecked
       ? 'bg-cyan-500/20 border-cyan-300/80 ring-2 ring-cyan-400/60 shadow-[0_0_26px_-6px_rgba(34,211,238,0.55)]'
       : isSelected && isOccupied
-      ? 'bg-[#881337] border-2 border-white ring-2 ring-rose-400 shadow-[0_0_24px_rgba(239,68,68,0.8)] text-white scale-[1.02]'
+      ? 'bg-gradient-to-b from-[#881337]/90 to-[#4C0519]/95 border-2 border-white ring-2 ring-white shadow-[0_0_24px_rgba(255,255,255,0.45)] text-white scale-[1.02]'
       : isSelected
-      ? 'bg-emerald-500/40 border-white ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.5)] text-white'
+      ? 'bg-gradient-to-b from-[#064E3B]/80 to-[#022C22]/90 border-2 border-white ring-2 ring-white shadow-[0_0_24px_rgba(255,255,255,0.45)] text-white scale-[1.02]'
       : isPaymentPending
-      ? 'bg-amber-500/25 border-amber-400/80 shadow-[0_0_18px_rgba(245,158,11,0.45)] text-amber-100'
+      ? 'bg-gradient-to-b from-amber-500/25 to-amber-900/40 border border-amber-400/80 shadow-[0_0_18px_rgba(245,158,11,0.45)] text-amber-100'
       : variant === 'bar-counter'
-      ? 'bg-[#78350F]/70 border-2 border-amber-500 shadow-[0_0_22px_rgba(245,158,11,0.5)] text-amber-100'
+      ? 'bg-gradient-to-b from-[#78350F]/70 to-[#451A03]/80 border border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.4)] text-amber-100'
       : isOccupied
-      ? `bg-[#881337]/85 border-2 border-rose-500 shadow-[0_0_22px_rgba(239,68,68,0.6)] text-white ${
+      ? `bg-gradient-to-b from-[#881337]/80 to-[#4C0519]/90 border border-rose-500/80 shadow-[0_0_22px_rgba(244,63,94,0.5)] text-white ${
           accent ? `${accent.border} ring-1 ${accent.ring}` : ''
         }`
-      : 'bg-[#064E3B]/70 border border-emerald-400/80 shadow-[0_0_16px_rgba(16,185,129,0.45)] text-emerald-100 hover:border-emerald-300';
+      : 'bg-gradient-to-b from-[#064E3B]/65 to-[#022C22]/80 border border-emerald-400/40 shadow-[0_0_16px_rgba(16,185,129,0.3)] text-emerald-100 hover:border-emerald-300/70 hover:shadow-[0_0_22px_rgba(16,185,129,0.45)]';
 
     if (variant === 'round-3') {
       return (
@@ -987,9 +1029,9 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
             onDoubleClick={() => onConfirmTableOrder?.(node)}
             className={`w-[84px] h-[84px] rounded-full backdrop-blur-xl flex flex-col items-center justify-center p-2 select-none ${surfaceStyle} transition-all duration-200 cursor-pointer shadow-lg`}
           >
-            <span className="font-black text-xs text-white tracking-tight">{node.label}</span>
-            <span className="text-[10px] font-bold text-emerald-200 mt-0.5">
-              {isOccupied ? 'اشغال' : `${node.seats} نفره`}
+            <span className="font-black text-sm text-white tracking-tight">{getDisplayShortLabel(node)}</span>
+            <span className={`text-[10px] font-bold mt-0.5 ${isOccupied ? 'text-rose-200' : 'text-emerald-300'}`}>
+              {isOccupied ? 'اشغال' : 'خالی'}
             </span>
           </motion.div>
         </div>
@@ -1076,7 +1118,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                 ) : null}
 
                 <span className="font-black text-xs text-white truncate tracking-tight">
-                  {node.label}
+                  {getDisplayShortLabel(node)}
                 </span>
               </div>
 
@@ -1101,13 +1143,13 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
               )}
             </div>
 
-            {/* Center Area: Seats / Order status / Elapsed */}
+            {/* Center Area: Status / Order items / Elapsed (No seat-count text) */}
             <div className="my-auto py-1">
               {isOccupied ? (
                 <div className="flex flex-col gap-0.5 text-center">
                   <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-rose-200">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
-                    <span>{node.seats} نفر · اشغال</span>
+                    <span>اشغال</span>
                   </div>
                   {elapsedText && (
                     <span className="font-mono text-[10px] text-rose-200/90 tabular-nums">
@@ -1121,12 +1163,8 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                   )}
                 </div>
               ) : (
-                <div className="flex items-center justify-between text-[11px] text-emerald-200 px-0.5">
-                  <span className="flex items-center gap-1">
-                    <Users className="w-3 h-3 text-emerald-300" />
-                    <span>{node.seats} نفره</span>
-                  </span>
-                  <span className="text-[10px] font-bold text-emerald-300/80">خالی</span>
+                <div className="flex items-center justify-center text-[11px] text-emerald-200 px-0.5">
+                  <span className="text-[10px] font-bold text-emerald-300/90">آماده پذیرش</span>
                 </div>
               )}
             </div>
@@ -1186,8 +1224,8 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
     const isMoveTargetCandidate = moveMode && Boolean(moveSourceId) && !isOccupied;
     const isMoveSourceCandidate = moveMode && !moveSourceId && isOccupied;
 
-    // Free PS5: dark glass without green borders.
-    // Occupied PS5: emerald glow with live timer.
+    // Translucent glass pod with status glow:
+    // Occupied = rose glow (or live emerald active session); Free = emerald/obsidian glass; Selected = white ring
     const boothStyle = isMoveSource
       ? 'cursor-pointer bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 shadow-[0_0_24px_rgba(245,158,11,0.6)] scale-[1.02]'
       : isMoveTargetCandidate
@@ -1196,13 +1234,15 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
       ? 'cursor-pointer bg-[#10B981]/25 border-amber-400/80 hover:border-amber-300 ring-2 ring-amber-400/60 hover:scale-[1.02] text-white shadow-[0_0_18px_rgba(245,158,11,0.3)]'
       : mergeMode
       ? 'opacity-45 cursor-not-allowed border-white/10 bg-[#1B222C]/70 text-[#94A3B8]'
+      : isSelected && isOccupied
+      ? 'cursor-pointer bg-gradient-to-b from-[#881337]/90 to-[#4C0519]/95 border-2 border-white ring-2 ring-white shadow-[0_0_24px_rgba(255,255,255,0.45)] text-white scale-[1.02]'
       : isSelected
-      ? 'cursor-pointer bg-[#10B981]/25 border-white ring-2 ring-white shadow-[0_0_20px_rgba(255,255,255,0.4)] text-white'
+      ? 'cursor-pointer bg-gradient-to-b from-[#064E3B]/80 to-[#022C22]/90 border-2 border-white ring-2 ring-white shadow-[0_0_24px_rgba(255,255,255,0.45)] text-white scale-[1.02]'
       : isPaymentPending
       ? 'cursor-pointer bg-amber-500/15 border-amber-400/60 shadow-[0_0_16px_rgba(245,158,11,0.35)] text-amber-200'
       : isOccupied
-      ? 'cursor-pointer bg-[#10B981]/15 border border-[#10B981] shadow-[0_0_16px_rgba(16,185,129,0.35)] text-white'
-      : 'cursor-pointer bg-[#1B222C]/70 border border-white/10 hover:border-white/20 text-[#E2E8F0] shadow-sm';
+      ? 'cursor-pointer bg-gradient-to-b from-[#881337]/80 to-[#4C0519]/90 border border-rose-500/80 shadow-[0_0_22px_rgba(244,63,94,0.5)] text-white'
+      : 'cursor-pointer bg-gradient-to-b from-[#064E3B]/55 to-[#022C22]/75 border border-emerald-400/40 hover:border-emerald-300/70 shadow-[0_0_16px_rgba(16,185,129,0.3)] text-[#E2E8F0]';
 
     return (
       <motion.div
@@ -1229,15 +1269,15 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
           aria-hidden="true"
           className={`pointer-events-none absolute inset-x-2 top-0 h-[2px] rounded-full ${
             isOccupied
-              ? 'bg-gradient-to-r from-emerald-400/80 via-emerald-300 to-emerald-400/80'
-              : 'bg-gradient-to-r from-transparent via-white/20 to-transparent'
+              ? 'bg-gradient-to-r from-rose-400/80 via-rose-300 to-rose-400/80'
+              : 'bg-gradient-to-r from-emerald-400/60 via-emerald-300 to-emerald-400/60'
           }`}
         />
 
-        {/* Top row: Station ID + Settings Gear */}
+        {/* Top row: Station Short Label + Settings Gear */}
         <div className="flex items-center justify-between gap-1">
-          <span className="font-mono font-black text-[11px] text-white tracking-tight">
-            {node.label}
+          <span className="font-mono font-black text-xs text-white tracking-tight">
+            {getDisplayShortLabel(node)}
           </span>
           {!mergeMode && (
             <button
@@ -1695,17 +1735,17 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                                   : isMergeChecked
                                   ? 'bg-cyan-500/25 border-cyan-300 ring-2 ring-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.5)] text-cyan-100'
                                   : isSelected && isOccupied
-                                  ? 'bg-rose-900/90 border-2 border-white ring-2 ring-rose-400 shadow-[0_0_16px_rgba(239,68,68,0.7)] text-white'
+                                  ? 'bg-gradient-to-b from-[#881337]/90 to-[#4C0519]/95 border-2 border-white ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.6)] text-white'
                                   : isSelected
-                                  ? 'bg-emerald-500/40 border-white ring-2 ring-white shadow-[0_0_14px_rgba(255,255,255,0.6)] text-white'
+                                  ? 'bg-gradient-to-b from-[#064E3B]/80 to-[#022C22]/90 border-2 border-white ring-2 ring-white shadow-[0_0_16px_rgba(255,255,255,0.6)] text-white'
                                   : isOccupied
-                                  ? 'bg-[#881337]/90 border border-rose-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
-                                  : 'bg-[#064E3B]/60 hover:bg-[#064E3B]/80 border-emerald-400/60 text-emerald-100 shadow-sm'
+                                  ? 'bg-gradient-to-b from-[#881337]/90 to-[#4C0519]/90 border border-rose-500/80 text-white shadow-[0_0_12px_rgba(239,68,68,0.5)]'
+                                  : 'bg-gradient-to-b from-[#064E3B]/60 to-[#022C22]/80 hover:bg-[#064E3B]/80 border border-emerald-400/40 text-emerald-100 shadow-[0_0_10px_rgba(16,185,129,0.25)]'
                               }`}
                               title={`${barNode.titleFa} ${isOccupied ? '(اشغال)' : '(آزاد)'}`}
                             >
                               <span className="text-[10px] font-black leading-tight">
-                                {isMerged ? `🔗 B${idx + 1}` : `B-${idx + 1}`}
+                                {isMerged ? `🔗 B${idx + 1}` : `B${idx + 1}`}
                               </span>
                               <span className={`text-[8.5px] font-bold ${isOccupied ? 'text-rose-200' : 'text-emerald-300/80'}`}>
                                 {isOccupied ? 'اشغال' : 'آزاد'}

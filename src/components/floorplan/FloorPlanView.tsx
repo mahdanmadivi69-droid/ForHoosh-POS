@@ -991,9 +991,9 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
           </div>
 
           {/* Customer Detail Inputs (Interactive) */}
-          <div className="px-4 py-2.5 border-b border-white/[0.08] bg-black/15 space-y-2 text-xs">
-            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
-              <span className="text-white/40">👤</span>
+          <div className="px-4 py-2.5 border-b border-white/[0.06] bg-black/15 space-y-2 text-xs">
+            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5 focus-within:border-emerald-400/40 focus-within:ring-1 focus-within:ring-emerald-400/20 transition-all duration-150">
+              <span className="text-white/40 text-[11px]">👤</span>
               <input
                 type="text"
                 value={activeTableSession?.customerName || draftCustomerName}
@@ -1004,13 +1004,13 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                 placeholder="نام مشتری / مهمان..."
                 className="bg-transparent text-white placeholder:text-[#94A3B8]/60 text-xs w-full focus:outline-none"
               />
-              <span className="text-[11px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5 shrink-0">
+              <span className="text-[10px] text-emerald-300 font-bold bg-[#0A1F18] border border-emerald-500/40 rounded-lg px-2 py-0.5 shrink-0">
                 {selectedNode.label}
               </span>
             </div>
 
-            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
-              <span className="text-white/40">📞</span>
+            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5 focus-within:border-emerald-400/40 focus-within:ring-1 focus-within:ring-emerald-400/20 transition-all duration-150">
+              <span className="text-white/40 text-[11px]">📞</span>
               <input
                 type="text"
                 value={activeTableSession?.customerPhone || ''}
@@ -1020,8 +1020,8 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
               />
             </div>
 
-            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5">
-              <span className="text-white/40">📝</span>
+            <div className="flex items-center gap-2 rounded-xl bg-black/30 border border-white/[0.07] px-3 py-1.5 focus-within:border-emerald-400/40 focus-within:ring-1 focus-within:ring-emerald-400/20 transition-all duration-150">
+              <span className="text-white/40 text-[11px]">📝</span>
               <input
                 type="text"
                 value={activeTableSession?.notes || draftNotes}
@@ -1040,7 +1040,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             {activeTableSession?.cartItems && activeTableSession.cartItems.length > 0 ? (
               <>
                 <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-300 px-1 pb-1 border-b border-white/[0.06]">
-                  <span>⏱️ زمان باز بودن میز:</span>
+                  <span className="text-[11px] text-white/70">⏱️ زمان باز بودن میز:</span>
                   <span className="tabular-nums">
                     {activeTableSession.openedAt
                       ? formatElapsedTimer(Math.max(0, nowMs - new Date(activeTableSession.openedAt).getTime()))
@@ -1086,13 +1086,13 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
                   </span>
                 </div>
 
-                <div className="text-[11px] text-[#94A3B8]">
+                <div className="text-[10.5px] text-[#94A3B8]/80">
                   ظرفیت: {selectedNode.seats} نفر · زون: {selectedNode.zone}
                 </div>
 
                 {activeTableSession?.openedAt && (
                   <div className="flex items-center justify-between text-xs font-mono font-bold text-emerald-300 pt-1 border-t border-white/5">
-                    <span>⏱️ زمان جاری:</span>
+                    <span className="text-[11px] text-white/70">⏱️ زمان جاری:</span>
                     <span className="tabular-nums">
                       {formatElapsedTimer(Math.max(0, nowMs - new Date(activeTableSession.openedAt).getTime()))}
                     </span>
@@ -1109,32 +1109,32 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
           </div>
 
           {/* Quick discount pills */}
-          <div className="px-4 pt-2.5 pb-2 border-t border-white/[0.08] bg-black/15">
+          <div className="px-4 py-2 border-t border-white/[0.06] bg-black/15">
             <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
-              <span className="py-1.5 text-[11px] rounded-full text-center bg-[#991B1B] text-white border border-[#DC2626]">
+              <span className="py-1.5 text-[10.5px] rounded-xl text-center bg-[#991B1B] text-white border border-[#DC2626]/70 shadow-sm transition-all duration-150">
                 ۰٪
               </span>
-              <span className="py-1.5 text-[11px] rounded-full text-center bg-[#1B222C] text-[#94A3B8]">
+              <span className="py-1.5 text-[10.5px] rounded-xl text-center bg-white/[0.05] text-[#94A3B8] border border-white/[0.08] transition-all duration-150">
                 ۵٪ ویژه
               </span>
-              <span className="py-1.5 text-[11px] rounded-full text-center bg-[#1B222C] text-[#94A3B8]">
+              <span className="py-1.5 text-[10.5px] rounded-xl text-center bg-white/[0.05] text-[#94A3B8] border border-white/[0.08] transition-all duration-150">
                 ۱۰٪ باریستا
               </span>
-              <span className="py-1.5 text-[11px] rounded-full text-center bg-[#1B222C] text-[#94A3B8]">
+              <span className="py-1.5 text-[10.5px] rounded-xl text-center bg-white/[0.05] text-[#94A3B8] border border-white/[0.08] transition-all duration-150">
                 ۱۵٪ همکار
               </span>
             </div>
           </div>
 
           {/* Price & Action Controls */}
-          <div className="p-4 border-t border-white/[0.08] bg-black/25 space-y-3">
+          <div className="p-4 border-t border-white/[0.06] bg-black/25 space-y-3">
             <div className="flex justify-between items-baseline">
-              <span className="text-sm font-extrabold text-white">مبلغ نهایی:</span>
-              <div className="text-right">
-                <span className="text-xl font-black text-emerald-300 num-heavy tabular-nums">
+              <span className="text-xs font-semibold text-white/70 tracking-wide">مبلغ نهایی:</span>
+              <div className="text-right flex items-baseline gap-1">
+                <span className="text-2xl font-black text-emerald-400 num-heavy tabular-nums tracking-tight">
                   {formatToman(sessionTotal || 0)}
                 </span>
-                <span className="text-xs text-[#94A3B8] mr-1">تومان</span>
+                <span className="text-[11px] text-[#94A3B8]/90 font-medium">تومان</span>
               </div>
             </div>
 
