@@ -1299,94 +1299,65 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             )}
           </div>
 
-          {/* Action Buttons: Merge Tables + Takeaway + Back to POS */}
-          <div className="flex items-center gap-2 mr-auto">
-            {/* Merge Tables Button */}
-            <button
-              type="button"
-              onClick={() => {
-                playPosBeep('click');
-                setMoveMode(false);
-                setMoveSourceId(null);
-                setMergeMode((prev) => {
-                  if (prev) setMergeSelectedIds([]);
-                  return !prev;
-                });
-              }}
-              className={`rounded-full px-4 py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
-                mergeMode
-                  ? 'bg-cyan-500/20 border border-cyan-300/70 text-cyan-200 shadow-[0_0_20px_-4px_rgba(34,211,238,0.55)]'
-                  : 'liquid-glass-pill text-cyan-200 hover:text-white'
-              }`}
-            >
-              <Link2 className="w-3.5 h-3.5 text-cyan-300" />
-              <span>{mergeMode ? 'لغو ادغام' : 'ادغام میزها'}</span>
-            </button>
-
-            {/* Move Table Button */}
-            <button
-              type="button"
-              onClick={() => {
-                playPosBeep('click');
-                setMergeMode(false);
-                setMergeSelectedIds([]);
-                setMoveMode((prev) => {
-                  if (prev) setMoveSourceId(null);
-                  return !prev;
-                });
-              }}
-              className={`rounded-full px-4 py-2 text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
-                moveMode
-                  ? 'bg-amber-500/20 border border-amber-300/70 text-amber-200 shadow-[0_0_20px_-4px_rgba(245,158,11,0.55)]'
-                  : 'liquid-glass-pill text-amber-200 hover:text-white'
-              }`}
-            >
-              <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
-              <span>{moveMode ? 'لغو جابجایی' : 'جابجایی میز'}</span>
-            </button>
-
-            {/* Takeaway Order Button */}
-            <button
-              type="button"
-              onClick={() => {
-                playPosBeep('click');
-                onSelectTableForOrder('بیرون‌بر');
-              }}
-              className="liquid-glass-cta rounded-full px-4 py-2 font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <ShoppingBag className="w-3.5 h-3.5" />
-              <span>سفارش بیرون‌بر</span>
-            </button>
-
-            {/* Back to Hub Button */}
-            {onBackToHub && (
+            {/* Action Buttons: Merge Tables + Move Table + Takeaway */}
+            <div className="flex items-center gap-1.5 md:gap-2 mr-auto flex-nowrap">
+              {/* Merge Tables Button */}
               <button
                 type="button"
                 onClick={() => {
                   playPosBeep('click');
-                  onBackToHub();
+                  setMoveMode(false);
+                  setMoveSourceId(null);
+                  setMergeMode((prev) => {
+                    if (prev) setMergeSelectedIds([]);
+                    return !prev;
+                  });
                 }}
-                className="liquid-glass-pill rounded-full px-3.5 py-2 font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 text-[#cbd5e1] hover:text-white"
-                title="مرکز عملیات و ماژول‌ها"
+                className={`rounded-full px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
+                  mergeMode
+                    ? 'bg-cyan-500/20 border border-cyan-300/70 text-cyan-200 shadow-[0_0_20px_-4px_rgba(34,211,238,0.55)]'
+                    : 'liquid-glass-pill text-cyan-200 hover:text-white'
+                }`}
               >
-                <LayoutGrid className="w-3.5 h-3.5 text-[#10B981]" />
-                <span>ماژول‌ها</span>
+                <Link2 className="w-3.5 h-3.5 text-cyan-300" />
+                <span>{mergeMode ? 'لغو ادغام' : 'ادغام میزها'}</span>
               </button>
-            )}
 
-            {/* Back to POS Button */}
-            <button
-              type="button"
-              onClick={() => {
-                playPosBeep('click');
-                onBackToPos();
-              }}
-              className="px-4 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white rounded-full text-xs font-bold flex items-center gap-1 shadow-md transition-colors cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <span>صندوق</span>
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-          </div>
+              {/* Move Table Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  playPosBeep('click');
+                  setMergeMode(false);
+                  setMergeSelectedIds([]);
+                  setMoveMode((prev) => {
+                    if (prev) setMoveSourceId(null);
+                    return !prev;
+                  });
+                }}
+                className={`rounded-full px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0 transition-all ${
+                  moveMode
+                    ? 'bg-amber-500/20 border border-amber-300/70 text-amber-200 shadow-[0_0_20px_-4px_rgba(245,158,11,0.55)]'
+                    : 'liquid-glass-pill text-amber-200 hover:text-white'
+                }`}
+              >
+                <ArrowLeftRight className="w-3.5 h-3.5 text-amber-400" />
+                <span>{moveMode ? 'لغو جابجایی' : 'جابجایی میز'}</span>
+              </button>
+
+              {/* Takeaway Order Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  playPosBeep('click');
+                  onSelectTableForOrder('بیرون‌بر');
+                }}
+                className="liquid-glass-cta rounded-full px-3.5 py-1.5 font-bold text-xs flex items-center gap-1.5 cursor-pointer whitespace-nowrap shrink-0"
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>سفارش بیرون‌بر</span>
+              </button>
+            </div>
         </div>
 
         {/* Floating Merge Toolbar (Active during Merge Mode) */}
