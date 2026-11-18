@@ -121,7 +121,7 @@ export const AppLauncherHub: React.FC<AppLauncherHubProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#070A0F] text-white flex flex-col justify-between p-4 sm:p-6 md:p-8 select-none relative overflow-x-hidden">
+    <div className="h-screen max-h-screen w-full bg-[#070A0F] text-white flex flex-col justify-between p-4 sm:p-6 md:p-8 select-none relative overflow-y-auto overflow-x-hidden">
       {/* Background Ambient Mesh */}
       <div className="absolute inset-0 pointer-events-none opacity-40">
         <div className="absolute top-10 right-10 w-[500px] h-[500px] rounded-full bg-[#8C1318]/40 blur-[140px]" />

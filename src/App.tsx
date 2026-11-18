@@ -688,7 +688,7 @@ function App() {
       />
 
       {/* Modendo Receipt History, Reprint & PIN-Gated Void Modal */}
-      {activeTenant.id === 'modendo' && (
+      {isModendoTenant && (
         <ModendoReceiptHistoryModal
           isOpen={isReceiptHistoryOpen}
           onClose={() => setIsReceiptHistoryOpen(false)}

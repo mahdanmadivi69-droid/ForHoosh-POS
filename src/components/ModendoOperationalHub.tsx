@@ -205,10 +205,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   return (
     <div
       dir="rtl"
-      className="min-h-screen w-full bg-[#06120F] text-white flex flex-col justify-between p-4 md:p-8 select-none overflow-y-auto font-sans relative pb-28 liquid-ambient-canvas"
+      className="h-screen max-h-screen w-full bg-[#06120F] text-white flex flex-col justify-between p-4 md:p-8 select-none overflow-y-auto overflow-x-hidden font-sans relative pb-32 liquid-ambient-canvas"
     >
       {/* Top Operational Header */}
-      <header className="relative z-10 max-w-6xl w-full mx-auto rounded-3xl liquid-glass-shell p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 shadow-2xl">
+      <header className="relative z-10 max-w-6xl w-full mx-auto rounded-3xl liquid-glass-shell p-4 md:p-5 flex flex-wrap items-center justify-between gap-4 shadow-2xl shrink-0">
         {/* Brand & Hub Title */}
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-[#10B981]/20 border border-[#10B981]/40 flex items-center justify-center text-[#10B981] shadow-[0_0_20px_rgba(16,185,129,0.3)]">
@@ -700,7 +700,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
       </main>
 
       {/* Bottom Status Footer */}
-      <footer className="relative z-10 max-w-6xl w-full mx-auto text-center py-2 text-xs text-[#64748b] flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-3">
+      <footer className="relative z-10 max-w-6xl w-full mx-auto text-center py-2 text-xs text-[#64748b] flex flex-wrap items-center justify-between gap-2 border-t border-white/[0.06] pt-3 shrink-0 mb-8">
         <div className="flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-[#10B981]" />
           <span>نسخه مودندو ۰.۱۶.۰ (Gaming Lounge Edition)</span>
