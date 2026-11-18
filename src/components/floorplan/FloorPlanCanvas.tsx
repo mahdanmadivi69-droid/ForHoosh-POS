@@ -383,13 +383,18 @@ export function calculatePs5ChargeToman(ps5?: Ps5SessionState, nowMs = Date.now(
 
 export function getSessionTotalToman(session?: TableSession, nowMs = Date.now()): number {
   if (!session) return 0;
-  const nonPs5Items = session.ps5Session
-    ? (session.cartItems || []).filter(
-        (i) => i.menuItemId !== 'modendo-ps5-charge' && !i.id.startsWith('ps5-hourly-')
-      )
-    : (session.cartItems || []);
+  const nonPs5Items = (session.cartItems || []).filter(
+    (i) => i.menuItemId !== 'modendo-ps5-charge' && !i.id.startsWith('ps5-hourly-')
+  );
+  const hasPs5Package = nonPs5Items.some(
+    (item) =>
+      item.menuItemId?.toLowerCase().includes('ps5') ||
+      item.menuItemId?.toLowerCase().includes('playstation') ||
+      item.itemNameSnapshot?.includes('PS5') ||
+      item.itemNameSnapshot?.includes('پلی')
+  );
   const { netTotalToman } = calculateOrderTotals(nonPs5Items, session.discountToman || 0);
-  const ps5Fee = session.ps5Session ? calculatePs5ChargeToman(session.ps5Session, nowMs) : 0;
+  const ps5Fee = hasPs5Package || !session.ps5Session ? 0 : calculatePs5ChargeToman(session.ps5Session, nowMs);
   return netTotalToman + ps5Fee;
 }
 

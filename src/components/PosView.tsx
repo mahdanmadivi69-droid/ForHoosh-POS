@@ -254,9 +254,31 @@ export const PosView: React.FC<PosViewProps> = ({
               const baseItems = (session.cartItems || []).filter(
                 (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
               );
-              // Calculate and inject synthesized PS5 charge item if PS5 session exists
-              if (session.ps5Session) {
-                const ps5Fee = calculatePs5ChargeToman(session.ps5Session, Date.now());
+
+              // TASK 2: Prevent Double-Charging (The Package Logic)
+              const hasPs5Package = baseItems.some(
+                (item) =>
+                  item.menuItemId?.toLowerCase().includes('ps5') ||
+                  item.menuItemId?.toLowerCase().includes('playstation') ||
+                  item.itemNameSnapshot?.includes('PS5') ||
+                  item.itemNameSnapshot?.includes('پلی')
+              );
+
+              const ps5Session =
+                session.ps5Session ||
+                (node?.kind === 'PS5'
+                  ? {
+                      startedAt: session.openedAt || new Date().toISOString(),
+                      hourlyRateToman: node.hourlyRateToman || 180000,
+                      controllersCount: 2,
+                      accumulatedMs: 0,
+                      isPaused: false,
+                    }
+                  : undefined);
+
+              // Calculate and inject synthesized PS5 charge item if PS5 session exists and no package selected
+              if (!hasPs5Package && ps5Session) {
+                const ps5Fee = calculatePs5ChargeToman(ps5Session, Date.now());
                 if (ps5Fee > 0) {
                   const ps5Item: OrderItem = {
                     id: `ps5-hourly-${session.nodeId || preselectedTableLabel}-${Date.now()}`,
@@ -477,14 +499,25 @@ export const PosView: React.FC<PosViewProps> = ({
     playPosBeep('click');
 
     setCartItems((prev) => {
-      const existing = prev.find(
+      // If adding a PS5 package, purge synthesized hourly fee to prevent double charging
+      const isPs5Package =
+        isModendo &&
+        (item.id?.toLowerCase().includes('ps5') ||
+          item.id?.toLowerCase().includes('playstation') ||
+          item.nameFa?.includes('PS5') ||
+          item.nameFa?.includes('پلی'));
+      const cleanPrev = isPs5Package
+        ? prev.filter((i) => i.menuItemId !== 'modendo-ps5-charge' && !i.id.startsWith('ps5-hourly-'))
+        : prev;
+
+      const existing = cleanPrev.find(
         (i) => i.menuItemId === item.id && (!i.modifiers || i.modifiers.length === 0)
       );
       if (existing) {
         if (item.currentStock !== undefined && existing.quantity >= item.currentStock) {
-          return prev;
+          return cleanPrev;
         }
-        return prev.map((i) =>
+        return cleanPrev.map((i) =>
           i.id === existing.id
             ? {
                 ...i,
@@ -495,7 +528,7 @@ export const PosView: React.FC<PosViewProps> = ({
         );
       }
       return [
-        ...prev,
+        ...cleanPrev,
         {
           id: `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
           menuItemId: item.id,
@@ -518,8 +551,17 @@ export const PosView: React.FC<PosViewProps> = ({
     const modifiersDelta = selectedModifiers.reduce((sum, m) => sum + m.priceDeltaToman, 0);
     const unitPrice = item.priceToman + modifiersDelta;
 
+    const isPs5Package =
+      isModendo &&
+      (item.id?.toLowerCase().includes('ps5') ||
+        item.id?.toLowerCase().includes('playstation') ||
+        item.nameFa?.includes('PS5') ||
+        item.nameFa?.includes('پلی'));
+
     setCartItems((prev) => [
-      ...prev,
+      ...(isPs5Package
+        ? prev.filter((i) => i.menuItemId !== 'modendo-ps5-charge' && !i.id.startsWith('ps5-hourly-'))
+        : prev),
       {
         id: `item-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         menuItemId: item.id,

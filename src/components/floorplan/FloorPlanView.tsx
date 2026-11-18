@@ -634,13 +634,37 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
       alert('شیفت کاری فعال نیست. لطفاً ابتدا شیفت را باز کنید.');
       return;
     }
-    const ps5Fee = activeTableSession?.ps5Session
-      ? calculatePs5ChargeToman(activeTableSession.ps5Session, nowMs)
-      : 0;
-    const finalAmount = sessionTotal || 0;
-    const baseItems = activeTableSession?.cartItems || [];
-    const items = [...baseItems];
+    const rawItems = activeTableSession?.cartItems || [];
+    const baseItems = rawItems.filter(
+      (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+    );
 
+    // TASK 2: Prevent Double-Charging (The Package Logic)
+    const hasPs5Package = baseItems.some(
+      (item) =>
+        item.menuItemId?.toLowerCase().includes('ps5') ||
+        item.menuItemId?.toLowerCase().includes('playstation') ||
+        item.itemNameSnapshot?.includes('PS5') ||
+        item.itemNameSnapshot?.includes('پلی')
+    );
+
+    const ps5Session =
+      activeTableSession?.ps5Session ||
+      (selectedNode.kind === 'PS5' && activeTableSession
+        ? {
+            startedAt: activeTableSession.openedAt || new Date().toISOString(),
+            hourlyRateToman: selectedNode.hourlyRateToman || 180000,
+            controllersCount: 2,
+            accumulatedMs: 0,
+            isPaused: false,
+          }
+        : undefined);
+
+    const ps5Fee = hasPs5Package || !ps5Session
+      ? 0
+      : calculatePs5ChargeToman(ps5Session, Date.now());
+
+    const items = [...baseItems];
     if (ps5Fee > 0) {
       items.push({
         id: `ps5-hourly-${selectedNode.id}-${Date.now()}`,
@@ -655,6 +679,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
 
     const grossAmount = items.reduce((sum: number, it: any) => sum + (it.subtotalToman || 0), 0);
     const discountAmount = activeTableSession?.discountToman || 0;
+    const finalAmount = Math.max(0, grossAmount - discountAmount);
 
     if (onOrderCompleted) {
       const orderPayload: any = {
@@ -725,13 +750,50 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
         : nodeOrLabel;
 
     if (node) {
-      const session = sessions[node.id];
-      if (session?.ps5Session) {
-        const ps5Fee = calculatePs5ChargeToman(session.ps5Session, nowMs);
+      let session = sessions[node.id];
+      if (!session) {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY_SESSIONS);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            session = parsed[node.id];
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const ps5Session =
+        session?.ps5Session ||
+        (node.kind === 'PS5' && session
+          ? {
+              startedAt: session.openedAt || new Date().toISOString(),
+              hourlyRateToman: node.hourlyRateToman || 180000,
+              controllersCount: 2,
+              accumulatedMs: 0,
+              isPaused: false,
+            }
+          : undefined);
+
+      if (session && ps5Session) {
+        const rawItems = session.cartItems || [];
+        const baseItems = rawItems.filter(
+          (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
+        );
+
+        // TASK 2: Prevent Double-Charging (The Package Logic)
+        const hasPs5Package = baseItems.some(
+          (item) =>
+            item.menuItemId?.toLowerCase().includes('ps5') ||
+            item.menuItemId?.toLowerCase().includes('playstation') ||
+            item.itemNameSnapshot?.includes('PS5') ||
+            item.itemNameSnapshot?.includes('پلی')
+        );
+
+        const ps5Fee = hasPs5Package ? 0 : calculatePs5ChargeToman(ps5Session, Date.now());
+
+        const updatedCartItems = [...baseItems];
         if (ps5Fee > 0) {
-          const baseItems = (session.cartItems || []).filter(
-            (it) => it.menuItemId !== 'modendo-ps5-charge' && !it.id.startsWith('ps5-hourly-')
-          );
           const ps5Item: OrderItem = {
             id: `ps5-hourly-${node.id}-${Date.now()}`,
             menuItemId: 'modendo-ps5-charge',
@@ -741,21 +803,24 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             subtotalToman: ps5Fee,
             notes: 'شارژ زمانی بازی کنسول',
           };
-          const updatedSessions: Record<string, TableSession> = {
-            ...sessions,
-            [node.id]: {
-              ...session,
-              cartItems: [ps5Item, ...baseItems],
-            },
-          };
-          try {
-            localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(updatedSessions));
-            window.dispatchEvent(
-              new CustomEvent('cafeos_floor_sessions_changed', { detail: updatedSessions })
-            );
-          } catch (e) {
-            console.warn('[FloorPlanView] Error saving PS5 fee to session:', e);
-          }
+          updatedCartItems.unshift(ps5Item);
+        }
+
+        const updatedSessions: Record<string, TableSession> = {
+          ...sessions,
+          [node.id]: {
+            ...session,
+            ps5Session,
+            cartItems: updatedCartItems,
+          },
+        };
+        try {
+          localStorage.setItem(STORAGE_KEY_SESSIONS, JSON.stringify(updatedSessions));
+          window.dispatchEvent(
+            new CustomEvent('cafeos_floor_sessions_changed', { detail: updatedSessions })
+          );
+        } catch (e) {
+          console.warn('[FloorPlanView] Error saving PS5 fee to session:', e);
         }
       }
       onSelectTableForOrder(node.label);
