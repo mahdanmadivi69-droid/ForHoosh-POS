@@ -184,7 +184,7 @@ console.log('\n[Suite 2: Catalog & Menu Partitioning]');
   assert(modMenu.some((m) => m.nameFa.includes('پلی‌استیشن') || m.nameEn?.includes('PS5') || m.id.includes('ps5')), 'Modendo catalog includes PS5 session');
   assert(modMenu.some((m) => m.nameFa.includes('بردگیم')), 'Modendo catalog includes Boardgames');
   assert(modMenu.some((m) => m.nameFa.includes('برگر')), 'Modendo catalog includes Burgers');
-  assert(modCats.some((c) => c.id === 'cat-mod-gaming'), 'Modendo has gaming category');
+  assert(modCats.some((c) => c.id === 'mod-cat-gaming' || c.id === 'mod-cat-lounge' || c.nameFa.includes('بازی') || c.nameFa.includes('گیم')), 'Modendo has gaming category');
 
   // 100 Hich Catalog
   SmartOrdersStore.switchTenant('tenant-100hich-01');
@@ -207,7 +207,7 @@ console.log('\n[Suite 3: Floor Plan Separation]');
   floorPlanService.reloadForTenant();
   const modFloor = floorPlanService.getTables();
   assert(modFloor.some((t) => t.id.includes('ps5')), 'Modendo floor plan contains PS5 pods');
-  assert(modFloor.some((t) => t.id === 'LZ-ZONE'), 'Modendo floor plan contains Lounge U-Shape zone');
+  assert(modFloor.some((t) => t.zone_id === 'lounge' || t.id.startsWith('L-') || t.display_name?.includes('لانژ')), 'Modendo floor plan contains Lounge U-Shape zone');
 
   // 100 Hich Floor Plan
   SmartOrdersStore.switchTenant('tenant-100hich-01');

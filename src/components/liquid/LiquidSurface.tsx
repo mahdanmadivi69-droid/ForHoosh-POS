@@ -13,9 +13,10 @@ export interface LiquidSurfaceProps {
   className?: string;
   style?: React.CSSProperties;
   children?: React.ReactNode;
-  onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
-  onDoubleClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
-  onPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onClick?: (e: React.MouseEvent<any>) => void;
+  onDoubleClick?: (e: React.MouseEvent<any>) => void;
+  onPointerDown?: (e: React.PointerEvent<any>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<any>) => void;
   role?: string;
   tabIndex?: number;
   id?: string;
@@ -66,6 +67,7 @@ export const LiquidSurface: React.FC<LiquidSurfaceProps> = ({
   onClick,
   onDoubleClick,
   onPointerDown,
+  onKeyDown,
   role,
   tabIndex,
   id,
@@ -254,8 +256,10 @@ export const LiquidSurface: React.FC<LiquidSurfaceProps> = ({
       ? motion.aside
       : motion.div;
 
+  const MotionComp = Component as any;
+
   return (
-    <Component
+    <MotionComp
       ref={containerRef}
       id={id}
       dir={dir}
@@ -268,6 +272,7 @@ export const LiquidSurface: React.FC<LiquidSurfaceProps> = ({
       data-testid={dataTestId}
       onClick={onClick}
       onDoubleClick={onDoubleClick}
+      onKeyDown={onKeyDown}
       onPointerEnter={handlePointerEnter}
       onPointerLeave={handlePointerLeave}
       onPointerMove={handlePointerMove}
@@ -326,7 +331,7 @@ export const LiquidSurface: React.FC<LiquidSurfaceProps> = ({
 
       {/* 3. Surface Content */}
       {children}
-    </Component>
+    </MotionComp>
   );
 };
 export default LiquidSurface;

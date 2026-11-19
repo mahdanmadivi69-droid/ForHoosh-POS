@@ -1,4 +1,5 @@
 ﻿import express from 'express';
+// @ts-ignore
 import cors from 'cors';
 import { Pool } from 'pg';
 import { createAuthRouter } from './authRoutes.js';

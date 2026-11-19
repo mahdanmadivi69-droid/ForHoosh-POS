@@ -110,8 +110,8 @@ expectedTables.forEach((tbl) => {
   assert(modendoTableNames.includes(tbl), `Modendo database includes table: ${tbl}`);
 });
 
-assertEqual(hichDb.verno, 3, 'Dexie schema version is exactly 3 (preserves all upgrades)');
-assertEqual(modendoDb.verno, 3, 'Modendo Dexie schema version is exactly 3');
+assertEqual(hichDb.verno, 4, 'Dexie schema version is exactly 4 (preserves all upgrades)');
+assertEqual(modendoDb.verno, 4, 'Modendo Dexie schema version is exactly 4');
 
 // ============================================================================
 // Suite 3: Primary Key Collision Risk Verification

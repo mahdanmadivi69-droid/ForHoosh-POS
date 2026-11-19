@@ -6,9 +6,9 @@
   "homepage": "https://mahdanmadivi69-droid.github.io/ForHoosh-POS",
   "type": "module",
   "scripts": {
-    "dev": "node --import tsx -e \"process.env.PORT='3002'; process.env.VITE_TENANT_ID='tenant-modendo-01'; import('./server.ts')\"",
+    "dev": "tsx scripts/dev-modendo.ts",
     "dev:100hich": "node --import tsx -e \"process.env.PORT='3001'; process.env.VITE_TENANT_ID='tenant-100hich-01'; import('./server.ts')\"",
-    "dev:modendo": "node --import tsx -e \"process.env.PORT='3002'; process.env.VITE_TENANT_ID='tenant-modendo-01'; import('./server.ts')\"",
+    "dev:modendo": "tsx scripts/dev-modendo.ts",
     "dev:concurrent": "node -e \"import('child_process').then(({ spawn }) => { spawn('npm', ['run', 'dev:100hich'], { stdio: 'inherit', shell: true }); spawn('npm', ['run', 'dev:modendo'], { stdio: 'inherit', shell: true }); })\"",
     "dev:all": "npm run dev:concurrent",
     "start": "node server.ts",

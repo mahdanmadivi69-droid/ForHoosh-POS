@@ -23,6 +23,11 @@ import {
   UtensilsCrossed,
   Receipt,
   DollarSign,
+  Armchair,
+  User,
+  Phone,
+  FileText,
+  Clock,
 } from 'lucide-react';
 import {
   FloorPlanCanvas,

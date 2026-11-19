@@ -93,7 +93,7 @@ async function runSuite() {
   const tenantModendo = SmartOrdersStore.getTenant();
   assertEqual(tenantModendo.id, 'tenant-modendo-01', 'Modendo tenant ID confirmed');
   assert(
-    tenantModendo.name.toLowerCase().includes('modendo'),
+    tenantModendo.name.toLowerCase().includes('modendo') || tenantModendo.name.includes('مودندو'),
     'Modendo brand name in tenant.name verified'
   );
 

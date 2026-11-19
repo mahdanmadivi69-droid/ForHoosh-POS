@@ -55,12 +55,13 @@ export interface TableSession {
   kind: FloorNodeKind;
   status: FloorNodeStatus;
   guestCount: number;
-  customerName: string;
-  notes: string;
+  customerName?: string;
+  customerPhone?: string;
+  notes?: string;
   openedAt: string;
   cartItems: OrderItem[];
   discountToman: number;
-  discountPercent: number;
+  discountPercent?: number;
   ps5Session?: Ps5SessionState;
   /** Stored on primary host table: child node IDs absorbed into this table */
   mergedNodeIds?: string[];
@@ -1356,7 +1357,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
                 onConfirmTableOrder(node);
               }
             }}
-            onKeyDown={(e) => {
+            onKeyDown={(e: React.KeyboardEvent<any>) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 handleCardClick(node);
@@ -1539,7 +1540,7 @@ export const FloorPlanCanvas: React.FC<FloorPlanCanvasProps> = ({
             (onOpenSessionModal || onInspectNode)?.(node);
           }
         }}
-        onKeyDown={(e) => {
+        onKeyDown={(e: React.KeyboardEvent<any>) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             if (!mergeMode) handleCardClick(node);

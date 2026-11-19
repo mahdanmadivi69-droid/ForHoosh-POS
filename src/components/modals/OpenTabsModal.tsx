@@ -138,7 +138,7 @@ export const OpenTabsModal: React.FC<OpenTabsModalProps> = ({
 
     // 2. Add from floor sessions if not already in openTabService
     Object.entries(floorSessions).forEach(([nodeId, session]) => {
-      if (!session || (!session.cartItems?.length && session.status !== 'occupied')) {
+      if (!session || (!session.cartItems?.length && session.status !== 'OCCUPIED')) {
         return;
       }
       if (seenTables.has(session.tableLabel) || seenTables.has(nodeId)) {

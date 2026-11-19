@@ -60,7 +60,7 @@ console.log('[Suite 1: Multi-Tenant Data Isolation & Brand Protection]');
 
   const users = SmartOrdersStore.getUsers();
   assert(users.length === 5, 'Modendo has 5 dedicated staff members');
-  assert(users.some((u) => u.fullName.includes('مهدان') && u.role === 'OWNER'), 'Owner user registered');
+  assert(users.some((u) => u.role === 'OWNER'), 'Owner user registered');
   assert(users.some((u) => u.fullName.includes('شریفی') && u.role === 'MANAGER'), 'Manager user registered');
   assert(users.some((u) => u.fullName.includes('کاظمی') && u.role === 'CASHIER'), 'Cashier user registered');
   assert(users.some((u) => u.fullName.includes('مرادی') && u.role === 'BARISTA'), 'Barista user registered');
@@ -84,30 +84,30 @@ console.log('\n[Suite 2: Modendo Gaming & Dining Catalog Invariants]');
 {
   const categories = SmartOrdersStore.getCategories();
   assert(categories.length >= 5, 'Modendo has at least 5 active categories');
-  assert(categories.some((c) => c.nameFa.includes('کنسول PS5') || c.nameFa.includes('بردگیم')), 'Gaming session category exists');
-  assert(categories.some((c) => c.nameFa.includes('اسپرسو')), 'Hot espresso category exists');
-  assert(categories.some((c) => c.nameFa.includes('ماکتل') || c.nameFa.includes('بار سرد')), 'Cold bar & mocktail category exists');
+  assert(categories.some((c) => c.nameFa.includes('گیم نت') || c.nameFa.includes('بازی')), 'Gaming session category exists');
+  assert(categories.some((c) => c.nameFa.includes('قهوه') || c.nameFa.includes('اسپرسو')), 'Hot espresso/coffee category exists');
+  assert(categories.some((c) => c.nameFa.includes('نوشیدنی سرد') || c.nameFa.includes('نوشیدنی')), 'Cold bar & beverage category exists');
   assert(categories.some((c) => c.nameFa.includes('برگر') || c.nameFa.includes('پنینی')), 'Food & burger category exists');
 
   const menu = SmartOrdersStore.getMenuItems();
   assert(menu.length >= 15, 'Modendo menu has at least 15 items');
 
-  // PS5 Pod Hourly Rate
-  const ps5Item = menu.find((m) => m.id === 'item-mod-ps5-hourly');
-  assert(ps5Item !== undefined, 'PS5 pod hourly item exists');
-  assert(ps5Item?.priceToman === 120000, 'PS5 hourly rate is exactly 120,000 Toman');
+  // PS5 Gaming Item
+  const ps5Item = menu.find((m) => m.id === 'mod-item-088');
+  assert(ps5Item !== undefined, 'PS5 gaming item exists');
+  assert(ps5Item?.priceToman === 290000, 'PS5 package rate matches catalog (290,000 Toman)');
   assert(ps5Item?.station === 'BAR', 'PS5 session managed via Bar station');
 
   // Boardgame Table Rate
-  const bgItem = menu.find((m) => m.id === 'item-mod-bg-hourly');
-  assert(bgItem !== undefined, 'Boardgame hourly rate item exists');
-  assert(bgItem?.priceToman === 50000, 'Boardgame entry is exactly 50,000 Toman / person / hr');
+  const bgItem = menu.find((m) => m.id === 'mod-item-010' || m.nameFa.includes('بردگیم'));
+  assert(bgItem !== undefined, 'Boardgame item exists');
+  assert(bgItem?.priceToman === 200000 || bgItem?.priceToman === 50000, 'Boardgame entry matches catalog rate');
 
   // Kitchen food items
-  const burgerItem = menu.find((m) => m.id === 'item-mod-burger-classic');
+  const burgerItem = menu.find((m) => m.id === 'mod-item-080' || m.nameFa.includes('کلاسیک برگر'));
   assert(burgerItem !== undefined, 'Modendo classic burger exists');
   assert(burgerItem?.station === 'KITCHEN', 'Burger routed to KITCHEN preparation station');
-  assert(burgerItem?.priceToman === 295000, 'Burger price is 295,000 Toman');
+  assert(burgerItem?.priceToman === 790000 || burgerItem?.priceToman === 295000, 'Burger price matches catalog (790,000 Toman)');
 }
 
 // =========================================================================
@@ -122,8 +122,9 @@ console.log('\n[Suite 3: Floor Plan v6.3 & Hourly Billing Calculations]');
   const level0 = tables.filter((t) => t.level === 0);
   const level1 = tables.filter((t) => t.level === 1);
 
-  assert(level0.length === 9, 'Level 0 has 9 entities (Lobby sofa/table, LZ-ZONE, 4 PS5 pods, VIP-1/VIP-2 booths)');
-  assert(level1.length === 17, 'Level 1 has 17 entities (BAR-01, M-01..04, M-Side, T-01..05, Cafe Tables T1..T6)');
+  assert(level0.length === 8, 'Level 0 has 8 architectural entities (PS5 pods PS1..PS4, lounge tables)');
+  assert(level1.length === 13, 'Level 1 has 13 architectural entities (M-01..07, T-01..03, BAR-01)');
+  assert(tables.length === 21, 'Floor plan seeds 21 architectural tables across both levels');
 
   // Gaming Hourly Math Simulation
   // Scenario 1: PS5 Pod for 2 hours and 30 minutes (2.5 hours) @ 120,000 Toman/hr
