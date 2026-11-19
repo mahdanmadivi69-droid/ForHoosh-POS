@@ -17,7 +17,7 @@
     "build:100hich": "vite build --mode 100hich",
     "build:all": "npm run build:100hich && npm run build:modendo",
     "package:100hich": "powershell -ExecutionPolicy Bypass -File scripts/package-100hich.ps1",
-    "package:modendo": "iscc /DAppTenant=modendo installer/modendo.iss",
+    "package:modendo": "powershell -ExecutionPolicy Bypass -File scripts/package-modendo.ps1",
     "package:all": "npm run build:all && npm run package:100hich && npm run package:modendo",
     "package:liara": "powershell -ExecutionPolicy Bypass -File scripts/package-liara.ps1",
     "package": "npm run package:all",
