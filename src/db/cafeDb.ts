@@ -13,6 +13,18 @@ import {
   StockInwardTransaction,
 } from '../types/zreport-inventory';
 
+export type StaffRole = 'owner' | 'manager' | 'cashier' | 'waiter' | 'barista' | 'cook';
+
+export interface StaffRecord {
+  id: string;
+  name: string;
+  role: StaffRole;
+  pinHash: string; // bcrypt hash, never plaintext
+  isActive: boolean;
+  createdAt: number;
+  lastLoginAt?: number;
+}
+
 export class CafeDatabase extends Dexie {
   inventoryItems!: Table<InventoryItem, string>;
   menuItems!: Table<MenuItem, string>;
@@ -59,6 +71,9 @@ export class CafeDatabase extends Dexie {
     errorMessage?: string;
   }, string>;
 
+  // CafeOS Multi-Staff RBAC (v0.16.1)
+  staff!: Table<StaffRecord, string>;
+
   constructor(dbName: string = 'CafeOS_LocalDB') {
     super(dbName);
     this.version(1).stores({
@@ -97,6 +112,10 @@ export class CafeDatabase extends Dexie {
 
     this.version(4).stores({
       posOrders: 'id, orderNumber, shiftId, status, createdAt',
+    });
+
+    this.version(5).stores({
+      staff: 'id, name, role, isActive, createdAt',
     });
   }
 }
@@ -194,6 +213,19 @@ export const MODENDO_DEFAULT_INVENTORY: Array<{
 ];
 
 export function resolveActiveTenantId(): string {
+  // Check URL search parameters first (Tauri launcher start_url pass-through)
+  if (typeof window !== 'undefined' && window.location?.search) {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlTenant = params.get('tenant');
+      if (urlTenant) {
+        if (/modendo/i.test(urlTenant)) return 'tenant-modendo-01';
+        if (/100hich/i.test(urlTenant)) return 'tenant-100hich-01';
+        return urlTenant;
+      }
+    } catch {}
+  }
+
   // Check build-time or runtime environment variables first
   const envTenant =
     (typeof import.meta !== 'undefined' && ((import.meta as any).env?.VITE_TENANT_ID || (import.meta as any).env?.VITE_ACTIVE_TENANT)) ||

@@ -28,6 +28,7 @@ import { TableEntity } from '../../types/floor-plan';
 import { FloorNode, MODENDO_FLOOR_NODES } from './FloorPlanCanvas';
 import { floorPlanService } from '../../services/floorPlanService';
 import { openTabService } from '../../services/openTabService';
+import { useStaffAuthStore } from '../../stores/useStaffAuthStore';
 import { SmartOrdersStore } from '../../services/storage';
 import {
   formatToman,
@@ -541,7 +542,7 @@ export const TableSessionModal: React.FC<TableSessionModalProps> = ({
           {/* Modal Footer Controls */}
           <div className="p-4 border-t border-white/[0.08] bg-[#0B0D11]/80 flex flex-wrap items-center justify-between gap-2">
             {/* Settle / Clear */}
-            {isSessionActive && (
+            {isSessionActive && useStaffAuthStore.getState().canAccess('settle') && (
               <motion.button
                 whileTap={MotionConfig.tactileTap}
                 onClick={handleClearSession}

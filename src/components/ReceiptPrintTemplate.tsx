@@ -70,15 +70,15 @@ export const ReceiptPrintTemplate: React.FC<ReceiptPrintTemplateProps> = ({
   const shouldPrintKitchen =
     printKitchenTicket !== undefined ? printKitchenTicket : activeTenant.receipt.printKitchenTicket;
 
-  const displayTagline = isModendo
+  const displayTagline = tenantTagline || (isModendo
     ? '«کافه گیمینگ مودندو؛ دنیای بردگیم و هیجان کنسول PS5»'
-    : (brandTagline || displayHeaderNote || '«صد هیچ؛ تمرکز محض روی اصالت قهوه»');
+    : (brandTagline || displayHeaderNote || '«صد هیچ؛ تمرکز محض روی اصالت قهوه»'));
   const displayWebsite = isModendo ? 'MODENDO.CAFE' : (website || '100HICH.IR');
   const subBrand = isModendo ? 'MODENDO GAMING LOUNGE' : 'COFFEE ROASTERS';
-  const displayAddress = isModendo
+  const displayAddress = tenantAddress || (isModendo
     ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱'
-    : (tenantAddress || 'اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس');
-  const displayPhone = isModendo ? '021-88994455' : (tenantPhone || '۰۲۱-۴۴۶۶۸۰۹۰');
+    : 'اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس');
+  const displayPhone = tenantPhone || (isModendo ? '021-88994455' : '۰۲۱-۴۴۶۶۸۰۹۰');
 
   return (
     <div
@@ -360,13 +360,13 @@ export function renderReceiptTemplateHtml(
       ? tenantInfo.name.includes('مودندو') || tenantInfo.name.toUpperCase().includes('MODENDO')
       : false);
 
-  const brandName = escapeHtml(isModendo ? 'کافه گیمینگ مودندو' : (tenantInfo.name || activeTenant.brandNameFa));
+  const brandName = escapeHtml(tenantInfo.name || (isModendo ? 'کافه گیمینگ مودندو' : activeTenant.brandNameFa));
   const logoPath = escapeHtml(tenantInfo.logoPath || activeTenant.receipt.logoPath);
-  const headerNote = escapeHtml(isModendo ? (tenantInfo.headerNoteFa || 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو') : (tenantInfo.headerNoteFa || activeTenant.receipt.headerNoteFa));
+  const headerNote = escapeHtml(tenantInfo.headerNoteFa || (isModendo ? 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو' : activeTenant.receipt.headerNoteFa));
   const subBrand = escapeHtml(isModendo ? "MODENDO GAMING LOUNGE" : "COFFEE ROASTERS");
-  const address = escapeHtml(isModendo ? "تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱" : (tenantInfo.address || "اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس"));
-  const phone = escapeHtml(isModendo ? "021-88994455" : (tenantInfo.phone || "۰۲۱-۴۴۶۶۸۰۹۰"));
-  const tagline = escapeHtml(isModendo ? "«کافه گیمینگ مودندو؛ دنیای بردگیم و هیجان کنسول PS5»" : (tenantInfo.tagline || headerNote || "«صد هیچ؛ تمرکز محض روی اصالت قهوه»"));
+  const address = escapeHtml(tenantInfo.address || (isModendo ? "تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱" : "اکباتان، فاز ۱، بازارچه ۱۰، جنب پیتزا پیت باکس"));
+  const phone = escapeHtml(tenantInfo.phone || (isModendo ? "021-88994455" : "۰۲۱-۴۴۶۶۸۰۹۰"));
+  const tagline = escapeHtml(tenantInfo.tagline || (isModendo ? "«کافه گیمینگ مودندو؛ دنیای بردگیم و هیجان کنسول PS5»" : (headerNote || "«صد هیچ؛ تمرکز محض روی اصالت قهوه»")));
   const website = escapeHtml(isModendo ? "MODENDO.CAFE" : (tenantInfo.website || "100HICH.IR"));
   const cashier = escapeHtml(order.cashier || (isModendo ? "مدیر سیستم" : "مدیر سیستم"));
   const subtotal = (order.subtotalAmount ?? order.totalAmount).toLocaleString("fa-IR");

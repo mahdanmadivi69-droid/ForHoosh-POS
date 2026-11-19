@@ -54,11 +54,12 @@ import { CatalogService } from '../services/catalog/catalogService';
 import { baristaDispatcher } from '../services/baristaDispatcher';
 import { playPosBeep } from '../services/soundEffects';
 import { SmartOrdersStore } from '../services/storage';
+import { useStaffAuthStore } from '../stores/useStaffAuthStore';
 
 interface ModendoOperationalHubProps {
   activeUser: AuthUserRecord | User;
   activeShift: Shift | null;
-  onSelectModule: (target: 'floor-plan' | 'pos' | 'takeaway' | 'kds' | 'reports' | 'menu' | 'settings' | 'inventory' | 'audit' | 'receipts') => void;
+  onSelectModule: (target: 'floor-plan' | 'pos' | 'takeaway' | 'kds' | 'reports' | 'menu' | 'settings' | 'inventory' | 'audit' | 'receipts' | 'staff') => void;
   onLock: () => void;
   onOpenShiftModal?: () => void;
   onOpenKds?: () => void;
@@ -83,7 +84,10 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   const [liveKdsCount, setLiveKdsCount] = useState<number>(baristaActiveCount);
   const [settledCount, setSettledCount] = useState<number>(0);
 
+  const currentStaffRole = useStaffAuthStore((s) => s.currentUser?.role);
   const isManagerOrOwner =
+    currentStaffRole === 'owner' ||
+    currentStaffRole === 'manager' ||
     activeUser.role === 'OWNER' ||
     activeUser.role === 'MANAGER' ||
     (activeUser.role as string).toLowerCase() === 'owner' ||
@@ -146,9 +150,31 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
   }, []);
 
   const handleCardClick = (
-    target: 'floor-plan' | 'pos' | 'takeaway' | 'kds' | 'receipts' | 'reports' | 'menu' | 'settings' | 'inventory' | 'audit'
+    target: 'floor-plan' | 'pos' | 'takeaway' | 'kds' | 'receipts' | 'reports' | 'menu' | 'settings' | 'inventory' | 'audit' | 'staff'
   ) => {
     playPosBeep('click');
+
+    // Role-based hard gating
+    if (currentStaffRole === 'waiter' && target !== 'floor-plan') {
+      playPosBeep('error');
+      alert('دسترسی این بخش برای سالن‌کار محدود است. فقط نقشه سالن در دسترس است.');
+      return;
+    }
+
+    if ((currentStaffRole === 'barista' || currentStaffRole === 'cook') && target !== 'kds') {
+      playPosBeep('error');
+      alert('دسترسی این بخش برای باریستا و آشپز محدود است. فقط KDS در دسترس است.');
+      return;
+    }
+
+    if (target === 'staff') {
+      if (isManagerOrOwner) {
+        onSelectModule('staff');
+      } else {
+        setElevationTarget('settings');
+      }
+      return;
+    }
 
     if (target === 'receipts') {
       onOpenReceiptHistory?.();
@@ -169,7 +195,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
       return;
     }
 
-    // Role-gated targets: reports, menu, settings
+    // Role-gated targets: reports, menu, settings, inventory, audit
     if (isManagerOrOwner) {
       if (target === 'settings') {
         setIsSettingsOpen(true);
@@ -178,7 +204,7 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
       }
     } else {
       // Trigger PIN elevation for Cashier/Barista
-      setElevationTarget(target);
+      setElevationTarget(target as any);
     }
   };
 
@@ -692,6 +718,51 @@ export const ModendoOperationalHub: React.FC<ModendoOperationalHubProps> = ({
               <span className="text-[#94A3B8]">پیکربندی اختصاصی کافه گیمینگ مودندو</span>
               <span className="text-indigo-300 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
                 <span>پیکربندی پایانه</span>
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </span>
+            </div>
+          </motion.div>
+
+          {/* =========================================================================
+              CARD 10: مدیریت پرسنل و دسترسی‌ها (Staff Management - Owner & Manager)
+             ========================================================================= */}
+          <motion.div
+            role="button"
+            tabIndex={0}
+            whileHover={{ y: -4, scale: 1.015 }}
+            whileTap={{ scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 450, damping: 28 }}
+            onClick={() => handleCardClick('staff')}
+            className="relative rounded-3xl p-5 liquid-glass-card border border-[#16382F]/90 hover:border-emerald-400/50 shadow-xl cursor-pointer overflow-hidden flex flex-col justify-between min-h-[220px] transition-all group"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shadow-[0_0_16px_rgba(16,185,129,0.2)] group-hover:scale-105 transition-transform">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 inline-block mb-1">
+                    {isManagerOrOwner ? 'مدیریت پرسنل' : 'نیازمند مجوز مدیر'}
+                  </span>
+                  <h2 className="text-base font-black text-white group-hover:text-emerald-300 transition-colors">
+                    پرسنل و سطوح دسترسی
+                  </h2>
+                </div>
+              </div>
+
+              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/50 group-hover:text-emerald-300 group-hover:bg-emerald-500/20 transition-all">
+                {isManagerOrOwner ? <ChevronLeft className="w-4 h-4" /> : <Lock className="w-3.5 h-3.5 text-amber-300" />}
+              </div>
+            </div>
+
+            <p className="text-xs text-[#94A3B8] leading-relaxed my-3">
+              تعریف پرسنل جدید، تغییر پین‌کدهای ۴ رقمی (هش Bcrypt)، تعلیق دسترسی و بررسی آخرین ورود هر پرسنل به پایانه.
+            </p>
+
+            <div className="pt-3 border-t border-[#16382F] flex items-center justify-between text-xs">
+              <span className="text-[#94A3B8]">امنیت محلی Local-First</span>
+              <span className="text-emerald-300 font-bold flex items-center gap-1 group-hover:translate-x-[-2px] transition-transform">
+                <span>مدیریت پرسنل</span>
                 <ChevronLeft className="w-3.5 h-3.5" />
               </span>
             </div>

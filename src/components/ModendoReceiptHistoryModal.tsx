@@ -143,11 +143,12 @@ export const ModendoReceiptHistoryModal: React.FC<ModendoReceiptHistoryModalProp
         totalAmount: order.netTotalToman,
         paymentMethod: 'CASH',
       };
+      const currentTenant = SmartOrdersStore.getTenant();
       await printThermalReceipt(receiptData, {
         documentTitle: `فیش مجدد #${order.orderNumber}`,
-        tenantName: 'کافه گیمینگ مودندو',
-        tenantAddress: 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱',
-        tenantPhone: '021-88994455',
+        tenantName: currentTenant.name || 'کافه گیمینگ مودندو',
+        tenantAddress: currentTenant.address || 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱',
+        tenantPhone: currentTenant.phone || '021-88994455',
         headerNoteFa: 'لحظاتی خوش و ماندگار در کافه گیمینگ مودندو',
       });
       playPosBeep('success');

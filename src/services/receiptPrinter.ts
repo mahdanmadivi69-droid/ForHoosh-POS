@@ -62,7 +62,7 @@ export function printThermalReceipt(
       const iframe = document.createElement('iframe');
       iframe.setAttribute('role', 'presentation');
       iframe.setAttribute('title', 'Receipt Print Sandbox');
-      iframe.setAttribute('sandbox', 'allow-same-origin allow-modals');
+      iframe.setAttribute('sandbox', 'allow-same-origin allow-modals allow-scripts');
       iframe.style.position = 'fixed';
       iframe.style.left = '0';
       iframe.style.top = '0';

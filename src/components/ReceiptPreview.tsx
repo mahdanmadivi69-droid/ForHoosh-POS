@@ -38,15 +38,15 @@ export const ReceiptPreview: React.FC<ReceiptPreviewProps> = ({
     order.tenantId === 'tenant-modendo-01' ||
     order.tenantId === 'modendo' ||
     (order.tenantId ? order.tenantId.includes('modendo') : false);
-  const resolvedTenantName = effectiveIsModendo
+  const resolvedTenantName = tenantName || (effectiveIsModendo
     ? 'کافه گیمینگ مودندو'
-    : (tenantName || '100 HICH COFFEE ROASTERS');
-  const resolvedTenantPhone = effectiveIsModendo
+    : '100 HICH COFFEE ROASTERS');
+  const resolvedTenantPhone = tenantPhone || (effectiveIsModendo
     ? '021-88994455'
-    : (tenantPhone || '۰۲۱-۴۴۶۶۸۰۹۰');
-  const resolvedTenantAddress = effectiveIsModendo
+    : '۰۲۱-۴۴۶۶۸۰۹۰');
+  const resolvedTenantAddress = tenantAddress || (effectiveIsModendo
     ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱'
-    : (tenantAddress || 'تهران، اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس');
+    : 'تهران، اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس');
   const orderDate = new Date(order.createdAt);
   const formattedDate = orderDate.toLocaleDateString('fa-IR');
   const formattedTime = orderDate.toLocaleTimeString('fa-IR', {

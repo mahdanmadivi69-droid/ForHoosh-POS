@@ -17,7 +17,11 @@ import {
   MoreHorizontal,
   LayoutGrid,
   Receipt,
+  Users,
+  TrendingUp,
 } from 'lucide-react';
+import { useStaffAuthStore } from '../stores/useStaffAuthStore';
+import { STAFF_ROLE_DEFINITIONS } from '../services/staffService';
 import { Shift, User, Tenant, isManagerOrOwner } from '../types/domain';
 import { formatToman } from '../services/financialMath';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -36,7 +40,8 @@ export type HeaderTab =
   | 'audit'
   | 'inventory'
   | 'settings'
-  | 'executive-pl';
+  | 'executive-pl'
+  | 'staff';
 
 interface HeaderProps {
   tenant: Tenant;
@@ -146,14 +151,22 @@ export const Header: React.FC<HeaderProps> = ({
     };
   }, [isUtilityMenuOpen]);
 
-  const roleLabel =
-    activeUser.role === 'OWNER'
+  const staffCurrentUser = useStaffAuthStore((s) => s.currentUser);
+  const isStaffManagerOrOwner = isModendo && staffCurrentUser
+    ? staffCurrentUser.role === 'owner' || staffCurrentUser.role === 'manager'
+    : isManager;
+
+  const roleLabel = isModendo && staffCurrentUser
+    ? (STAFF_ROLE_DEFINITIONS[staffCurrentUser.role]?.titleFa || staffCurrentUser.role)
+    : (activeUser.role === 'OWNER'
       ? 'مالک'
       : activeUser.role === 'MANAGER'
       ? 'مدیر'
       : activeUser.role === 'CASHIER'
       ? 'صندوق‌دار'
-      : 'باریستا';
+      : 'باریستا');
+
+  const displayName = isModendo && staffCurrentUser ? staffCurrentUser.name : (activeUser.fullName || 'مدیر سیستم');
 
   /* ============================================================================
    * MODENDO: Floating Liquid Glass Spatial Header (Reference Image Fidelity)
@@ -205,8 +218,8 @@ export const Header: React.FC<HeaderProps> = ({
                 title="حساب کاربری و منوی ابزارها"
               >
                 <Lock className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                <span className="max-w-[100px] truncate whitespace-nowrap">
-                  {activeUser.fullName || 'مدیر سیستم'}
+                <span className="max-w-[120px] truncate whitespace-nowrap">
+                  {displayName}
                 </span>
                 <span className="text-white/40">|</span>
                 <span className="text-rose-300 text-[11px] font-semibold">{roleLabel}</span>
@@ -219,7 +232,7 @@ export const Header: React.FC<HeaderProps> = ({
                   {/* Profile + Live Clock */}
                   <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08]">
                     <div>
-                      <div className="text-xs font-black text-white">{activeUser.fullName}</div>
+                      <div className="text-xs font-black text-white">{displayName}</div>
                       <div className="text-[11px] text-[#94A3B8] mt-0.5">{roleLabel}</div>
                     </div>
                     <span className="font-mono text-xs font-bold text-[#34D399] tabular-nums">
@@ -409,41 +422,83 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           </div>
 
-          {/* Right Wing: Floor Plan Pill · POS Pill · Boiler Telemetry · Online Toggle */}
+          {/* Right Wing: Navigation Pills · Boiler Telemetry · Online Toggle */}
           <div className="flex items-center gap-1.5 md:gap-2 shrink-0 flex-nowrap z-20">
             {/* Quick Floor Plan Pill */}
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('floor-plan');
-              }}
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
-                currentTab === 'floor-plan'
-                  ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                  : 'bg-[#07241C]/80 border border-[#16382F] hover:border-emerald-400/60 text-emerald-300 hover:text-white'
-              }`}
-              title="نقشه سالن و میزها"
-            >
-              <MapIcon className="w-3.5 h-3.5 text-emerald-400" />
-              <span>نقشه سالن</span>
-            </button>
+            {(!staffCurrentUser || staffCurrentUser.role !== 'barista' && staffCurrentUser.role !== 'cook') && (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('floor-plan');
+                }}
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
+                  currentTab === 'floor-plan'
+                    ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'bg-[#07241C]/80 border border-[#16382F] hover:border-emerald-400/60 text-emerald-300 hover:text-white'
+                }`}
+                title="نقشه سالن و میزها"
+              >
+                <MapIcon className="w-3.5 h-3.5 text-emerald-400" />
+                <span>نقشه سالن</span>
+              </button>
+            )}
 
             {/* Quick POS Pill */}
-            <button
-              onClick={() => {
-                playPosBeep('click');
-                onTabChange('pos');
-              }}
-              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
-                currentTab === 'pos'
-                  ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
-                  : 'bg-[#07241C]/80 border border-[#16382F] hover:border-emerald-400/60 text-emerald-300 hover:text-white'
-              }`}
-              title="صندوق و ثبت سفارش"
-            >
-              <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-400" />
-              <span>صندوق</span>
-            </button>
+            {(!staffCurrentUser || (staffCurrentUser.role !== 'waiter' && staffCurrentUser.role !== 'barista' && staffCurrentUser.role !== 'cook')) && (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('pos');
+                }}
+                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
+                  currentTab === 'pos'
+                    ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'bg-[#07241C]/80 border border-[#16382F] hover:border-emerald-400/60 text-emerald-300 hover:text-white'
+                }`}
+                title="صندوق و ثبت سفارش"
+              >
+                <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-400" />
+                <span>صندوق</span>
+              </button>
+            )}
+
+            {/* Quick Reports Pill (Owner & Manager) */}
+            {isStaffManagerOrOwner && (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('reports');
+                }}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
+                  currentTab === 'reports'
+                    ? 'bg-sky-500/30 border border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.4)]'
+                    : 'bg-[#07241C]/80 border border-[#16382F] hover:border-sky-400/60 text-sky-300 hover:text-white'
+                }`}
+                title="گزارش‌ها و تحلیل مالی"
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-sky-400" />
+                <span>گزارشها</span>
+              </button>
+            )}
+
+            {/* Quick Staff Pill (Owner & Manager) */}
+            {isStaffManagerOrOwner && (
+              <button
+                onClick={() => {
+                  playPosBeep('click');
+                  onTabChange('staff');
+                }}
+                className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shrink-0 ${
+                  currentTab === 'staff'
+                    ? 'bg-emerald-500/30 border border-emerald-400 text-emerald-200 shadow-[0_0_12px_rgba(16,185,129,0.4)]'
+                    : 'bg-[#07241C]/80 border border-[#16382F] hover:border-emerald-400/60 text-emerald-300 hover:text-white'
+                }`}
+                title="مدیریت پرسنل"
+              >
+                <Users className="w-3.5 h-3.5 text-emerald-400" />
+                <span>پرسنل</span>
+              </button>
+            )}
 
             {/* Boiler Telemetry Pill */}
             <div className="hidden lg:flex items-center gap-1.5 rounded-full bg-[#07241C]/80 border border-[#16382F] px-3 py-1.5 text-xs font-mono font-bold text-emerald-300 shadow-sm shrink-0">

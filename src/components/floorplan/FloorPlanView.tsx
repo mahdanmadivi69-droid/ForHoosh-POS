@@ -53,6 +53,7 @@ import { CatalogService } from '../../services/catalog/catalogService';
 import { openTabService } from '../../services/openTabService';
 import { formatToman } from '../../services/financialMath';
 import { playPosBeep } from '../../services/soundEffects';
+import { useStaffAuthStore } from '../../stores/useStaffAuthStore';
 import { OrderItem } from '../../types/domain';
 import { FloorSettleModal } from './FloorSettleModal';
 import { OpenTabsModal } from '../modals/OpenTabsModal';
@@ -94,6 +95,7 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
   const [modalTableEntity, setModalTableEntity] = useState<TableEntity | null>(null);
   const [selectedTableNodeId, setSelectedTableNodeId] = useState<string>(selectedNodeId || 'M-01');
   const [isSettleModalOpen, setIsSettleModalOpen] = useState<boolean>(false);
+  const canSettle = useStaffAuthStore((s) => s.canAccess('settle'));
   const [isTabsModalOpen, setIsTabsModalOpen] = useState<boolean>(false);
   const [draftCustomerName, setDraftCustomerName] = useState<string>('');
   const [draftNotes, setDraftNotes] = useState<string>('');
@@ -1199,17 +1201,19 @@ export const FloorPlanView: React.FC<FloorPlanViewProps> = ({
             {/* Dynamic Actions based on Table Session State */}
             {activeTableSession && activeTableSession.cartItems && activeTableSession.cartItems.length > 0 ? (
               <div className="space-y-2">
-                <LiquidSurface
-                  as="button"
-                  magnetic={true}
-                  onClick={() => setIsSettleModalOpen(true)}
-                  className="w-full h-11 px-4 rounded-xl bg-[#005A3E] hover:bg-[#007A54] text-white font-semibold text-sm flex items-center justify-center gap-2 border border-emerald-400/40 shadow-sm transition cursor-pointer"
-                >
-                  <CreditCard className="w-4 h-4 text-emerald-200" />
-                  <span>تسویه فاکتور و پرداخت</span>
-                </LiquidSurface>
+                {canSettle && (
+                  <LiquidSurface
+                    as="button"
+                    magnetic={true}
+                    onClick={() => setIsSettleModalOpen(true)}
+                    className="w-full h-11 px-4 rounded-xl bg-[#005A3E] hover:bg-[#007A54] text-white font-semibold text-sm flex items-center justify-center gap-2 border border-emerald-400/40 shadow-sm transition cursor-pointer"
+                  >
+                    <CreditCard className="w-4 h-4 text-emerald-200" />
+                    <span>تسویه فاکتور و پرداخت</span>
+                  </LiquidSurface>
+                )}
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className={canSettle ? "grid grid-cols-2 gap-2" : "flex flex-col gap-2"}>
                   <button
                     type="button"
                     onClick={() => handleTransitionToPos(selectedNode)}

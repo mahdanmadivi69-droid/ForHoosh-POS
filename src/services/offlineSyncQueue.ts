@@ -183,6 +183,7 @@ export class OfflineSyncQueue {
     if (this.isSyncing) return;
     if (this.isAuthPaused) return; // Paused on 401
     if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    if (!this.apiBaseUrl || this.apiBaseUrl.trim() === '' || !/^https?:\/\//i.test(this.apiBaseUrl)) return;
     await this.ensureReady();
 
     this.isSyncing = true;

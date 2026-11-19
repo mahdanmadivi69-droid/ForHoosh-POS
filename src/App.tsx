@@ -1,10 +1,16 @@
 import { PinLockScreen } from './components/auth/PinLockScreen';
+import { ModendoPinLoginScreen } from './components/auth/ModendoPinLoginScreen';
 import { AppLauncherHub } from './components/hub/AppLauncherHub';
 import { ModendoOperationalHub } from './components/ModendoOperationalHub';
 import { ModendoSettingsDeck } from './components/ModendoSettingsDeck';
 import { ModendoReceiptHistoryModal } from './components/ModendoReceiptHistoryModal';
 import { SensoryLabView } from './components/SensoryLabView';
 import { HichSettingsControlDeck } from './views/settings/HichSettingsControlDeck';
+import { StaffManagementView } from './views/staff/StaffManagementView';
+import { OwnerReportsView } from './views/reports/OwnerReportsView';
+import { StaffService } from './services/staffService';
+import type { StaffRecord } from './services/staffService';
+import { useStaffAuthStore } from './stores/useStaffAuthStore';
 import { AuthUserRecord } from './types/rbac-settings';
 /**
  * SmartOrders - Point of Sale (POS) and Operational Management System
@@ -81,7 +87,7 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(SmartOrdersStore.isAuthenticated());
   const [isLocked, setIsLocked] = useState<boolean>(true);
   const [pendingSwitchUserId, setPendingSwitchUserId] = useState<string | null>(null);
-  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl'>(defaultTab);
+  const [currentTab, setCurrentTab] = useState<'hub' | 'pos' | 'zero-g' | 'floor-plan' | 'reports' | 'menu' | 'audit' | 'inventory' | 'settings' | 'executive-pl' | 'staff'>(defaultTab);
   const [isTenantConfigOpen, setIsTenantConfigOpen] = useState(false);
   const [preselectedTableLabel, setPreselectedTableLabel] = useState<string | null>(null);
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -126,6 +132,10 @@ function App() {
     RBACService.initDefaultUsers();
     SettingsService.initDefaults();
     dailyBackupScheduler.init();
+    if (isModendoTenant) {
+      StaffService.seedDefaultStaff().catch((err) => console.error('[StaffService] Seed failed', err));
+      useStaffAuthStore.getState().initialize();
+    }
     refreshState();
 
     SmartOrdersStore.hydrateOrdersFromDexie()
@@ -167,14 +177,35 @@ function App() {
 
   // RBAC Tab Protection Guard
   useEffect(() => {
-    if (
+    if (isModendoTenant) {
+      const staffUser = useStaffAuthStore.getState().currentUser;
+      if (staffUser) {
+        if (staffUser.role === 'waiter' && currentTab !== 'floor-plan') {
+          setCurrentTab('floor-plan');
+          showToast('دسترسی سالن‌کار فقط به نقشه سالن محدود است.');
+        } else if ((staffUser.role === 'barista' || staffUser.role === 'cook') && currentTab !== 'hub') {
+          setCurrentTab('hub');
+        } else if (
+          staffUser.role === 'cashier' &&
+          (currentTab === 'reports' ||
+            currentTab === 'staff' ||
+            currentTab === 'menu' ||
+            currentTab === 'audit' ||
+            currentTab === 'inventory' ||
+            currentTab === 'settings')
+        ) {
+          setCurrentTab('floor-plan');
+          showToast('دسترسی به این بخش نیازمند سطح مدیریت است.');
+        }
+      }
+    } else if (
       !isManagerOrOwner(activeUser.role) &&
       (currentTab === 'menu' || currentTab === 'audit' || currentTab === 'inventory' || currentTab === 'reports')
     ) {
       setCurrentTab('pos');
       showToast('دسترسی به بخش مدیریت منو، انبارداری، حسابرسی و گزارش مالی فقط برای مدیر و مالک مجاز است.');
     }
-  }, [activeUser.role, currentTab]);
+  }, [activeUser.role, currentTab, isModendoTenant]);
   // Route Guard: the Gaming Lounge Station map (floor-plan) is Modendo-only;
   // executive-pl stays blocked (inherited behavior) until the owner enables it.
   useEffect(() => {
@@ -207,8 +238,12 @@ function App() {
   };
 
   const handleLogout = () => {
+    if (isModendoTenant) {
+      useStaffAuthStore.getState().logout();
+    }
     SmartOrdersStore.logout();
     setIsAuthenticated(false);
+    setIsLocked(true);
     showToast('شما با موفقیت از سیستم خارج شدید.');
   };
 
@@ -356,6 +391,62 @@ function App() {
 
   // 1. Initial Authentication & PIN Gate: Default entry point when app starts or when locked
   if (isLocked || !isAuthenticated) {
+    if (isModendoTenant) {
+      return (
+        <ModendoPinLoginScreen
+          onLoginSuccess={(unlockedStaff: StaffRecord) => {
+            const roleMap: Record<string, any> = {
+              owner: 'OWNER',
+              manager: 'MANAGER',
+              cashier: 'CASHIER',
+              waiter: 'WAITER',
+              barista: 'BARISTA',
+              cook: 'COOK',
+            };
+            const mappedRole = roleMap[unlockedStaff.role] || 'CASHIER';
+            const currentStoreUsers = SmartOrdersStore.getUsers();
+            let matched: User | undefined = currentStoreUsers.find(
+              (u) => u.id === unlockedStaff.id || u.fullName === unlockedStaff.name
+            );
+            if (!matched) {
+              matched = {
+                id: unlockedStaff.id,
+                tenantId: 'tenant-modendo-01',
+                fullName: unlockedStaff.name,
+                username: unlockedStaff.id,
+                phoneNumber: '09120000000',
+                role: mappedRole,
+                isActive: unlockedStaff.isActive,
+              };
+              SmartOrdersStore.addUser(matched);
+            } else {
+              matched.role = mappedRole;
+            }
+            SmartOrdersStore.setActiveUserId(matched.id);
+            setActiveUser(matched);
+            setIsAuthenticated(true);
+            setIsLocked(false);
+            setPendingSwitchUserId(null);
+
+            // Role-based initial navigation per specification:
+            // - waiter: Floor Plan ONLY
+            // - barista/cook: KDS view ONLY
+            // - owner/manager/cashier: hub (or floor-plan/pos)
+            if (unlockedStaff.role === 'waiter') {
+              setCurrentTab('floor-plan');
+            } else if (unlockedStaff.role === 'barista' || unlockedStaff.role === 'cook') {
+              setCurrentTab('hub');
+              setIsBaristaKdsOpen(true);
+            } else {
+              setCurrentTab('hub');
+            }
+            refreshState();
+            showToast(`ترمینال بازگشایی شد: خوش آمدید ${unlockedStaff.name}`);
+          }}
+        />
+      );
+    }
+
     return (
       <PinLockScreen
         initialUserId={pendingSwitchUserId}
@@ -564,16 +655,24 @@ function App() {
         )}
 
 
+        {currentTab === 'staff' && isModendoTenant && (
+          <StaffManagementView onBack={() => setCurrentTab('hub')} />
+        )}
+
         {currentTab === 'reports' && (
-          <ReportsView
-            tenant={tenant}
-            shifts={shifts}
-            orders={orders}
-            payments={payments}
-            expenses={expenses}
-            activeUser={activeUser}
-            onCancelOrder={handleCancelOrder}
-          />
+          isModendoTenant ? (
+            <OwnerReportsView onBack={() => setCurrentTab('hub')} />
+          ) : (
+            <ReportsView
+              tenant={tenant}
+              shifts={shifts}
+              orders={orders}
+              payments={payments}
+              expenses={expenses}
+              activeUser={activeUser}
+              onCancelOrder={handleCancelOrder}
+            />
+          )
         )}
 
         {currentTab === 'menu' && (

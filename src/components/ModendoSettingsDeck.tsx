@@ -73,6 +73,16 @@ export const ModendoSettingsDeck: React.FC<ModendoSettingsDeckProps> = ({
 
   // Load persisted settings on mount
   useEffect(() => {
+    const currentTenant = SmartOrdersStore.getTenant();
+    if (currentTenant.address) {
+      setStoreProfile((prev) => ({
+        ...prev,
+        address: currentTenant.address || prev.address,
+        name_fa: currentTenant.name || prev.name_fa,
+        phone: currentTenant.phone || prev.phone,
+      }));
+    }
+
     SettingsService.loadSettings('tenant-modendo-01')
       .then((settings) => {
         if (
@@ -144,6 +154,11 @@ export const ModendoSettingsDeck: React.FC<ModendoSettingsDeckProps> = ({
         },
         'tenant-modendo-01'
       );
+      SmartOrdersStore.updateTenant({
+        name: storeProfile.name_fa,
+        address: storeProfile.address,
+        phone: storeProfile.phone,
+      });
       playPosBeep('success');
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);

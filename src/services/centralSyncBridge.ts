@@ -35,6 +35,10 @@ export class CentralSyncBridge {
 
   public async dispatchBatch(orders: SyncOrder[]): Promise<BatchSyncResponse | null> {
     if (!orders || orders.length === 0) return null;
+    if (!this.baseUrl || this.baseUrl.trim() === '' || !/^https?:\/\//i.test(this.baseUrl)) {
+      // Local-first mode: no remote HTTP cloud URL configured; keep local without error spam
+      return null;
+    }
     if (this.isSyncing) return null;
 
     this.isSyncing = true;

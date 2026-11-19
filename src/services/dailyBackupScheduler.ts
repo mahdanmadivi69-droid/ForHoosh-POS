@@ -75,8 +75,20 @@ class DailyBackupSchedulerClass {
     if (typeof window === 'undefined') return this.status;
 
     try {
+      const apiBase = ((import.meta as any).env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
+      const isCustomProtocol = typeof window !== 'undefined' && (window.location.protocol === 'tauri:' || window.location.protocol === 'app:' || window.location.protocol === 'file:');
+      
+      if (!apiBase || !/^https?:\/\//i.test(apiBase)) {
+        if (isCustomProtocol || !apiBase) {
+          this.status.isCloudConnected = false;
+          this.status.provider = 'Local-First (Offline)';
+          this.notify();
+          return this.status;
+        }
+      }
+
       const activeTenantId = SmartOrdersStore.getActiveTenantId();
-      const res = await fetch(`${((import.meta as any).env?.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, "")}/api/v1/cloud-backup/status`, {
+      const res = await fetch(`${apiBase}/api/v1/cloud-backup/status`, {
         headers: { 'X-Tenant-Id': activeTenantId },
       });
       if (res.ok) {
@@ -194,7 +206,17 @@ class DailyBackupSchedulerClass {
         },
       };
 
-      const res = await fetch(`${((import.meta as any).env?.VITE_API_BASE_URL || window.location.origin).replace(/\/$/, "")}/api/v1/cloud-backup/daily`, {
+      const apiBase = ((import.meta as any).env?.VITE_API_BASE_URL || '').replace(/\/$/, '');
+      const isCustomProtocol = typeof window !== 'undefined' && (window.location.protocol === 'tauri:' || window.location.protocol === 'app:' || window.location.protocol === 'file:');
+      
+      if (!apiBase || !/^https?:\/\//i.test(apiBase) || isCustomProtocol) {
+        return {
+          success: true,
+          message: 'حالت محلی فعال است (Local-First). همگام‌سازی ابری نیازمند اتصال سرور است.',
+        };
+      }
+
+      const res = await fetch(`${apiBase}/api/v1/cloud-backup/daily`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

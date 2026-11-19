@@ -52,9 +52,9 @@ export function renderReceiptToCanvas(
   const isModendo = !order.tenantId || order.tenantId.includes('modendo');
   const brandTitle = isModendo ? 'MODENDO CAFE' : '100 HICH';
   const brandSub = isModendo ? 'BOARDGAME & GAMING CAFE' : 'COFFEE ROASTERS';
-  const brandContact = isModendo
-    ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱ | ۰۲۱-۸۸۹۹۷۷۶۶'
-    : 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس | ۰۲۱-۴۴۶۶۸۰۹۰';
+  const brandContact = (tenant?.address || (isModendo
+    ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱'
+    : 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس')) + ' | ' + (tenant?.phone || (isModendo ? '۰۲۱-۸۸۹۹۷۷۶۶' : '۰۲۱-۴۴۶۶۸۰۹۰'));
   const footerTagline = isModendo
     ? 'کافه مودندو، دنیای بردگیم و هیجان کنسول PS5'
     : 'صد هیچ، تمرکز محض روی اصالت قهوه';
@@ -506,9 +506,9 @@ export function renderZReportToCanvas(
 
   const isModendo = !report.shiftId || report.shiftId.includes('modendo');
   const brandTitle = isModendo ? 'MODENDO CAFE' : '100 HICH';
-  const brandContact = isModendo
-    ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱ | ۰۲۱-۸۸۹۹۷۷۶۶'
-    : 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس | ۰۲۱-۴۴۶۶۸۰۹۰';
+  const brandContact = (tenant?.address || (isModendo
+    ? 'تهران، خیابان شریعتی، مجتمع مودندو، منفی ۱'
+    : 'اکباتان فاز ۱ بازارچه ۱۰ جنب پیتزا پیت‌باکس')) + ' | ' + (tenant?.phone || (isModendo ? '۰۲۱-۸۸۹۹۷۷۶۶' : '۰۲۱-۴۴۶۶۸۰۹۰'));
   const footerTagline = isModendo ? 'کافه مودندو' : 'صد هیچ، تمرکز محض روی اصالت قهوه';
 
   let y = 45;
