@@ -11,6 +11,7 @@ coverage
 .env*.local
 *.local
 !.env.example
+.env.cloud-check
 backups/
 *.zip
 
